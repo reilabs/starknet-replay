@@ -1,0 +1,11 @@
+[package]
+name = "cairo-replay"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cairo-lang-starknet-classes = { git = "https://github.com/reilabs/cairo.git", rev = "2765cf1" }
+serde = "1.0.130"
+serde_json = "1.0.81"
