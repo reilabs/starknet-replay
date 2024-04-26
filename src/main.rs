@@ -1,12 +1,16 @@
 use std::num::NonZeroU32;
 
 use anyhow::Context;
+use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
 use pathfinder_common::{BlockHeader, BlockNumber, ChainId};
-use pathfinder_executor::ExecutionState;
+use pathfinder_executor::types::TransactionTrace;
+use pathfinder_executor::{ExecutionState, IntoFelt};
+use pathfinder_rpc::v02::types::ContractClass;
 use pathfinder_storage::{BlockId, JournalMode, Storage};
 use rayon::prelude::*;
+use starknet_api::hash::StarkFelt;
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
@@ -70,10 +74,13 @@ fn main() -> anyhow::Result<()> {
                 .unwrap();
             drop(transaction);
 
-            let (transactions, receipts): (Vec<_>, Vec<_>) =
+            let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
 
             num_transactions += transactions.len();
+
+            transactions.truncate(1);
+            receipts.truncate(1);
 
             Work {
                 header: block_header,
@@ -125,16 +132,19 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: Work) {
     let start_time = std::time::Instant::now();
     let num_transactions = work.transactions.len();
 
-    let mut connection = storage.connection().unwrap();
+    let mut db = storage.connection().unwrap();
 
-    let db_tx = connection.transaction().expect("Create transaction");
+    let db_tx = db.transaction().expect("Create transaction");
 
     let execution_state = ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
 
     let transactions = work
         .transactions
         .into_iter()
-        .map(|tx| pathfinder_rpc::compose_executor_transaction(&tx, &db_tx))
+        .map(|tx| {
+            let tx = pathfinder_rpc::compose_executor_transaction(&tx, &db_tx);
+            tx
+        })
         .collect::<Result<Vec<_>, _>>();
 
     let transactions = match transactions {
@@ -148,6 +158,44 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: Work) {
     match pathfinder_executor::simulate(execution_state, transactions, false, false) {
         Ok(simulations) => {
             for (simulation, receipt) in simulations.iter().zip(work.receipts.iter()) {
+                match &simulation.trace {
+                    TransactionTrace::Invoke(tx) => {
+                        let visited_pcs = &tx.visited_pcs;
+                        visited_pcs.iter().for_each(|(class_hash, _pcs)| {
+                            // First get the class_definition from the db using the class_hash
+                            let block_id = BlockId::Number(work.header.number);
+                            let class_hash: StarkFelt = class_hash.clone().0.into();
+                            let class_definition = db_tx.class_definition_at(
+                                block_id,
+                                pathfinder_common::ClassHash(class_hash.into_felt()),
+                            );
+                            let class_definition = class_definition.unwrap().unwrap();
+                            let class_definition =
+                                ContractClass::from_definition_bytes(&class_definition);
+
+                            // Second from the class_definition, generate the sierra_program
+                            match class_definition {
+                                Ok(ContractClass::Sierra(ctx)) => {
+                                    let json = serde_json::json!({
+                                        "abi": [],
+                                        "sierra_program": ctx.sierra_program,
+                                        "contract_class_version": ctx.contract_class_version,
+                                        "entry_points_by_type": ctx.entry_points_by_type,
+                                    });
+                                    let contract_class: CairoContractClass =
+                                        serde_json::from_value::<CairoContractClass>(json).unwrap();
+                                    let _sierra_program =
+                                        contract_class.extract_sierra_program().unwrap();
+
+                                    // Third setup the runner
+                                }
+                                _ => (),
+                            }
+                        });
+                    }
+                    _ => (),
+                }
+
                 if let Some(actual_fee) = receipt.actual_fee {
                     let actual_fee =
                         u128::from_be_bytes(actual_fee.0.to_be_bytes()[16..].try_into().unwrap());

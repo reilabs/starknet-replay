@@ -25,10 +25,10 @@ cairo-lang-sierra = { version = "=2.6.0" }
 cairo-lang-utils = { version = "=2.6.0" }
 cairo-lang-sierra-generator = { version = "=2.6.0" }
 jemallocator = "0.5.4"
-pathfinder-common =  { git = "https://github.com/eqlabs/pathfinder.git", tag = "v0.11.6" }
-pathfinder-executor =  { git = "https://github.com/eqlabs/pathfinder.git", tag = "v0.11.6" }
-pathfinder-rpc =  { git = "https://github.com/eqlabs/pathfinder.git", tag = "v0.11.6" }
-pathfinder-storage =  { git = "https://github.com/eqlabs/pathfinder.git", tag = "v0.11.6" } # { git = "https://github.com/eqlabs/pathfinder.git", rev = "v0.11.6" }
+pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "eb90843ec0069eeef1f8e6e9b5af9fa15b68670b" }
+pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "eb90843ec0069eeef1f8e6e9b5af9fa15b68670b" }
+pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "eb90843ec0069eeef1f8e6e9b5af9fa15b68670b" }
+pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "eb90843ec0069eeef1f8e6e9b5af9fa15b68670b" }
 rayon = "1.8.0"
 starknet_api = "=0.10.0"
 serde = "1.0.130"
