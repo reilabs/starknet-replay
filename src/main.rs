@@ -74,13 +74,10 @@ fn main() -> anyhow::Result<()> {
                 .unwrap();
             drop(transaction);
 
-            let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
+            let (transactions, receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
 
             num_transactions += transactions.len();
-
-            transactions.truncate(1);
-            receipts.truncate(1);
 
             Work {
                 header: block_header,
