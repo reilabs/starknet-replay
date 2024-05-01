@@ -1,12 +1,18 @@
-[package]
-name = "cairo-replay"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.74"
+# [package]
+# name = "cairo-replay"
+# version = "0.1.0"
+# edition = "2021"
+# rust-version = "1.74"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[workspace]
 resolver = "2"
+
+members = [
+    "cli",
+    "cairo_replay"
+]
 
 [profile.release-lto]
 inherits = "release"
@@ -16,19 +22,20 @@ lto = true
 [profile.dev.package.flate2]
 opt-level = 3
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0.75"
 cairo-lang-starknet-classes = { version = "=2.6.0" }
+cairo-lang-sierra-to-casm = { version = "=2.6.0" }
 cairo-lang-runner = { version = "=2.6.0" }
 cairo-lang-compiler = { version = "=2.6.0" }
 cairo-lang-sierra = { version = "=2.6.0" }
 cairo-lang-utils = { version = "=2.6.0" }
 cairo-lang-sierra-generator = { version = "=2.6.0" }
 jemallocator = "0.5.4"
-pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "eb90843ec0069eeef1f8e6e9b5af9fa15b68670b" }
-pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "eb90843ec0069eeef1f8e6e9b5af9fa15b68670b" }
-pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "eb90843ec0069eeef1f8e6e9b5af9fa15b68670b" }
-pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "eb90843ec0069eeef1f8e6e9b5af9fa15b68670b" }
+pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
+pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
+pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
+pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
 rayon = "1.8.0"
 starknet_api = "=0.10.0"
 serde = "1.0.130"
@@ -40,3 +47,5 @@ tracing-subscriber = { version = "0.3.17", features = [
     "time",
     "ansi",
 ] }
+smol_str = { version = "0.2.0", features = ["serde"] }
+itertools = { version = "0.11.0", default-features = false }

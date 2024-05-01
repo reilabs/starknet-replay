@@ -395,6 +395,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
 name = "bincode"
 version = "2.0.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -464,8 +470,7 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.6.0-rc.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7ed27d8734e64869d24bed5cdcfefd3e069cb1e0d3d07c6e07135cdf226fd94"
+source = "git+https://github.com/reilabs/blockifier.git?rev=594a3317ec7b33f44d2b894a161bd62cae9a72d3#594a3317ec7b33f44d2b894a161bd62cae9a72d3"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -2197,7 +2202,7 @@ version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15222608b6afc529e86554f5f8722cb37de9d73f28384ad33d86e6749ab6d13f"
 dependencies = [
- "hashbrown 0.14.3",
+ "hashbrown 0.14.5",
  "indexmap 2.2.6",
  "itertools 0.11.0",
  "num-bigint",
@@ -2216,8 +2221,10 @@ dependencies = [
  "cairo-lang-runner",
  "cairo-lang-sierra 2.6.0",
  "cairo-lang-sierra-generator 2.6.0",
+ "cairo-lang-sierra-to-casm 2.6.0",
  "cairo-lang-starknet-classes",
  "cairo-lang-utils 2.6.0",
+ "itertools 0.11.0",
  "jemallocator",
  "pathfinder-common",
  "pathfinder-executor",
@@ -2226,6 +2233,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "smol_str 0.2.1",
  "starknet_api",
  "tracing",
  "tracing-subscriber",
@@ -2242,7 +2250,7 @@ dependencies = [
  "bitvec",
  "cairo-felt 0.9.1",
  "generic-array",
- "hashbrown 0.14.3",
+ "hashbrown 0.14.5",
  "hex",
  "keccak",
  "lazy_static",
@@ -2264,9 +2272,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.95"
+version = "1.0.96"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d32a725bc159af97c3e629873bb9f88fb8cf8a4867175f76dc987815ea07c83b"
+checksum = "065a29261d53ba54260972629f9ca6bffa69bac13cd1fed61420f7fa68b9f8bd"
 dependencies = [
  "jobserver",
  "libc",
@@ -2333,6 +2341,35 @@ name = "clap_lex"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
+
+[[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-compiler 2.6.0",
+ "cairo-lang-runner",
+ "cairo-lang-sierra 2.6.0",
+ "cairo-lang-sierra-generator 2.6.0",
+ "cairo-lang-sierra-to-casm 2.6.0",
+ "cairo-lang-starknet-classes",
+ "cairo-lang-utils 2.6.0",
+ "cairo-replay",
+ "clap",
+ "itertools 0.11.0",
+ "jemallocator",
+ "pathfinder-common",
+ "pathfinder-executor",
+ "pathfinder-rpc",
+ "pathfinder-storage",
+ "rayon",
+ "serde",
+ "serde_json",
+ "smol_str 0.2.1",
+ "starknet_api",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "colorchoice"
@@ -2555,9 +2592,9 @@ dependencies = [
 
 [[package]]
 name = "data-encoding"
-version = "2.5.0"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
+checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 
 [[package]]
 name = "deranged"
@@ -2746,9 +2783,9 @@ checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
 name = "fastrand"
-version = "2.0.2"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "658bd65b1cf4c852a3cc96f18a8ce7b5640f6b703f905c7d74532294c2a63984"
+checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 
 [[package]]
 name = "fixed-hash"
@@ -2770,9 +2807,9 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "flate2"
-version = "1.0.28"
+version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46303f565772937ffe1d394a4fac6f411c6013172fadde9dcdb1e147a086940e"
+checksum = "5f54427cfd1c7829e2a139fcefea601bf088ebca651d2bf53ebc600eac295dae"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -3030,9 +3067,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.14.3"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
+checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
  "ahash 0.8.11",
  "allocator-api2",
@@ -3045,7 +3082,7 @@ version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8094feaf31ff591f651a2664fb9cfd92bba7a60ce3197265e9482ebe753c8f7"
 dependencies = [
- "hashbrown 0.14.3",
+ "hashbrown 0.14.5",
 ]
 
 [[package]]
@@ -3315,7 +3352,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
 dependencies = [
  "equivalent",
- "hashbrown 0.14.3",
+ "hashbrown 0.14.5",
  "serde",
 ]
 
@@ -3511,9 +3548,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.153"
+version = "0.2.154"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
+checksum = "ae743338b92ff9146ce83992f766a31066a91a8c84a45e0e9f21e7cf6de6d346"
 
 [[package]]
 name = "libmimalloc-sys"
@@ -3554,9 +3591,9 @@ checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
 
 [[package]]
 name = "lock_api"
-version = "0.4.11"
+version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c168f8615b12bc01f9c17e2eb0cc07dcae1940121185446edc3744920e8ef45"
+checksum = "07af8b9cdd281b7915f413fa73f29ebd5d55d0d3f0155584dade1ff18cea1b17"
 dependencies = [
  "autocfg",
  "scopeguard",
@@ -4000,12 +4037,12 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.12.1"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
+checksum = "7e4af0ca4f6caed20e900d564c242b8e5d4903fdacf31d3daf527b66fe6f42fb"
 dependencies = [
  "lock_api",
- "parking_lot_core 0.9.9",
+ "parking_lot_core 0.9.10",
 ]
 
 [[package]]
@@ -4024,15 +4061,15 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.9.9"
+version = "0.9.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c42a9226546d68acdd9c0a280d17ce19bfe27a46bf68784e4066115788d008e"
+checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.4.1",
+ "redox_syscall 0.5.1",
  "smallvec",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.5",
 ]
 
 [[package]]
@@ -4056,7 +4093,7 @@ checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
 [[package]]
 name = "pathfinder-common"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -4078,7 +4115,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-compiler"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "cairo-lang-starknet 1.0.0-alpha.6",
@@ -4094,7 +4131,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-crypto"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "ark-ff",
  "bitvec",
@@ -4106,7 +4143,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-ethereum"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4126,7 +4163,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-executor"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "blockifier",
@@ -4147,7 +4184,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-merkle-tree"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -4163,7 +4200,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-retry"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "tokio",
  "tokio-retry",
@@ -4172,7 +4209,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-rpc"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "axum",
@@ -4211,7 +4248,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-serde"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "num-bigint",
@@ -4226,7 +4263,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-storage"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -4489,7 +4526,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51de85fb3fb6524929c8a2eb85e6b6d363de4e8c48f9e2c2eac4944abc181c93"
 dependencies = [
  "log",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "scheduled-thread-pool",
 ]
 
@@ -4576,11 +4613,11 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.4.1"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4722d768eff46b75989dd134e5c353f0d6296e5aaa3132e776cbdb56be7731aa"
+checksum = "469052894dcb553421e483e4209ee581a45100d31b4018de03e5a7ad86374a7e"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.5.0",
 ]
 
 [[package]]
@@ -4851,14 +4888,14 @@ version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cbc66816425a074528352f5789333ecff06ca41b36b0b0efdfbb29edc391a19"
 dependencies = [
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
 ]
 
 [[package]]
 name = "schemars"
-version = "0.8.16"
+version = "0.8.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45a28f4c49489add4ce10783f7911893516f15afe45d015608d41faca6bc4d29"
+checksum = "7f55c82c700538496bdc329bb4918a81f87cc8888811bd123cf325a0f2f8d309"
 dependencies = [
  "dyn-clone",
  "indexmap 1.9.3",
@@ -4869,14 +4906,14 @@ dependencies = [
 
 [[package]]
 name = "schemars_derive"
-version = "0.8.16"
+version = "0.8.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c767fd6fa65d9ccf9cf026122c1b555f2ef9a4f0cea69da4d7dbc3e258d30967"
+checksum = "83263746fe5e32097f06356968a077f96089739c927a61450efa069905eec108"
 dependencies = [
  "proc-macro2",
  "quote",
  "serde_derive_internals",
- "syn 1.0.109",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -4922,18 +4959,18 @@ checksum = "92d43fe69e652f3df9bdc2b85b2854a0825b86e4fb76bc44d945137d053639ca"
 
 [[package]]
 name = "serde"
-version = "1.0.198"
+version = "1.0.200"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9846a40c979031340571da2545a4e5b7c4163bdae79b301d5f86d03979451fcc"
+checksum = "ddc6f9cc94d67c0e21aaf7eda3a010fd3af78ebf6e096aa6e2e13c79749cce4f"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.198"
+version = "1.0.200"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e88edab869b01783ba905e7d0153f9fc1a6505a96e4ad3018011eedb838566d9"
+checksum = "856f046b9400cee3c8c94ed572ecdb752444c24528c035cd35882aad6f492bcb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4942,13 +4979,13 @@ dependencies = [
 
 [[package]]
 name = "serde_derive_internals"
-version = "0.26.0"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85bf8229e7920a9f636479437026331ce11aa132b4dde37d121944a44d6e5f3c"
+checksum = "330f01ce65a3a5fe59a60c82f3c9a024b573b8a6e875bd233fe5f934e71d54e3"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -4995,11 +5032,11 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.7.0"
+version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee80b0e361bbf88fd2f6e242ccd19cfda072cb0faa6ae694ecee08199938569a"
+checksum = "0ad483d2ab0149d5a5ebcd9972a3852711e0153d863bf5a5d0391d28883c4a20"
 dependencies = [
- "base64 0.21.7",
+ "base64 0.22.1",
  "chrono",
  "hex",
  "indexmap 1.9.3",
@@ -5013,9 +5050,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.7.0"
+version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6561dc161a9224638a31d876ccdfefbc1df91d3f3a8342eddb35f055d48c7655"
+checksum = "65569b702f41443e8bc8bbb1c5779bd0450bbe723b56198980e80ec45780bce2"
 dependencies = [
  "darling 0.20.8",
  "proc-macro2",
@@ -5120,9 +5157,9 @@ dependencies = [
 
 [[package]]
 name = "socket2"
-version = "0.5.6"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05ffd9c0a93b7543e062e759284fcf5f5e3b098501104bfbdde4d404db792871"
+checksum = "ce305eb0b4296696835b71df73eb912e0f1ffd2556a501fcede6e0c50349191c"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
@@ -5235,7 +5272,7 @@ dependencies = [
 [[package]]
 name = "starknet-gateway-client"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5259,7 +5296,7 @@ dependencies = [
 [[package]]
 name = "starknet-gateway-test-fixtures"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "pathfinder-common",
  "pathfinder-crypto",
@@ -5268,7 +5305,7 @@ dependencies = [
 [[package]]
 name = "starknet-gateway-types"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=eb90843ec0069eeef1f8e6e9b5af9fa15b68670b#eb90843ec0069eeef1f8e6e9b5af9fa15b68670b"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
 dependencies = [
  "anyhow",
  "fake",
@@ -5322,7 +5359,7 @@ checksum = "f91138e76242f575eb1d3b38b4f1362f10d3a43f47d182a5b359af488a02293b"
 dependencies = [
  "new_debug_unreachable",
  "once_cell",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "phf_shared 0.10.0",
  "precomputed-hash",
 ]
@@ -5574,7 +5611,7 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",
@@ -5703,7 +5740,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow 0.6.6",
+ "winnow 0.6.7",
 ]
 
 [[package]]
@@ -6148,9 +6185,9 @@ checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
 
 [[package]]
 name = "winapi-util"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134306a13c5647ad6453e8deaec55d3a44d6021970129e6188735e74bf546697"
+checksum = "4d4cc384e1e73b93bafa6fb4f1df8c41695c8a91cf9c4c64358067d15a7b6c6b"
 dependencies = [
  "windows-sys 0.52.0",
 ]
@@ -6320,9 +6357,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.6.6"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0c976aaaa0e1f90dbb21e9587cdaf1d9679a1cde8875c0d6bd83ab96a208352"
+checksum = "14b9415ee827af173ebb3f15f9083df5a122eb93572ec28741fb153356ea2578"
 dependencies = [
  "memchr",
 ]
@@ -6389,9 +6426,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.8.0"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63381fa6624bf92130a6b87c0d07380116f80b565c42cf0d754136f0238359ef"
+checksum = "525b4ec142c6b68a2d10f01f7bbf6755599ca3f81ea53b8431b7dd348f5fdb2d"
 dependencies = [
  "zeroize_derive",
 ]

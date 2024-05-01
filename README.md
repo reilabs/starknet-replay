@@ -1,5 +1,5 @@
 ## How to use
 
-```
-cargo run -- <PATHFINDER_DATABASE> <START_BLOCK> <END_BLOCK>
+```bash
+cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM> --end-block <BLOCK_NUM>
 ```

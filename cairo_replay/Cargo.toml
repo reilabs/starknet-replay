@@ -1,0 +1,29 @@
+[package]
+name = "cairo-replay"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+
+[dependencies]
+anyhow.workspace = true
+cairo-lang-starknet-classes.workspace = true
+cairo-lang-sierra-to-casm.workspace = true
+cairo-lang-runner.workspace = true
+cairo-lang-compiler.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-utils.workspace = true
+cairo-lang-sierra-generator.workspace = true
+jemallocator.workspace = true
+pathfinder-common.workspace = true
+pathfinder-executor.workspace = true
+pathfinder-rpc.workspace = true
+pathfinder-storage.workspace = true
+rayon.workspace = true
+starknet_api.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# blockifier = { path = "../blockifier/crates/blockifier" } #"=0.6.0-rc.2"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+smol_str.workspace = true
+itertools.workspace = true
