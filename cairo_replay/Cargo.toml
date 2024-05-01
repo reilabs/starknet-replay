@@ -22,7 +22,6 @@ rayon.workspace = true
 starknet_api.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-# blockifier = { path = "../blockifier/crates/blockifier" } #"=0.6.0-rc.2"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 smol_str.workspace = true
