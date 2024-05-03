@@ -10,6 +10,9 @@ use cairo_lang_sierra_to_casm::metadata::{
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::chain;
 
+pub mod analysis;
+pub mod replace_ids;
+
 const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
 /// Creates the metadata required for a Sierra program lowering to casm.
@@ -122,7 +125,6 @@ impl SierraCasmRunnerLight {
         // runner). The header is not counted, and the footer is, but then the relevant
         // entry is removed.
         let mut sierra_statement_weights = UnorderedHashMap::default();
-        println!("Pcs length {}", pcs.len());
         for (i, step) in pcs.iter().enumerate() {
             // Skip the header.
             if *step < real_pc_0 {
