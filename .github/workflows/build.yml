@@ -1,0 +1,21 @@
+name: Push Checks
+on: push
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+    - name: Cargo fmt
+      run: cargo fmt -- --check
+    - name: Cargo clippy
+      run: cargo clippy --all-targets --all-features
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Build
+      run: cargo build --verbose
