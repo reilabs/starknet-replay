@@ -11,11 +11,17 @@ jobs:
     steps:
     - name: Checkout source
       uses: actions/checkout@v4
+    - name: Rustup stable
+      run: rustup toolchain install stable
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "rust-stable-cache"
     - name: Cargo fmt
       run: cargo fmt -- --check
     - name: Cargo clippy
       run: cargo clippy --all-targets --all-features
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test
     - name: Build
-      run: cargo build --verbose
+      run: cargo build
