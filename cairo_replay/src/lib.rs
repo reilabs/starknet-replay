@@ -79,10 +79,7 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: Work) {
     let transactions = work
         .transactions
         .into_iter()
-        .map(|tx| {
-            
-            pathfinder_rpc::compose_executor_transaction(&tx, &db_tx)
-        })
+        .map(|tx| pathfinder_rpc::compose_executor_transaction(&tx, &db_tx))
         .collect::<Result<Vec<_>, _>>();
 
     let transactions = match transactions {

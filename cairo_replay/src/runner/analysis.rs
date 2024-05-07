@@ -38,7 +38,7 @@ fn get_class_definition_at_block(
         pathfinder_common::ClassHash(class_hash.into_felt()),
     );
     let class_definition = class_definition?.unwrap();
-    
+
     ContractClass::from_definition_bytes(&class_definition)
 }
 
