@@ -5,11 +5,7 @@ use cairo_lang_sierra::program::{GenStatement, StatementIdx};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_sierra_to_casm::compiler::{CairoProgram, SierraToCasmConfig};
 use cairo_lang_sierra_to_casm::metadata::{
-    calc_metadata,
-    calc_metadata_ap_change_only,
-    Metadata,
-    MetadataComputationConfig,
-    MetadataError,
+    calc_metadata, calc_metadata_ap_change_only, Metadata, MetadataComputationConfig, MetadataError,
 };
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::chain;
@@ -180,6 +176,8 @@ impl SierraCasmRunnerLight {
                         if function_stack_depth < MAX_STACK_TRACE_DEPTH_DEFAULT {
                             function_stack.push((user_function_idx, cur_weight));
                             cur_weight = 0;
+                        } else {
+                            tracing::info!("Exceeding depth");
                         }
                         function_stack_depth += 1;
                     }
@@ -200,7 +198,7 @@ impl SierraCasmRunnerLight {
                         };
                         cur_weight += popped.1;
                     } else {
-                        println!("Exceeding depth");
+                        tracing::info!("Exceeding depth");
                     }
                     function_stack_depth -= 1;
                 }
