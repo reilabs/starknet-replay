@@ -17,7 +17,7 @@ use crate::runner::analysis::analyse_tx;
 mod runner;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-struct Work {
+struct ReplayWork {
     pub header: BlockHeader,
     pub transactions: Vec<Transaction>,
     pub receipts: Vec<Receipt>,
@@ -55,7 +55,7 @@ pub fn run_replay(
 
             num_transactions += transactions.len();
 
-            Work {
+            ReplayWork {
                 header: block_header,
                 transactions,
                 receipts,
@@ -66,10 +66,7 @@ pub fn run_replay(
     Ok(num_transactions)
 }
 
-fn execute(storage: &mut Storage, chain_id: ChainId, work: Work) {
-    let start_time = std::time::Instant::now();
-    let num_transactions = work.transactions.len();
-
+fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) {
     let mut db = storage.connection().unwrap();
 
     let db_tx = db.transaction().expect("Create transaction");
@@ -158,8 +155,4 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: Work) {
             tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed");
         }
     }
-
-    let elapsed = start_time.elapsed().as_millis();
-
-    tracing::debug!(block_number=%work.header.number, %num_transactions, %elapsed, "Re-executed block");
 }
