@@ -62,104 +62,92 @@ pub fn run_replay(
             }
         })
         .par_bridge()
-        .for_each_with(storage, |storage, block| execute(storage, chain_id, block));
+        .for_each_with(storage, |storage, block| {
+            execute(storage, chain_id, block).unwrap()
+        });
     Ok(num_transactions)
 }
 
-fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) {
+fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow::Result<()> {
     let mut db = storage.connection().unwrap();
 
     let db_tx = db.transaction().expect("Create transaction");
 
     let execution_state = ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
 
-    let transactions = work
-        .transactions
-        .into_iter()
-        .map(|tx| pathfinder_rpc::compose_executor_transaction(&tx, &db_tx))
-        .collect::<Result<Vec<_>, _>>();
-
-    let transactions = match transactions {
-        Ok(transactions) => transactions,
-        Err(error) => {
-            tracing::error!(block_number=%work.header.number, %error, "Transaction conversion failed");
-            return;
-        }
-    };
+    let mut transactions = Vec::new();
+    for tx in work.transactions {
+        let tx = pathfinder_rpc::compose_executor_transaction(&tx, &db_tx)?;
+        transactions.push(tx);
+    }
 
     let skip_validate = false;
     let skip_fee_charge = false;
-    match pathfinder_executor::simulate(
+    let simulations = pathfinder_executor::simulate(
         execution_state,
         transactions,
         skip_validate,
         skip_fee_charge,
-    ) {
-        Ok(simulations) => {
-            let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
-                OrderedHashMap::default();
-            for (simulation, receipt) in simulations.iter().zip(work.receipts.iter()) {
-                if let Some(actual_fee) = receipt.actual_fee {
-                    let actual_fee =
-                        u128::from_be_bytes(actual_fee.0.to_be_bytes()[16..].try_into().unwrap());
+    ).map_err(|error| tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed")).unwrap();
 
-                    // L1 handler transactions have a fee of zero in the receipt.
-                    if actual_fee == 0 {
-                        continue;
-                    }
+    let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> = OrderedHashMap::default();
+    for (simulation, receipt) in simulations.iter().zip(work.receipts.iter()) {
+        if let Some(actual_fee) = receipt.actual_fee {
+            let actual_fee =
+                u128::from_be_bytes(actual_fee.0.to_be_bytes()[16..].try_into().unwrap());
 
-                    let estimate = &simulation.fee_estimation;
-
-                    let (gas_price, data_gas_price) = match estimate.unit {
-                        pathfinder_executor::types::PriceUnit::Wei => (
-                            work.header.eth_l1_gas_price.0,
-                            work.header.eth_l1_data_gas_price.0,
-                        ),
-                        pathfinder_executor::types::PriceUnit::Fri => (
-                            work.header.strk_l1_gas_price.0,
-                            work.header.strk_l1_data_gas_price.0,
-                        ),
-                    };
-
-                    let actual_data_gas_consumed =
-                        receipt.execution_resources.data_availability.l1_data_gas;
-                    let actual_gas_consumed = (actual_fee
-                        - actual_data_gas_consumed.saturating_mul(data_gas_price))
-                        / gas_price.max(1);
-
-                    let estimated_gas_consumed = estimate.gas_consumed.as_u128();
-                    let estimated_data_gas_consumed = estimate.data_gas_consumed.as_u128();
-
-                    let gas_diff = actual_gas_consumed.abs_diff(estimated_gas_consumed);
-                    let data_gas_diff =
-                        actual_data_gas_consumed.abs_diff(estimated_data_gas_consumed);
-
-                    if gas_diff > (actual_gas_consumed * 2 / 10)
-                        || data_gas_diff > (actual_data_gas_consumed * 2 / 10)
-                    {
-                        tracing::warn!(block_number=%work.header.number, transaction_hash=%receipt.transaction_hash, %estimated_gas_consumed, %actual_gas_consumed, %estimated_data_gas_consumed, %actual_data_gas_consumed, estimated_fee=%estimate.overall_fee, %actual_fee, "Estimation mismatch");
-                    } else {
-                        tracing::debug!(block_number=%work.header.number, transaction_hash=%receipt.transaction_hash, %estimated_gas_consumed, %actual_gas_consumed, %estimated_data_gas_consumed, %actual_data_gas_consumed, estimated_fee=%estimate.overall_fee, %actual_fee, "Estimation matches");
-                    }
-                }
-
-                analyse_tx(
-                    &simulation.trace,
-                    work.header.number,
-                    &db_tx,
-                    &mut cumulative_libfuncs_weight,
-                );
+            // L1 handler transactions have a fee of zero in the receipt.
+            if actual_fee == 0 {
+                continue;
             }
-            println!("Weight by concrete libfunc:");
-            for (concrete_name, weight) in cumulative_libfuncs_weight
-                .iter()
-                .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+
+            let estimate = &simulation.fee_estimation;
+
+            let (gas_price, data_gas_price) = match estimate.unit {
+                pathfinder_executor::types::PriceUnit::Wei => (
+                    work.header.eth_l1_gas_price.0,
+                    work.header.eth_l1_data_gas_price.0,
+                ),
+                pathfinder_executor::types::PriceUnit::Fri => (
+                    work.header.strk_l1_gas_price.0,
+                    work.header.strk_l1_data_gas_price.0,
+                ),
+            };
+
+            let actual_data_gas_consumed =
+                receipt.execution_resources.data_availability.l1_data_gas;
+            let actual_gas_consumed = (actual_fee
+                - actual_data_gas_consumed.saturating_mul(data_gas_price))
+                / gas_price.max(1);
+
+            let estimated_gas_consumed = estimate.gas_consumed.as_u128();
+            let estimated_data_gas_consumed = estimate.data_gas_consumed.as_u128();
+
+            let gas_diff = actual_gas_consumed.abs_diff(estimated_gas_consumed);
+            let data_gas_diff = actual_data_gas_consumed.abs_diff(estimated_data_gas_consumed);
+
+            if gas_diff > (actual_gas_consumed * 2 / 10)
+                || data_gas_diff > (actual_data_gas_consumed * 2 / 10)
             {
-                println!("  libfunc {concrete_name}: {weight}");
+                tracing::warn!(block_number=%work.header.number, transaction_hash=%receipt.transaction_hash, %estimated_gas_consumed, %actual_gas_consumed, %estimated_data_gas_consumed, %actual_data_gas_consumed, estimated_fee=%estimate.overall_fee, %actual_fee, "Estimation mismatch");
+            } else {
+                tracing::debug!(block_number=%work.header.number, transaction_hash=%receipt.transaction_hash, %estimated_gas_consumed, %actual_gas_consumed, %estimated_data_gas_consumed, %actual_data_gas_consumed, estimated_fee=%estimate.overall_fee, %actual_fee, "Estimation matches");
             }
         }
-        Err(error) => {
-            tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed");
-        }
+
+        analyse_tx(
+            &simulation.trace,
+            work.header.number,
+            &db_tx,
+            &mut cumulative_libfuncs_weight,
+        );
     }
+    println!("Weight by concrete libfunc:");
+    for (concrete_name, weight) in cumulative_libfuncs_weight
+        .iter()
+        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+    {
+        println!("  libfunc {concrete_name}: {weight}");
+    }
+    Ok(())
 }
