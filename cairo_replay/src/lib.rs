@@ -90,6 +90,7 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow
         skip_fee_charge,
     ).map_err(|error| tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed")).unwrap();
 
+    // Using `SmolStr` because it's coming from `LibfuncWeights`
     let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> = OrderedHashMap::default();
     for simulation in simulations.iter() {
         analyse_tx(
