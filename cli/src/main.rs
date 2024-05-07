@@ -1,10 +1,11 @@
+use std::num::NonZeroU32;
+use std::path::PathBuf;
+
 use anyhow::Context;
 use cairo_replay::run_replay;
 use clap::Parser;
 use pathfinder_common::{BlockNumber, ChainId};
 use pathfinder_storage::{BlockId, JournalMode, Storage};
-use std::num::NonZeroU32;
-use std::path::PathBuf;
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
@@ -74,8 +75,11 @@ fn main() -> anyhow::Result<()> {
 
 fn get_chain_id(tx: &pathfinder_storage::Transaction<'_>) -> anyhow::Result<ChainId> {
     use pathfinder_common::consts::{
-        GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH, MAINNET_GENESIS_HASH,
-        SEPOLIA_INTEGRATION_GENESIS_HASH, SEPOLIA_TESTNET_GENESIS_HASH,
+        GOERLI_INTEGRATION_GENESIS_HASH,
+        GOERLI_TESTNET_GENESIS_HASH,
+        MAINNET_GENESIS_HASH,
+        SEPOLIA_INTEGRATION_GENESIS_HASH,
+        SEPOLIA_TESTNET_GENESIS_HASH,
     };
 
     let (_, genesis_hash) = tx
