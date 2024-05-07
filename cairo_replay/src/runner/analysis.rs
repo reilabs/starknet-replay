@@ -32,14 +32,14 @@ fn get_class_definition_at_block(
     class_hash: &starknet_api::core::ClassHash,
 ) -> anyhow::Result<ContractClass> {
     let block_id = BlockId::Number(block_num);
-    let class_hash: StarkFelt = class_hash.clone().0.into();
+    let class_hash: StarkFelt = class_hash.0;
     let class_definition = db.class_definition_at(
         block_id,
         pathfinder_common::ClassHash(class_hash.into_felt()),
     );
     let class_definition = class_definition?.unwrap();
-    let class_definition = ContractClass::from_definition_bytes(&class_definition);
-    class_definition
+    
+    ContractClass::from_definition_bytes(&class_definition)
 }
 
 fn get_sierra_program_from_class_definition(ctx: SierraContractClass) -> anyhow::Result<Program> {
@@ -127,8 +127,8 @@ pub fn analyse_tx(
                 .for_each(|(libfunc, weight)| {
                     cumulative_libfuncs_weight
                         .entry(libfunc.clone())
-                        .and_modify(|e| *e += weight.clone())
-                        .or_insert(weight.clone());
+                        .and_modify(|e| *e += *weight)
+                        .or_insert(*weight);
                 });
         });
     });

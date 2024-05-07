@@ -32,7 +32,7 @@ pub fn run_replay(
     let mut num_transactions = 0;
 
     let n_cpus = rayon::current_num_threads();
-    let storage = Storage::migrate(db_path.into(), JournalMode::WAL, 1)?
+    let storage = Storage::migrate(db_path, JournalMode::WAL, 1)?
         .create_pool(NonZeroU32::new(n_cpus as u32 * 2).unwrap())?;
     let mut db = storage
         .connection()
@@ -80,8 +80,8 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: Work) {
         .transactions
         .into_iter()
         .map(|tx| {
-            let tx = pathfinder_rpc::compose_executor_transaction(&tx, &db_tx);
-            tx
+            
+            pathfinder_rpc::compose_executor_transaction(&tx, &db_tx)
         })
         .collect::<Result<Vec<_>, _>>();
 
