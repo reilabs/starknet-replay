@@ -87,7 +87,14 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) {
         }
     };
 
-    match pathfinder_executor::simulate(execution_state, transactions, false, false) {
+    let skip_validate = false;
+    let skip_fee_charge = false;
+    match pathfinder_executor::simulate(
+        execution_state,
+        transactions,
+        skip_validate,
+        skip_fee_charge,
+    ) {
         Ok(simulations) => {
             let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
                 OrderedHashMap::default();
