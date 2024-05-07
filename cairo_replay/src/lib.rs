@@ -76,9 +76,9 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow
     let execution_state = ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
 
     let mut transactions = Vec::new();
-    for tx in work.transactions {
-        let tx = pathfinder_rpc::compose_executor_transaction(&tx, &db_tx)?;
-        transactions.push(tx);
+    for transaction in work.transactions {
+        let transaction = pathfinder_rpc::compose_executor_transaction(&transaction, &db_tx)?;
+        transactions.push(transaction);
     }
 
     let skip_validate = false;
@@ -91,6 +91,10 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow
     ).map_err(|error| tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed")).unwrap();
 
     let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> = OrderedHashMap::default();
+    // `simulations` and `work.receipts` are expected of the same length
+    // because `simulations` vector is generated from `work.transactions` which
+    // has the same length as `work.receipts` because for each transaction there is a matching
+    // receipt.
     for (simulation, receipt) in simulations.iter().zip(work.receipts.iter()) {
         if let Some(actual_fee) = receipt.actual_fee {
             let actual_fee =
