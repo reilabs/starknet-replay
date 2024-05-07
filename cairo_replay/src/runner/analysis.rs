@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use crate::runner::replace_ids::replace_sierra_ids_in_program;
-use crate::runner::SierraCasmRunnerLight;
 use cairo_lang_runner::profiling::{ProfilingInfoProcessor, ProfilingInfoProcessorParams};
 use cairo_lang_runner::ProfilingInfoCollectionConfig;
 use cairo_lang_sierra::program::Program;
@@ -15,6 +13,9 @@ use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
 use pathfinder_storage::{BlockId, Transaction};
 use smol_str::SmolStr;
 use starknet_api::hash::StarkFelt;
+
+use crate::runner::replace_ids::replace_sierra_ids_in_program;
+use crate::runner::SierraCasmRunnerLight;
 
 fn get_visited_pcs(
     trace: &TransactionTrace,

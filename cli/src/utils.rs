@@ -3,8 +3,11 @@ use pathfinder_common::{BlockNumber, ChainId};
 
 pub(crate) fn get_chain_id(tx: &pathfinder_storage::Transaction<'_>) -> anyhow::Result<ChainId> {
     use pathfinder_common::consts::{
-        GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH, MAINNET_GENESIS_HASH,
-        SEPOLIA_INTEGRATION_GENESIS_HASH, SEPOLIA_TESTNET_GENESIS_HASH,
+        GOERLI_INTEGRATION_GENESIS_HASH,
+        GOERLI_TESTNET_GENESIS_HASH,
+        MAINNET_GENESIS_HASH,
+        SEPOLIA_INTEGRATION_GENESIS_HASH,
+        SEPOLIA_TESTNET_GENESIS_HASH,
     };
 
     let (_, genesis_hash) = tx

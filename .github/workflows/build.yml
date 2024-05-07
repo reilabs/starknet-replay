@@ -19,9 +19,11 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         shared-key: "rust-stable-cache"
-    - name: Cargo fmt
-      run: cargo fmt --all -- --check
-    - name: Cargo clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
     - name: Run tests
       run: cargo test
+    - name: Rustup nightly
+      run: rustup toolchain add nightly && rustup component add rustfmt --toolchain nightly
+    - name: Cargo fmt
+      run: cargo +nightly fmt --all -- --check
+    - name: Cargo clippy
+      run: cargo +nightly clippy --all-targets --all-features -- -D warnings

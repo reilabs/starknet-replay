@@ -1,19 +1,18 @@
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 
-use crate::runner::analysis::analyse_tx;
 use anyhow::Context;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
-use pathfinder_common::BlockNumber;
-use pathfinder_common::{BlockHeader, ChainId};
+use pathfinder_common::{BlockHeader, BlockNumber, ChainId};
 use pathfinder_executor::ExecutionState;
-use pathfinder_storage::JournalMode;
-use pathfinder_storage::{BlockId, Storage};
+use pathfinder_storage::{BlockId, JournalMode, Storage};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use smol_str::SmolStr;
+
+use crate::runner::analysis::analyse_tx;
 
 mod runner;
 

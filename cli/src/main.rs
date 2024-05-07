@@ -1,9 +1,12 @@
-use crate::utils::get_chain_id;
+use std::num::NonZeroU32;
+use std::path::PathBuf;
+
 use anyhow::Context;
 use cairo_replay::run_replay;
 use clap::Parser;
 use pathfinder_storage::{BlockId, JournalMode, Storage};
-use std::{num::NonZeroU32, path::PathBuf};
+
+use crate::utils::get_chain_id;
 
 mod utils;
 
@@ -25,11 +28,12 @@ struct Args {
 
 /// Re-execute transactions in a range of blocks.
 ///
-/// Iterates over specified blocks in the database and re-executes all transactions within
-/// those blocks
+/// Iterates over specified blocks in the database and re-executes all
+/// transactions within those blocks
 ///
 /// Usage:
-/// `cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM> --end-block <BLOCK_NUM>`
+/// `cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM>
+/// --end-block <BLOCK_NUM>`
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())

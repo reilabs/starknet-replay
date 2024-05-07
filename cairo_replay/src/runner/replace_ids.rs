@@ -1,14 +1,16 @@
+use std::sync::Arc;
+
 use cairo_lang_sierra::program::{self};
 use cairo_lang_sierra_generator::db::SierraGeneratorTypeLongId;
 use cairo_lang_sierra_generator::replace_ids::SierraIdReplacer;
 use cairo_lang_utils::extract_matches;
-use std::sync::Arc;
 
-/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId}` with a dummy
-/// ids whose debug string is the string representing the expanded information about the id.
-/// For Libfuncs and Types - that would be recursively opening their generic arguments, for
-/// functions - that would be getting their original name. For example, while the original debug
-/// string may be `[6]`, the resulting debug string may be:
+/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId,
+/// FunctionId}` with a dummy ids whose debug string is the string representing
+/// the expanded information about the id. For Libfuncs and Types - that would
+/// be recursively opening their generic arguments, for functions - that would
+/// be getting their original name. For example, while the original debug string
+/// may be `[6]`, the resulting debug string may be:
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
 ///  - For user functions: `test::foo`.
@@ -87,7 +89,8 @@ impl SierraIdReplacer for DebugReplacer {
         }
     }
 
-    /// Helper for [replace_sierra_ids] and [replace_sierra_ids_in_program] replacing function ids.
+    /// Helper for [replace_sierra_ids] and [replace_sierra_ids_in_program]
+    /// replacing function ids.
     fn replace_function_id(
         &self,
         sierra_id: &cairo_lang_sierra::ids::FunctionId,
@@ -96,16 +99,18 @@ impl SierraIdReplacer for DebugReplacer {
     }
 }
 
-/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId}` with a dummy
-/// ids whose debug string is the string representing the expanded information about the id.
-/// For Libfuncs and Types - that would be recursively opening their generic arguments, for
-/// functions - that would be getting their original name. For example, while the original debug
-/// string may be `[6]`, the resulting debug string may be:
+/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId,
+/// FunctionId}` with a dummy ids whose debug string is the string representing
+/// the expanded information about the id. For Libfuncs and Types - that would
+/// be recursively opening their generic arguments, for functions - that would
+/// be getting their original name. For example, while the original debug string
+/// may be `[6]`, the resulting debug string may be:
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
 ///  - For user functions: `test::foo`.
 ///
-/// Similar to [replace_sierra_ids] except that it acts on [cairo_lang_sierra::program::Program].
+/// Similar to [replace_sierra_ids] except that it acts on
+/// [cairo_lang_sierra::program::Program].
 pub fn replace_sierra_ids_in_program(
     program: &cairo_lang_sierra::program::Program,
 ) -> cairo_lang_sierra::program::Program {
