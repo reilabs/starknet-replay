@@ -1,13 +1,9 @@
-use std::{num::NonZeroU32, path::PathBuf};
-
-use anyhow::Context;
-use cairo_replay::{execute, Work};
-use clap::Parser;
-use pathfinder_common::BlockNumber;
-use pathfinder_storage::{BlockId, JournalMode, Storage};
-use rayon::prelude::*;
-
 use crate::utils::get_chain_id;
+use anyhow::Context;
+use cairo_replay::run_replay;
+use clap::Parser;
+use pathfinder_storage::{BlockId, JournalMode, Storage};
+use std::{num::NonZeroU32, path::PathBuf};
 
 mod utils;
 
@@ -46,7 +42,7 @@ fn main() -> anyhow::Result<()> {
     let n_cpus = rayon::current_num_threads();
 
     let database_path = args.db_path;
-    let storage = Storage::migrate(database_path.into(), JournalMode::WAL, 1)?
+    let storage = Storage::migrate(database_path.clone(), JournalMode::WAL, 1)?
         .create_pool(NonZeroU32::new(n_cpus as u32 * 2).unwrap())?;
     let mut db = storage
         .connection()
@@ -67,33 +63,7 @@ fn main() -> anyhow::Result<()> {
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
 
     let start_time = std::time::Instant::now();
-    let mut num_transactions: usize = 0;
-
-    (first_block..=last_block)
-        .map(|block_number| {
-            let transaction = db.transaction().unwrap();
-            let block_id = BlockId::Number(BlockNumber::new_or_panic(block_number));
-            let block_header = transaction.block_header(block_id).unwrap().unwrap();
-            let transactions_and_receipts = transaction
-                .transaction_data_for_block(block_id)
-                .unwrap()
-                .context("Getting transactions for block")
-                .unwrap();
-            drop(transaction);
-
-            let (transactions, receipts): (Vec<_>, Vec<_>) =
-                transactions_and_receipts.into_iter().unzip();
-
-            num_transactions += transactions.len();
-
-            Work {
-                header: block_header,
-                transactions,
-                receipts,
-            }
-        })
-        .par_bridge()
-        .for_each_with(storage, |storage, block| execute(storage, chain_id, block));
+    let num_transactions: usize = run_replay(first_block, last_block, database_path, chain_id)?;
 
     let elapsed = start_time.elapsed();
 

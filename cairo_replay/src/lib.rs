@@ -1,23 +1,73 @@
+use std::num::NonZeroU32;
+use std::path::PathBuf;
+
 use crate::runner::analysis::analyse_tx;
+use anyhow::Context;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
+use pathfinder_common::BlockNumber;
 use pathfinder_common::{BlockHeader, ChainId};
 use pathfinder_executor::ExecutionState;
-use pathfinder_storage::Storage;
+use pathfinder_storage::JournalMode;
+use pathfinder_storage::{BlockId, Storage};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use smol_str::SmolStr;
 
 mod runner;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Work {
+struct Work {
     pub header: BlockHeader,
     pub transactions: Vec<Transaction>,
     pub receipts: Vec<Receipt>,
 }
 
-pub fn execute(storage: &mut Storage, chain_id: ChainId, work: Work) {
+pub fn run_replay(
+    start_block: u64,
+    end_block: u64,
+    db_path: PathBuf,
+    chain_id: ChainId,
+) -> anyhow::Result<usize> {
+    let mut num_transactions = 0;
+
+    let n_cpus = rayon::current_num_threads();
+    let storage = Storage::migrate(db_path.into(), JournalMode::WAL, 1)?
+        .create_pool(NonZeroU32::new(n_cpus as u32 * 2).unwrap())?;
+    let mut db = storage
+        .connection()
+        .context("Opening database connection")?;
+
+    (start_block..=end_block)
+        .map(|block_number| {
+            let transaction = db.transaction().unwrap();
+            let block_id = BlockId::Number(BlockNumber::new_or_panic(block_number));
+            let block_header = transaction.block_header(block_id).unwrap().unwrap();
+            let transactions_and_receipts = transaction
+                .transaction_data_for_block(block_id)
+                .unwrap()
+                .context("Getting transactions for block")
+                .unwrap();
+            drop(transaction);
+
+            let (transactions, receipts): (Vec<_>, Vec<_>) =
+                transactions_and_receipts.into_iter().unzip();
+
+            num_transactions += transactions.len();
+
+            Work {
+                header: block_header,
+                transactions,
+                receipts,
+            }
+        })
+        .par_bridge()
+        .for_each_with(storage, |storage, block| execute(storage, chain_id, block));
+    Ok(num_transactions)
+}
+
+fn execute(storage: &mut Storage, chain_id: ChainId, work: Work) {
     let start_time = std::time::Instant::now();
     let num_transactions = work.transactions.len();
 
