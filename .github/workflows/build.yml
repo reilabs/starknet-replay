@@ -11,14 +11,14 @@ jobs:
     steps:
     - name: Checkout source
       uses: actions/checkout@v4
-    - name: Rustup stable
-      run: rustup toolchain install stable
-    - name: Build
-      run: cargo build
     - name: Rust cache
       uses: Swatinem/rust-cache@v2
       with:
         shared-key: "rust-stable-cache"
+    - name: Rustup stable
+      run: rustup toolchain install stable
+    - name: Build
+      run: cargo build
     - name: Run tests
       run: cargo test
     - name: Rustup nightly
