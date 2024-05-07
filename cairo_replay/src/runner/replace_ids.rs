@@ -14,8 +14,9 @@ use cairo_lang_utils::extract_matches;
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
 ///  - For user functions: `test::foo`.
-pub struct DebugReplacer {
-    pub program: cairo_lang_sierra::program::Program,
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct DebugReplacer {
+    program: cairo_lang_sierra::program::Program,
 }
 impl DebugReplacer {
     fn lookup_intern_concrete_lib_func(
