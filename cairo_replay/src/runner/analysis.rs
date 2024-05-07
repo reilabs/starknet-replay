@@ -51,7 +51,7 @@ fn get_sierra_program_from_class_definition(ctx: SierraContractClass) -> anyhow:
     });
     let contract_class: CairoContractClass = serde_json::from_value::<CairoContractClass>(json)?;
     let sierra_program = contract_class.extract_sierra_program()?;
-    let sierra_program = replace_sierra_ids_in_program(&sierra_program);
+    let sierra_program = replace_sierra_ids_in_program(sierra_program);
     Ok(sierra_program)
 }
 

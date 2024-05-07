@@ -113,10 +113,10 @@ impl SierraIdReplacer for DebugReplacer {
 /// Similar to [replace_sierra_ids] except that it acts on
 /// [cairo_lang_sierra::program::Program].
 pub fn replace_sierra_ids_in_program(
-    program: &cairo_lang_sierra::program::Program,
+    program: cairo_lang_sierra::program::Program,
 ) -> cairo_lang_sierra::program::Program {
     DebugReplacer {
         program: program.clone(),
     }
-    .apply(program)
+    .apply(&program)
 }
