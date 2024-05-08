@@ -5,11 +5,7 @@ use cairo_lang_sierra::program::{GenStatement, StatementIdx};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_sierra_to_casm::compiler::{CairoProgram, SierraToCasmConfig};
 use cairo_lang_sierra_to_casm::metadata::{
-    calc_metadata,
-    calc_metadata_ap_change_only,
-    Metadata,
-    MetadataComputationConfig,
-    MetadataError,
+    calc_metadata, calc_metadata_ap_change_only, Metadata, MetadataComputationConfig, MetadataError,
 };
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::chain;
@@ -36,6 +32,9 @@ fn create_metadata(
 }
 
 /// Runner enabling running a Sierra program on the vm.
+/// This is a slimmed down version of `SierraCasmRunner`
+/// in order to setup the profiler during transaction
+/// replay. Unused fields are excluded.
 pub struct SierraCasmRunnerLight {
     /// The sierra program.
     sierra_program: cairo_lang_sierra::program::Program,
