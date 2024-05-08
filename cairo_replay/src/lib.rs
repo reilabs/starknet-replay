@@ -1,6 +1,7 @@
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 
+use anyhow::bail;
 use anyhow::Context;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
@@ -16,7 +17,7 @@ use crate::runner::analysis::analyse_tx;
 
 mod runner;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
 struct ReplayWork {
     pub header: BlockHeader,
     pub transactions: Vec<Transaction>,
@@ -38,16 +39,17 @@ pub fn run_replay(
         .connection()
         .context("Opening database connection")?;
 
-    (start_block..=end_block)
+    let replay_work: Vec<ReplayWork> = (start_block..=end_block)
         .map(|block_number| {
-            let transaction = db.transaction().unwrap();
+            let transaction = db.transaction()?;
             let block_id = BlockId::Number(BlockNumber::new_or_panic(block_number));
-            let block_header = transaction.block_header(block_id).unwrap().unwrap();
+            let Some(block_header) = transaction.block_header(block_id)? else {
+                bail!("Missing block: {}", block_number);
+            };
             let transactions_and_receipts = transaction
                 .transaction_data_for_block(block_id)
-                .unwrap()
-                .context("Getting transactions for block")
-                .unwrap();
+                .context("Reading transactions from database")?
+                .context("Transaction data missing")?;
             drop(transaction);
 
             let (transactions, receipts): (Vec<_>, Vec<_>) =
@@ -55,12 +57,15 @@ pub fn run_replay(
 
             num_transactions += transactions.len();
 
-            ReplayWork {
+            Ok(ReplayWork {
                 header: block_header,
                 transactions,
                 receipts,
-            }
+            })
         })
+        .collect::<anyhow::Result<Vec<ReplayWork>>>()?;
+    replay_work
+        .into_iter()
         .par_bridge()
         .for_each_with(storage, |storage, block| {
             execute(storage, chain_id, block).unwrap()
@@ -69,7 +74,7 @@ pub fn run_replay(
 }
 
 fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow::Result<()> {
-    let mut db = storage.connection().unwrap();
+    let mut db = storage.connection()?;
 
     let db_tx = db.transaction().expect("Create transaction");
 
