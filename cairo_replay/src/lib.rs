@@ -1,8 +1,7 @@
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 
-use anyhow::bail;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::receipt::Receipt;
