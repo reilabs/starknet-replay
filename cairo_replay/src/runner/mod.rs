@@ -126,13 +126,13 @@ impl SierraCasmRunnerLight {
         // The value is the weight of the stack trace so far, not including the pending
         // weight being tracked at the time.
         let mut stack_trace_weights = UnorderedHashMap::default();
-        let mut _end_of_program_reached = false;
+        // let mut _end_of_program_reached = false;
         // The total weight of each Sierra statement.
         // Note the header and footer (CASM instructions added for running the program
         // by the runner). The header is not counted, and the footer is, but
         // then the relevant entry is removed.
         let mut sierra_statement_weights = UnorderedHashMap::default();
-        for (i, step) in pcs.iter().enumerate() {
+        for (_i, step) in pcs.iter().enumerate() {
             // Skip the header.
             if *step < real_pc_0 {
                 continue;
@@ -143,12 +143,12 @@ impl SierraCasmRunnerLight {
                 continue;
             }
 
-            if _end_of_program_reached {
-                unreachable!(
-                    "End of program reached, but trace continues. Left {}",
-                    pcs.len() - i
-                );
-            }
+            // if _end_of_program_reached {
+            //     unreachable!(
+            //         "End of program reached, but trace continues. Left {}",
+            //         pcs.len() - i
+            //     );
+            // }
 
             cur_weight += 1;
 
@@ -196,7 +196,7 @@ impl SierraCasmRunnerLight {
 
                         let Some(popped) = function_stack.pop() else {
                             // End of the program.
-                            //end_of_program_reached = true;
+                            // _end_of_program_reached = true;
                             continue;
                         };
                         cur_weight += popped.1;
