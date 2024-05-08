@@ -1,9 +1,19 @@
+#![warn(missing_docs)]
+
+//! Replays transactions from `pathfinder` sqlite database
+//! and prints the histogram of the usage of `libfuncs`
+//! in the blocks replayed.
+
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 
 use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
+use pathfinder_common::consts::{
+    GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH, MAINNET_GENESIS_HASH,
+    SEPOLIA_INTEGRATION_GENESIS_HASH, SEPOLIA_TESTNET_GENESIS_HASH,
+};
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
 use pathfinder_common::{BlockHeader, BlockNumber, ChainId};
@@ -23,12 +33,10 @@ struct ReplayWork {
     pub receipts: Vec<Receipt>,
 }
 
-pub fn run_replay(
-    start_block: u64,
-    end_block: u64,
-    db_path: PathBuf,
-    chain_id: ChainId,
-) -> anyhow::Result<usize> {
+/// Replays all transactions from `start_block` to `end_block`. Not checking
+/// that `start_block` and `end_block` are within the limits of the database
+/// history. `db_path` is the file of the `pathfinder` database.
+pub fn run_replay(start_block: u64, end_block: u64, db_path: PathBuf) -> anyhow::Result<usize> {
     let mut num_transactions = 0;
 
     let n_cpus = rayon::current_num_threads();
@@ -37,10 +45,11 @@ pub fn run_replay(
     let mut db = storage
         .connection()
         .context("Opening database connection")?;
+    let transaction = db.transaction()?;
+    let chain_id = get_chain_id(&transaction).unwrap();
 
     let replay_work: Vec<ReplayWork> = (start_block..=end_block)
         .map(|block_number| {
-            let transaction = db.transaction()?;
             let block_id = BlockId::Number(BlockNumber::new_or_panic(block_number));
             let Some(block_header) = transaction.block_header(block_id)? else {
                 bail!("Missing block: {}", block_number);
@@ -49,7 +58,6 @@ pub fn run_replay(
                 .transaction_data_for_block(block_id)
                 .context("Reading transactions from database")?
                 .context("Transaction data missing")?;
-            drop(transaction);
 
             let (transactions, receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
@@ -112,4 +120,23 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow
         println!("  libfunc {concrete_name}: {weight}");
     }
     Ok(())
+}
+
+// Detect the chain from the hash of the first block in the database
+fn get_chain_id(tx: &pathfinder_storage::Transaction<'_>) -> anyhow::Result<ChainId> {
+    let (_, genesis_hash) = tx
+        .block_id(BlockNumber::GENESIS.into())
+        .unwrap()
+        .context("Getting genesis hash")?;
+
+    let chain = match genesis_hash {
+        MAINNET_GENESIS_HASH => ChainId::MAINNET,
+        GOERLI_TESTNET_GENESIS_HASH => ChainId::GOERLI_TESTNET,
+        GOERLI_INTEGRATION_GENESIS_HASH => ChainId::GOERLI_INTEGRATION,
+        SEPOLIA_TESTNET_GENESIS_HASH => ChainId::SEPOLIA_TESTNET,
+        SEPOLIA_INTEGRATION_GENESIS_HASH => ChainId::SEPOLIA_INTEGRATION,
+        _ => anyhow::bail!("Unknown chain"),
+    };
+
+    Ok(chain)
 }

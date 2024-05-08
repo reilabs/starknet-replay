@@ -1,10 +1,20 @@
+#![warn(missing_docs)]
+
+//! Re-execute transactions in a range of blocks.
+//!
+//! Iterates over specified blocks in the database and re-executes all
+//! transactions within those blocks
+//!
+//! Usage:
+//! `cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM>
+//! --end-block <BLOCK_NUM>`
+
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 
 use anyhow::Context;
 use cairo_replay::run_replay;
 use clap::Parser;
-use pathfinder_common::{BlockNumber, ChainId};
 use pathfinder_storage::{BlockId, JournalMode, Storage};
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
@@ -23,14 +33,6 @@ struct Args {
     end_block: u64,
 }
 
-/// Re-execute transactions in a range of blocks.
-///
-/// Iterates over specified blocks in the database and re-executes all
-/// transactions within those blocks
-///
-/// Usage:
-/// `cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM>
-/// --end-block <BLOCK_NUM>`
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
@@ -51,12 +53,10 @@ fn main() -> anyhow::Result<()> {
 
     let first_block: u64 = args.start_block;
 
-    let (latest_block, chain_id) = {
+    let latest_block = {
         let tx = db.transaction().unwrap();
         let (latest_block, _) = tx.block_id(BlockId::Latest)?.unwrap();
-        let latest_block = latest_block.get();
-        let chain_id = get_chain_id(&tx).unwrap();
-        (latest_block, chain_id)
+        latest_block.get()
     };
 
     let last_block = args.end_block.min(latest_block);
@@ -64,37 +64,11 @@ fn main() -> anyhow::Result<()> {
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
 
     let start_time = std::time::Instant::now();
-    let num_transactions: usize = run_replay(first_block, last_block, database_path, chain_id)?;
+    let num_transactions: usize = run_replay(first_block, last_block, database_path)?;
 
     let elapsed = start_time.elapsed();
 
     tracing::info!(%num_transactions, ?elapsed, "Finished");
 
     Ok(())
-}
-
-fn get_chain_id(tx: &pathfinder_storage::Transaction<'_>) -> anyhow::Result<ChainId> {
-    use pathfinder_common::consts::{
-        GOERLI_INTEGRATION_GENESIS_HASH,
-        GOERLI_TESTNET_GENESIS_HASH,
-        MAINNET_GENESIS_HASH,
-        SEPOLIA_INTEGRATION_GENESIS_HASH,
-        SEPOLIA_TESTNET_GENESIS_HASH,
-    };
-
-    let (_, genesis_hash) = tx
-        .block_id(BlockNumber::GENESIS.into())
-        .unwrap()
-        .context("Getting genesis hash")?;
-
-    let chain = match genesis_hash {
-        MAINNET_GENESIS_HASH => ChainId::MAINNET,
-        GOERLI_TESTNET_GENESIS_HASH => ChainId::GOERLI_TESTNET,
-        GOERLI_INTEGRATION_GENESIS_HASH => ChainId::GOERLI_INTEGRATION,
-        SEPOLIA_TESTNET_GENESIS_HASH => ChainId::SEPOLIA_TESTNET,
-        SEPOLIA_INTEGRATION_GENESIS_HASH => ChainId::SEPOLIA_INTEGRATION,
-        _ => anyhow::bail!("Unknown chain"),
-    };
-
-    Ok(chain)
 }
