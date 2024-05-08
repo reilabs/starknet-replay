@@ -119,10 +119,12 @@ pub fn analyse_tx(
             let profiling_info_processor_params = get_profiling_info_processor_params();
             let profiling_info = profiling_info_processor
                 .process_ex(&raw_profiling_info, &profiling_info_processor_params);
-            profiling_info
-                .libfunc_weights
-                .concrete_libfunc_weights
-                .unwrap()
+            let Some(concrete_libfunc_weights) =
+                profiling_info.libfunc_weights.concrete_libfunc_weights
+            else {
+                return;
+            };
+            concrete_libfunc_weights
                 .iter()
                 .for_each(|(libfunc, weight)| {
                     cumulative_libfuncs_weight
