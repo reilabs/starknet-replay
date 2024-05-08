@@ -5,15 +5,17 @@ use cairo_lang_sierra_generator::db::SierraGeneratorTypeLongId;
 use cairo_lang_sierra_generator::replace_ids::SierraIdReplacer;
 use cairo_lang_utils::extract_matches;
 
-/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId,
-/// FunctionId}` with a dummy ids whose debug string is the string representing
+/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId}`
+/// with a dummy ids whose debug string is the string representing
 /// the expanded information about the id. For Libfuncs and Types - that would
-/// be recursively opening their generic arguments, for functions - that would
-/// be getting their original name. For example, while the original debug string
+/// be recursively opening their generic arguments. Function aren't included.
+/// For example, while the original debug string
 /// may be `[6]`, the resulting debug string may be:
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
-///  - For user functions: `test::foo`.
+///  - For user functions: `[6]`.
+/// This is needed because the Sierra Bytecode stored in the database
+/// requires id replacement.
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct DebugReplacer {
     program: cairo_lang_sierra::program::Program,
