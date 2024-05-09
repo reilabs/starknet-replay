@@ -135,3 +135,76 @@ pub fn analyse_tx(
         });
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{env, fs, io};
+
+    use itertools::Itertools;
+
+    use super::*;
+
+    fn read_test_file(filename: &str) -> io::Result<String> {
+        let out_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let sierra_program_json_file = [out_dir.as_str(), filename].iter().join("");
+        let sierra_program_json_file = sierra_program_json_file.as_str();
+        fs::read_to_string(sierra_program_json_file)
+    }
+
+    #[test]
+    fn test_get_profiling_info_processor_params() {
+        // Checking that the important settings are setup correctly to generate a
+        // histogram of libfuncs frequency.
+        let profiling_info_processor_params = get_profiling_info_processor_params();
+        assert_eq!(profiling_info_processor_params.min_weight, 1);
+        assert_eq!(
+            profiling_info_processor_params.process_by_concrete_libfunc,
+            true
+        );
+    }
+
+    #[ignore]
+    #[test]
+    fn test_class_definition_at_block() {
+        // No trait is available to mock the `Transaction` struct
+        // Need to use a real `pathfinder` db
+        todo!()
+    }
+
+    #[test]
+    fn test_get_sierra_program_from_class_definition() {
+        let sierra_program_json_file = "/test_data/sierra_felt.json";
+        let sierra_program_json = read_test_file(sierra_program_json_file)
+            .expect(format!("Unable to read file {}", sierra_program_json_file).as_str());
+        let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
+            .expect(format!("Unable to parse {} to json", sierra_program_json_file).as_str());
+        let contract_class: SierraContractClass =
+            serde_json::from_value::<SierraContractClass>(sierra_program_json).expect(
+                format!(
+                    "Unable to parse {} to SierraContractClass",
+                    sierra_program_json_file
+                )
+                .as_str(),
+            );
+        let sierra_program = get_sierra_program_from_class_definition(contract_class).expect(
+            format!(
+                "Unable to create Program {} to SierraContractClass",
+                sierra_program_json_file
+            )
+            .as_str(),
+        );
+
+        let sierra_program_test_file = "/test_data/sierra_program.json";
+        let sierra_program_test_json = read_test_file(sierra_program_test_file)
+            .expect(format!("Unable to read file {}", sierra_program_test_file).as_str());
+        let sierra_program_test_json: serde_json::Value =
+            serde_json::from_str(&sierra_program_test_json)
+                .expect(format!("Unable to parse {} to json", sierra_program_test_file).as_str());
+        let sierra_program_test: Program = serde_json::from_value::<Program>(
+            sierra_program_test_json,
+        )
+        .expect(format!("Unable to parse {} to Program", sierra_program_test_file).as_str());
+
+        assert_eq!(sierra_program_test, sierra_program);
+    }
+}
