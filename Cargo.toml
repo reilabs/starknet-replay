@@ -6,6 +6,14 @@ members = [
     "cairo_replay"
 ]
 
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/reilabs/cairo-replay"
+keywords = ["cairo", "starknet"]
+readme = "README.md"
+
 [workspace.dependencies]
 anyhow = "1.0.75"
 cairo-lang-starknet-classes = { version = "=2.6.0" }

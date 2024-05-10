@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
 
 //! Re-execute transactions in a range of blocks.
 //!
@@ -45,8 +45,9 @@ fn main() -> anyhow::Result<()> {
     let n_cpus = rayon::current_num_threads();
 
     let database_path = args.db_path;
-    let storage = Storage::migrate(database_path.clone(), JournalMode::WAL, 1)?
-        .create_pool(NonZeroU32::new(n_cpus as u32 * 2).unwrap())?;
+    let storage = Storage::migrate(database_path.clone(), JournalMode::WAL, 1)?.create_pool(
+        NonZeroU32::new(n_cpus.checked_mul(2).unwrap().try_into().unwrap()).unwrap(),
+    )?;
     let mut db = storage
         .connection()
         .context("Opening database connection")?;
