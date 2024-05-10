@@ -23,7 +23,7 @@ struct DebugReplacer {
 impl DebugReplacer {
     fn lookup_intern_concrete_lib_func(
         &self,
-        id: cairo_lang_sierra::ids::ConcreteLibfuncId,
+        id: &cairo_lang_sierra::ids::ConcreteLibfuncId,
     ) -> cairo_lang_sierra::program::ConcreteLibfuncLongId {
         self.program
             .libfunc_declarations
@@ -36,7 +36,7 @@ impl DebugReplacer {
 
     fn lookup_intern_concrete_type(
         &self,
-        id: cairo_lang_sierra::ids::ConcreteTypeId,
+        id: &cairo_lang_sierra::ids::ConcreteTypeId,
     ) -> SierraGeneratorTypeLongId {
         let concrete_type = self
             .program
@@ -53,7 +53,7 @@ impl SierraIdReplacer for DebugReplacer {
         &self,
         id: &cairo_lang_sierra::ids::ConcreteLibfuncId,
     ) -> cairo_lang_sierra::ids::ConcreteLibfuncId {
-        let mut long_id = self.lookup_intern_concrete_lib_func(id.clone());
+        let mut long_id = self.lookup_intern_concrete_lib_func(id);
         self.replace_generic_args(&mut long_id.generic_args);
         cairo_lang_sierra::ids::ConcreteLibfuncId {
             id: id.id,
@@ -65,7 +65,7 @@ impl SierraIdReplacer for DebugReplacer {
         &self,
         id: &cairo_lang_sierra::ids::ConcreteTypeId,
     ) -> cairo_lang_sierra::ids::ConcreteTypeId {
-        match self.lookup_intern_concrete_type(id.clone()) {
+        match self.lookup_intern_concrete_type(id) {
             SierraGeneratorTypeLongId::CycleBreaker(ty) => todo!("{:?}", ty),
             SierraGeneratorTypeLongId::Regular(long_id) => {
                 let mut long_id = long_id.as_ref().clone();
@@ -115,12 +115,12 @@ impl SierraIdReplacer for DebugReplacer {
 /// Similar to [`replace_sierra_ids`] except that it acts on
 /// [`cairo_lang_sierra::program::Program`].
 pub fn replace_sierra_ids_in_program(
-    program: cairo_lang_sierra::program::Program,
+    program: &cairo_lang_sierra::program::Program,
 ) -> cairo_lang_sierra::program::Program {
     DebugReplacer {
         program: program.clone(),
     }
-    .apply(&program)
+    .apply(program)
 }
 
 #[cfg(test)]
@@ -148,7 +148,7 @@ mod tests {
             .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_file} to json"));
         let sierra_program: Program = serde_json::from_value::<Program>(sierra_program_json)
             .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_file} to Program"));
-        let sierra_program = replace_sierra_ids_in_program(sierra_program);
+        let sierra_program = replace_sierra_ids_in_program(&sierra_program);
 
         let sierra_program_test_file = "/test_data/sierra_program_replaced_id.json";
         let sierra_program_test_json = read_test_file(sierra_program_test_file)

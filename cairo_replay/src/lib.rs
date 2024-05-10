@@ -34,13 +34,18 @@ struct ReplayWork {
 /// Replays all transactions from `start_block` to `end_block`. Not checking
 /// that `start_block` and `end_block` are within the limits of the database
 /// history. `db_path` is the file of the `pathfinder` database.
+///
+/// # Errors
+///
+/// Returns an error if there is any issue retrieving data from the database
+/// or if `execute` returns an error.
 pub fn run_replay(start_block: u64, end_block: u64, storage: Storage) -> anyhow::Result<usize> {
     let mut num_transactions = 0;
     let mut db = storage
         .connection()
         .context("Opening database connection")?;
     let transaction = db.transaction()?;
-    let chain_id = get_chain_id(&transaction).unwrap();
+    let chain_id = get_chain_id(&transaction)?;
 
     let replay_work: Vec<ReplayWork> = (start_block..=end_block)
         .map(|block_number| {
@@ -71,9 +76,7 @@ pub fn run_replay(start_block: u64, end_block: u64, storage: Storage) -> anyhow:
     replay_work
         .into_iter()
         .par_bridge()
-        .for_each_with(storage, |storage, block| {
-            execute(storage, chain_id, block).unwrap();
-        });
+        .try_for_each_with(storage, |storage, block| execute(storage, chain_id, block))?;
     Ok(num_transactions)
 }
 

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use cairo_lang_runner::profiling::{ProfilingInfoProcessor, ProfilingInfoProcessorParams};
 use cairo_lang_runner::ProfilingInfoCollectionConfig;
 use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
@@ -42,7 +43,7 @@ fn get_class_definition_at_block(
     ContractClass::from_definition_bytes(&class_definition)
 }
 
-fn get_sierra_program_from_class_definition(ctx: SierraContractClass) -> anyhow::Result<Program> {
+fn get_sierra_program_from_class_definition(ctx: &SierraContractClass) -> anyhow::Result<Program> {
     let json = serde_json::json!({
         "abi": [],
         "sierra_program": ctx.sierra_program,
@@ -51,7 +52,7 @@ fn get_sierra_program_from_class_definition(ctx: SierraContractClass) -> anyhow:
     });
     let contract_class: CairoContractClass = serde_json::from_value::<CairoContractClass>(json)?;
     let sierra_program = contract_class.extract_sierra_program()?;
-    let sierra_program = replace_sierra_ids_in_program(sierra_program);
+    let sierra_program = replace_sierra_ids_in_program(&sierra_program);
     Ok(sierra_program)
 }
 
@@ -79,29 +80,29 @@ pub fn analyse_tx(
         return;
     };
 
-    visited_pcs.iter().for_each(|(class_hash, all_pcs)| {
+    for (class_hash, all_pcs) in visited_pcs {
         // First get the class_definition from the db using the class_hash
         let Ok(ContractClass::Sierra(ctx)) =
             get_class_definition_at_block(block_num, db, class_hash)
         else {
-            return;
+            continue;
         };
 
         // Second from the class_definition, generate the sierra_program
-        let Ok(sierra_program) = get_sierra_program_from_class_definition(ctx) else {
-            return;
+        let Ok(sierra_program) = get_sierra_program_from_class_definition(&ctx) else {
+            continue;
         };
 
         // Third setup the runner
         let runner = SierraCasmRunnerLight::new(
             sierra_program.clone(),
-            Some(Default::default()),
+            Some(MetadataComputationConfig::default()),
             Some(ProfilingInfoCollectionConfig::default()),
         )
         .unwrap();
 
         // Fourth iterate through each run of the contract
-        all_pcs.iter().for_each(|pcs| {
+        for pcs in all_pcs {
             let raw_profiling_info = runner
                 .run_profiler
                 .as_ref()
@@ -113,7 +114,7 @@ pub fn analyse_tx(
                 UnorderedHashMap::default(),
             );
             let Some(raw_profiling_info) = raw_profiling_info else {
-                return;
+                continue;
             };
 
             let profiling_info_processor_params = get_profiling_info_processor_params();
@@ -122,7 +123,7 @@ pub fn analyse_tx(
             let Some(concrete_libfunc_weights) =
                 profiling_info.libfunc_weights.concrete_libfunc_weights
             else {
-                return;
+                continue;
             };
             concrete_libfunc_weights
                 .iter()
@@ -132,8 +133,8 @@ pub fn analyse_tx(
                         .and_modify(|e| *e += *weight)
                         .or_insert(*weight);
                 });
-        });
-    });
+        }
+    }
 }
 
 #[cfg(test)]
@@ -175,19 +176,13 @@ mod tests {
             .unwrap_or_else(|_| panic!("Unable to read file {sierra_program_json_file}"));
         let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
             .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_json_file} to json"));
-        let contract_class: SierraContractClass = serde_json::from_value::<SierraContractClass>(
-            sierra_program_json,
-        )
-        .unwrap_or_else(|_| {
-            panic!(
-                "Unable to parse {sierra_program_json_file} to SierraContractClass"
-            )
-        });
-        let sierra_program = get_sierra_program_from_class_definition(contract_class)
+        let contract_class: SierraContractClass =
+            serde_json::from_value::<SierraContractClass>(sierra_program_json).unwrap_or_else(
+                |_| panic!("Unable to parse {sierra_program_json_file} to SierraContractClass"),
+            );
+        let sierra_program = get_sierra_program_from_class_definition(&contract_class)
             .unwrap_or_else(|_| {
-                panic!(
-                    "Unable to create Program {sierra_program_json_file} to SierraContractClass"
-                )
+                panic!("Unable to create Program {sierra_program_json_file} to SierraContractClass")
             });
 
         let sierra_program_test_file = "/test_data/sierra_program.json";
