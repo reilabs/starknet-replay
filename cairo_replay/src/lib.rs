@@ -4,9 +4,6 @@
 //! and prints the histogram of the usage of `libfuncs`
 //! in the blocks replayed.
 
-use std::num::NonZeroU32;
-use std::path::PathBuf;
-
 use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
@@ -18,7 +15,7 @@ use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
 use pathfinder_common::{BlockHeader, BlockNumber, ChainId};
 use pathfinder_executor::ExecutionState;
-use pathfinder_storage::{BlockId, JournalMode, Storage};
+use pathfinder_storage::{BlockId, Storage};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use smol_str::SmolStr;
 
@@ -36,12 +33,8 @@ struct ReplayWork {
 /// Replays all transactions from `start_block` to `end_block`. Not checking
 /// that `start_block` and `end_block` are within the limits of the database
 /// history. `db_path` is the file of the `pathfinder` database.
-pub fn run_replay(start_block: u64, end_block: u64, db_path: PathBuf) -> anyhow::Result<usize> {
+pub fn run_replay(start_block: u64, end_block: u64, storage: Storage) -> anyhow::Result<usize> {
     let mut num_transactions = 0;
-
-    let n_cpus = rayon::current_num_threads();
-    let storage = Storage::migrate(db_path, JournalMode::WAL, 1)?
-        .create_pool(NonZeroU32::new(n_cpus as u32 * 2).unwrap())?;
     let mut db = storage
         .connection()
         .context("Opening database connection")?;
@@ -59,8 +52,11 @@ pub fn run_replay(start_block: u64, end_block: u64, db_path: PathBuf) -> anyhow:
                 .context("Reading transactions from database")?
                 .context("Transaction data missing")?;
 
-            let (transactions, receipts): (Vec<_>, Vec<_>) =
+            let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
+
+            transactions.truncate(1);
+            receipts.truncate(1);
 
             num_transactions += transactions.len();
 

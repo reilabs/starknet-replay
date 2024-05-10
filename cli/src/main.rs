@@ -56,6 +56,8 @@ fn main() -> anyhow::Result<()> {
     let latest_block = {
         let tx = db.transaction().unwrap();
         let (latest_block, _) = tx.block_id(BlockId::Latest)?.unwrap();
+        drop(tx);
+        drop(db);
         latest_block.get()
     };
 
@@ -64,7 +66,7 @@ fn main() -> anyhow::Result<()> {
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
 
     let start_time = std::time::Instant::now();
-    let num_transactions: usize = run_replay(first_block, last_block, database_path)?;
+    let num_transactions: usize = run_replay(first_block, last_block, storage)?;
 
     let elapsed = start_time.elapsed();
 
