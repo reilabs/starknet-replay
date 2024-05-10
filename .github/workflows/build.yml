@@ -16,18 +16,11 @@ jobs:
       with:
         shared-key: "rust-stable-cache"
         cache-all-crates: "true"
-    - name: Rustup stable
-      run: rustup toolchain install stable
     - name: Build
       run: cargo build
     - name: Run tests
       run: cargo test
-    - name: Rustup nightly
-      run: |
-        rustup toolchain add nightly
-        rustup component add rustfmt --toolchain nightly
-        rustup component add clippy --toolchain nightly
     - name: Cargo fmt
-      run: cargo +nightly fmt --all -- --check
+      run: cargo fmt --all -- --check
     - name: Cargo clippy
-      run: cargo +nightly clippy --frozen --locked --all-targets --all-features -- -D warnings
+      run: cargo clippy --frozen --locked --all-targets --all-features -- -D warnings
