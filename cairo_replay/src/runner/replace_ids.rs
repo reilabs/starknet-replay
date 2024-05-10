@@ -156,10 +156,10 @@ mod tests {
         let sierra_program_test_json: serde_json::Value =
             serde_json::from_str(&sierra_program_test_json)
                 .unwrap_or_else(|_| panic!("Unable to parse {} to json", sierra_program_test_file));
-        let sierra_program_test: Program = serde_json::from_value::<Program>(
-            sierra_program_test_json,
-        )
-        .unwrap_or_else(|_| panic!("Unable to parse {} to Program", sierra_program_test_file));
+        let sierra_program_test: Program =
+            serde_json::from_value::<Program>(sierra_program_test_json).unwrap_or_else(|_| {
+                panic!("Unable to parse {} to Program", sierra_program_test_file)
+            });
 
         assert_eq!(
             sierra_program_test.libfunc_declarations,
