@@ -14,7 +14,7 @@ jobs:
     - name: Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        shared-key: "rust-stable-cache"
+        shared-key: "rust-build-cache"
         cache-all-crates: "true"
         cache-directories: |
           ~/.cargo/registry/index/
@@ -35,7 +35,7 @@ jobs:
     - name: Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        shared-key: "rust-stable-cache"
+        shared-key: "rust-clippy-cache"
         cache-all-crates: "true"
         cache-directories: |
           ~/.cargo/registry/index/
@@ -54,7 +54,7 @@ jobs:
     - name: Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        shared-key: "rust-nightly-cache"
+        shared-key: "rust-fmt-cache"
         cache-all-crates: "true"
         cache-directories: |
           ~/.cargo/registry/index/
