@@ -6,7 +6,7 @@ env:
 
 jobs:
   build:
-    name: Lint and test
+    name: Build and test
     runs-on: ubuntu-latest
     steps:
     - name: Checkout source
@@ -16,11 +16,57 @@ jobs:
       with:
         shared-key: "rust-stable-cache"
         cache-all-crates: "true"
+        cache-directories: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
     - name: Build
       run: cargo build
     - name: Run tests
       run: cargo test
-    - name: Cargo fmt
-      run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "rust-stable-cache"
+        cache-all-crates: "true"
+        cache-directories: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
     - name: Cargo clippy
       run: cargo clippy --frozen --locked --all-targets --all-features -- -D warnings
+
+  lint:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "rust-stable-cache"
+        cache-all-crates: "true"
+        cache-directories: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+    - name: Install rust nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+        components: rustfmt
+    - name: Cargo fmt
+      run: cargo +nightly fmt --all -- --check
