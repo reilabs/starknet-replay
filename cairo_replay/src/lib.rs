@@ -72,7 +72,7 @@ pub fn run_replay(start_block: u64, end_block: u64, storage: Storage) -> anyhow:
         .into_iter()
         .par_bridge()
         .for_each_with(storage, |storage, block| {
-            execute(storage, chain_id, block).unwrap()
+            execute(storage, chain_id, block).unwrap();
         });
     Ok(num_transactions)
 }
@@ -101,7 +101,7 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow
 
     // Using `SmolStr` because it's coming from `LibfuncWeights`
     let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> = OrderedHashMap::default();
-    for simulation in simulations.iter() {
+    for simulation in &simulations {
         analyse_tx(
             &simulation.trace,
             work.header.number,

@@ -136,7 +136,7 @@ impl SierraCasmRunnerLight {
         // by the runner). The header is not counted, and the footer is, but
         // then the relevant entry is removed.
         let mut sierra_statement_weights = UnorderedHashMap::default();
-        for step in pcs.iter() {
+        for step in pcs {
             // Skip the header.
             if *step < real_pc_0 {
                 continue;
