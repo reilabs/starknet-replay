@@ -16,20 +16,20 @@ readme = "README.md"
 
 [workspace.dependencies]
 anyhow = "1.0.75"
-cairo-lang-starknet-classes = { version = "=2.6.0" }
-cairo-lang-sierra-to-casm = { version = "=2.6.0" }
-cairo-lang-runner = { version = "=2.6.0" }
-cairo-lang-compiler = { version = "=2.6.0" }
-cairo-lang-sierra = { version = "=2.6.0" }
-cairo-lang-utils = { version = "=2.6.0" }
-cairo-lang-sierra-generator = { version = "=2.6.0" }
+cairo-lang-starknet-classes = "2.6.0"
+cairo-lang-sierra-to-casm = "2.6.0"
+cairo-lang-runner = "2.6.0"
+cairo-lang-compiler = "2.6.0"
+cairo-lang-sierra = "2.6.0"
+cairo-lang-utils = "2.6.0"
+cairo-lang-sierra-generator = "2.6.0"
 jemallocator = "0.5.4"
 pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
 pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
 pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
 pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
 rayon = "1.8.0"
-starknet_api = "=0.10.0"
+starknet_api = "0.10.0"
 serde = "1.0.130"
 serde_json = "1.0.81"
 tracing = "0.1.37"

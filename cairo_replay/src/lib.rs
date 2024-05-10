@@ -1,4 +1,5 @@
-#![warn(missing_docs)]
+#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
+#![allow(clippy::multiple_crate_versions)]
 
 //! Replays transactions from `pathfinder` sqlite database
 //! and prints the histogram of the usage of `libfuncs`
@@ -8,11 +9,8 @@ use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::consts::{
-    GOERLI_INTEGRATION_GENESIS_HASH,
-    GOERLI_TESTNET_GENESIS_HASH,
-    MAINNET_GENESIS_HASH,
-    SEPOLIA_INTEGRATION_GENESIS_HASH,
-    SEPOLIA_TESTNET_GENESIS_HASH,
+    GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH, MAINNET_GENESIS_HASH,
+    SEPOLIA_INTEGRATION_GENESIS_HASH, SEPOLIA_TESTNET_GENESIS_HASH,
 };
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
