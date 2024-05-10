@@ -143,23 +143,23 @@ mod tests {
     fn test_replace_id() {
         let sierra_program_file = "/test_data/sierra_program.json";
         let sierra_program_json = read_test_file(sierra_program_file)
-            .expect(format!("Unable to read file {}", sierra_program_file).as_str());
+            .unwrap_or_else(|_| panic!("Unable to read file {}", sierra_program_file));
         let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
-            .expect(format!("Unable to parse {} to json", sierra_program_file).as_str());
+            .unwrap_or_else(|_| panic!("Unable to parse {} to json", sierra_program_file));
         let sierra_program: Program = serde_json::from_value::<Program>(sierra_program_json)
-            .expect(format!("Unable to parse {} to Program", sierra_program_file).as_str());
+            .unwrap_or_else(|_| panic!("Unable to parse {} to Program", sierra_program_file));
         let sierra_program = replace_sierra_ids_in_program(sierra_program);
 
         let sierra_program_test_file = "/test_data/sierra_program_replaced_id.json";
         let sierra_program_test_json = read_test_file(sierra_program_test_file)
-            .expect(format!("Unable to read file {}", sierra_program_test_file).as_str());
+            .unwrap_or_else(|_| panic!("Unable to read file {}", sierra_program_test_file));
         let sierra_program_test_json: serde_json::Value =
             serde_json::from_str(&sierra_program_test_json)
-                .expect(format!("Unable to parse {} to json", sierra_program_test_file).as_str());
+                .unwrap_or_else(|_| panic!("Unable to parse {} to json", sierra_program_test_file));
         let sierra_program_test: Program = serde_json::from_value::<Program>(
             sierra_program_test_json,
         )
-        .expect(format!("Unable to parse {} to Program", sierra_program_test_file).as_str());
+        .unwrap_or_else(|_| panic!("Unable to parse {} to Program", sierra_program_test_file));
 
         assert_eq!(
             sierra_program_test.libfunc_declarations,
