@@ -5,7 +5,7 @@ database and extract `libfunc` usage statistics.
 
 In the near future it will support `papyrus` database.
 
-## How to use
+## How to Use
 
 ```bash
 cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM> --end-block <BLOCK_NUM>
