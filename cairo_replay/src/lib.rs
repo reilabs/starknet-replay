@@ -13,10 +13,8 @@ use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::consts::{
-    GOERLI_INTEGRATION_GENESIS_HASH,
-    GOERLI_TESTNET_GENESIS_HASH,
-    MAINNET_GENESIS_HASH,
-    SEPOLIA_INTEGRATION_GENESIS_HASH,
+    GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH,
+    MAINNET_GENESIS_HASH, SEPOLIA_INTEGRATION_GENESIS_HASH,
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
 use pathfinder_common::receipt::Receipt;
@@ -63,7 +61,7 @@ pub fn run_replay(
     let mut num_transactions = 0;
     let mut db = storage
         .connection()
-        .context("Opening database connection")?;
+        .context("Opening sqlite database connection")?;
     let transaction = db.transaction()?;
     let chain_id = get_chain_id(&transaction)?;
 
@@ -76,8 +74,11 @@ pub fn run_replay(
             };
             let transactions_and_receipts = transaction
                 .transaction_data_for_block(block_id)
-                .context("Reading transactions from database")?
-                .context("Transaction data missing")?;
+                .context("Reading transactions from sqlite database")?
+                .context(format!(
+                    "Transaction data missing from sqlite database for block {}",
+                    block_number
+                ))?;
 
             let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
