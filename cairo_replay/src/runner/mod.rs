@@ -7,18 +7,24 @@
 //! of visited `pc`s to determine which libfuncs have been called.
 
 use cairo_lang_runner::profiling::{
-    user_function_idx_by_sierra_statement_idx, ProfilingInfo,
+    user_function_idx_by_sierra_statement_idx,
+    ProfilingInfo,
 };
 use cairo_lang_runner::{ProfilingInfoCollectionConfig, RunnerError};
 use cairo_lang_sierra::extensions::core::{
-    CoreConcreteLibfunc, CoreLibfunc, CoreType,
+    CoreConcreteLibfunc,
+    CoreLibfunc,
+    CoreType,
 };
 use cairo_lang_sierra::program::{GenStatement, StatementIdx};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_sierra_to_casm::compiler::{CairoProgram, SierraToCasmConfig};
 use cairo_lang_sierra_to_casm::metadata::{
-    calc_metadata, calc_metadata_ap_change_only, Metadata,
-    MetadataComputationConfig, MetadataError,
+    calc_metadata,
+    calc_metadata_ap_change_only,
+    Metadata,
+    MetadataComputationConfig,
+    MetadataError,
 };
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::chain;

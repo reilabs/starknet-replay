@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use cairo_lang_runner::profiling::{
-    ProfilingInfoProcessor,
-    ProfilingInfoProcessorParams,
+    ProfilingInfoProcessor, ProfilingInfoProcessorParams,
 };
 use cairo_lang_runner::ProfilingInfoCollectionConfig;
 use cairo_lang_sierra::program::Program;
@@ -21,7 +20,7 @@ use starknet_api::hash::StarkFelt;
 use crate::runner::replace_ids::replace_sierra_ids_in_program;
 use crate::runner::SierraCasmRunnerLight;
 
-fn get_visited_pcs(
+fn get_visited_program_counters(
     trace: &TransactionTrace,
 ) -> Option<&HashMap<starknet_api::core::ClassHash, Vec<Vec<usize>>>> {
     match trace {
@@ -82,7 +81,7 @@ pub fn analyse_tx(
     db: &Transaction,
     cumulative_libfuncs_weight: &mut OrderedHashMap<SmolStr, usize>,
 ) {
-    let Some(visited_pcs) = get_visited_pcs(trace) else {
+    let Some(visited_pcs) = get_visited_program_counters(trace) else {
         return;
     };
 
