@@ -13,10 +13,8 @@ use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::consts::{
-    GOERLI_INTEGRATION_GENESIS_HASH,
-    GOERLI_TESTNET_GENESIS_HASH,
-    MAINNET_GENESIS_HASH,
-    SEPOLIA_INTEGRATION_GENESIS_HASH,
+    GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH,
+    MAINNET_GENESIS_HASH, SEPOLIA_INTEGRATION_GENESIS_HASH,
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
 use pathfinder_common::receipt::Receipt;
@@ -31,10 +29,16 @@ use crate::runner::analysis::analyse_tx;
 
 mod runner;
 
+/// `ReplayWork` contains the data to replay a single block from Starknet
+/// blockchain.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 struct ReplayWork {
+    /// The header of the block being replayed.
     pub header: BlockHeader,
+    /// The list of transactions to be replayed.
     pub transactions: Vec<Transaction>,
+    /// The list of receipts after a transaction is replayed using
+    /// `pathfinder` node.
     pub receipts: Vec<Receipt>,
 }
 
