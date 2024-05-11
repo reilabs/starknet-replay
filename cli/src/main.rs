@@ -46,9 +46,11 @@ fn main() -> anyhow::Result<()> {
     let n_cpus = rayon::current_num_threads();
 
     let database_path = args.db_path;
-    let storage = Storage::migrate(database_path.clone(), JournalMode::WAL, 1)?.create_pool(
-        NonZeroU32::new(n_cpus.checked_mul(2).unwrap().try_into().unwrap()).unwrap(),
-    )?;
+    let storage = Storage::migrate(database_path.clone(), JournalMode::WAL, 1)?
+        .create_pool(
+            NonZeroU32::new(n_cpus.checked_mul(2).unwrap().try_into().unwrap())
+                .unwrap(),
+        )?;
     let mut db = storage
         .connection()
         .context("Opening database connection")?;

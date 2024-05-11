@@ -42,7 +42,11 @@ struct ReplayWork {
 ///
 /// Returns an error if there is any issue retrieving data from the database
 /// or if `execute` returns an error.
-pub fn run_replay(start_block: u64, end_block: u64, storage: Storage) -> anyhow::Result<usize> {
+pub fn run_replay(
+    start_block: u64,
+    end_block: u64,
+    storage: Storage,
+) -> anyhow::Result<usize> {
     let mut num_transactions = 0;
     let mut db = storage
         .connection()
@@ -52,7 +56,8 @@ pub fn run_replay(start_block: u64, end_block: u64, storage: Storage) -> anyhow:
 
     let replay_work: Vec<ReplayWork> = (start_block..=end_block)
         .map(|block_number| {
-            let block_id = BlockId::Number(BlockNumber::new_or_panic(block_number));
+            let block_id =
+                BlockId::Number(BlockNumber::new_or_panic(block_number));
             let Some(block_header) = transaction.block_header(block_id)? else {
                 bail!("Missing block: {}", block_number);
             };
@@ -79,20 +84,28 @@ pub fn run_replay(start_block: u64, end_block: u64, storage: Storage) -> anyhow:
     replay_work
         .into_iter()
         .par_bridge()
-        .try_for_each_with(storage, |storage, block| execute(storage, chain_id, block))?;
+        .try_for_each_with(storage, |storage, block| {
+            execute(storage, chain_id, block)
+        })?;
     Ok(num_transactions)
 }
 
-fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow::Result<()> {
+fn execute(
+    storage: &mut Storage,
+    chain_id: ChainId,
+    work: ReplayWork,
+) -> anyhow::Result<()> {
     let mut db = storage.connection()?;
 
     let db_tx = db.transaction().expect("Create transaction");
 
-    let execution_state = ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
+    let execution_state =
+        ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
 
     let mut transactions = Vec::new();
     for transaction in work.transactions {
-        let transaction = pathfinder_rpc::compose_executor_transaction(&transaction, &db_tx)?;
+        let transaction =
+            pathfinder_rpc::compose_executor_transaction(&transaction, &db_tx)?;
         transactions.push(transaction);
     }
 
@@ -106,7 +119,8 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow
     ).map_err(|error| tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed")).unwrap();
 
     // Using `SmolStr` because it's coming from `LibfuncWeights`
-    let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> = OrderedHashMap::default();
+    let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
+        OrderedHashMap::default();
     for simulation in &simulations {
         analyse_tx(
             &simulation.trace,
@@ -126,7 +140,9 @@ fn execute(storage: &mut Storage, chain_id: ChainId, work: ReplayWork) -> anyhow
 }
 
 // Detect the chain from the hash of the first block in the database
-fn get_chain_id(tx: &pathfinder_storage::Transaction<'_>) -> anyhow::Result<ChainId> {
+fn get_chain_id(
+    tx: &pathfinder_storage::Transaction<'_>,
+) -> anyhow::Result<ChainId> {
     let (_, genesis_hash) = tx
         .block_id(BlockNumber::GENESIS.into())
         .unwrap()
