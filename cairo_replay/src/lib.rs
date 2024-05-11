@@ -65,6 +65,7 @@ pub fn run_replay(
     let transaction = db.transaction()?;
     let chain_id = get_chain_id(&transaction)?;
 
+    // List of blocks to be replayed
     let replay_work: Vec<ReplayWork> = (start_block..=end_block)
         .map(|block_number| {
             let block_id =
@@ -96,6 +97,8 @@ pub fn run_replay(
             })
         })
         .collect::<anyhow::Result<Vec<ReplayWork>>>()?;
+
+    // Iterate through each block in `replay_work` and replay all the transactions
     replay_work
         .into_iter()
         .par_bridge()
@@ -105,6 +108,9 @@ pub fn run_replay(
     Ok(num_transactions)
 }
 
+/// The function execute replays the block given in argument `work`.
+/// It returns an error if any transaction fails execution or if there is
+/// any error communicating with the sqlite database.
 fn execute(
     storage: &mut Storage,
     chain_id: ChainId,
@@ -112,7 +118,9 @@ fn execute(
 ) -> anyhow::Result<()> {
     let mut db = storage.connection()?;
 
-    let db_tx = db.transaction().expect("Create transaction");
+    let db_tx = db
+        .transaction()
+        .expect("Create transaction with sqlite database");
 
     let execution_state =
         ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
