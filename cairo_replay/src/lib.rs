@@ -13,8 +13,10 @@ use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::consts::{
-    GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH,
-    MAINNET_GENESIS_HASH, SEPOLIA_INTEGRATION_GENESIS_HASH,
+    GOERLI_INTEGRATION_GENESIS_HASH,
+    GOERLI_TESTNET_GENESIS_HASH,
+    MAINNET_GENESIS_HASH,
+    SEPOLIA_INTEGRATION_GENESIS_HASH,
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
 use pathfinder_common::receipt::Receipt;
@@ -98,7 +100,8 @@ pub fn run_replay(
         })
         .collect::<anyhow::Result<Vec<ReplayWork>>>()?;
 
-    // Iterate through each block in `replay_work` and replay all the transactions
+    // Iterate through each block in `replay_work` and replay all the
+    // transactions
     replay_work
         .into_iter()
         .par_bridge()
