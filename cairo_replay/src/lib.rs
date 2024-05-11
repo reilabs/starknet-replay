@@ -69,14 +69,15 @@ pub fn run_replay(
         .map(|block_number| {
             let block_id =
                 BlockId::Number(BlockNumber::new_or_panic(block_number));
-            let Some(block_header) = transaction.block_header(block_id)? else {
+            let Some(header) = transaction.block_header(block_id)? else {
                 bail!("Missing block: {}", block_number);
             };
             let transactions_and_receipts = transaction
                 .transaction_data_for_block(block_id)
                 .context("Reading transactions from sqlite database")?
                 .context(format!(
-                    "Transaction data missing from sqlite database for block {}",
+                    "Transaction data missing from sqlite database for block \
+                     {}",
                     block_number
                 ))?;
 
@@ -89,7 +90,7 @@ pub fn run_replay(
             num_transactions += transactions.len();
 
             Ok(ReplayWork {
-                header: block_header,
+                header,
                 transactions,
                 receipts,
             })
