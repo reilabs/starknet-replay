@@ -3,16 +3,18 @@
 
 //! Replays transactions from `pathfinder` sqlite database
 //! and prints the histogram of the usage of `libfuncs`
-//! in the blocks replayed.
+//! in the blocks replayed. This is the back end of the package.
+//! The module runner contains the code for the profiler which counts
+//! the number of `libfuncs` called during execution of the transaction.
+//! It also contains the code to replace the ids of the libfuncs with their
+//! respective name.
 
 use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::consts::{
-    GOERLI_INTEGRATION_GENESIS_HASH,
-    GOERLI_TESTNET_GENESIS_HASH,
-    MAINNET_GENESIS_HASH,
-    SEPOLIA_INTEGRATION_GENESIS_HASH,
+    GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH,
+    MAINNET_GENESIS_HASH, SEPOLIA_INTEGRATION_GENESIS_HASH,
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
 use pathfinder_common::receipt::Receipt;
@@ -34,9 +36,12 @@ struct ReplayWork {
     pub receipts: Vec<Receipt>,
 }
 
-/// Replays all transactions from `start_block` to `end_block`. Not checking
+/// `run_replay` is the entry function in this library. It replays all
+/// transactions from `start_block` to `end_block`. Not checking
 /// that `start_block` and `end_block` are within the limits of the database
 /// history. `db_path` is the file of the `pathfinder` database.
+/// If there are no execution errors, it returns the number of transactions
+/// processed.
 ///
 /// # Errors
 ///
