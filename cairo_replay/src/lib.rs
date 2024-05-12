@@ -71,8 +71,8 @@ impl ReplayWork {
         for (libfunc, weight) in libfuncs_weight.iter() {
             self.libfuncs_weight
                 .entry(libfunc.clone())
-                .and_modify(|e| *e += weight.clone())
-                .or_insert(weight.clone());
+                .and_modify(|e| *e += *weight)
+                .or_insert(*weight);
         }
     }
 
@@ -85,8 +85,8 @@ impl ReplayWork {
         for (libfunc, weight) in self.libfuncs_weight.iter() {
             libfuncs_weight
                 .entry(libfunc.clone())
-                .and_modify(|e| *e += weight.clone())
-                .or_insert(weight.clone());
+                .and_modify(|e| *e += *weight)
+                .or_insert(*weight);
         }
     }
 }
@@ -175,8 +175,8 @@ fn replay_transactions(
 
     replay_work.iter_mut().par_bridge().try_for_each_with(
         storage,
-        |storage, mut block| -> anyhow::Result<()> {
-            execute(storage, chain_id, &mut block)?;
+        |storage, block| -> anyhow::Result<()> {
+            execute(storage, chain_id, block)?;
             Ok(())
         },
     )?;
@@ -185,7 +185,7 @@ fn replay_transactions(
     for block in replay_work {
         block.extend_libfunc_stats(&mut cumulative_libfunc_stat);
     }
-    Ok(cumulative_libfunc_stat.into())
+    Ok(cumulative_libfunc_stat)
 }
 
 /// The function execute replays the block given in argument `work`.
@@ -208,7 +208,7 @@ fn execute(
     let mut transactions = Vec::new();
     for transaction in &work.transactions {
         let transaction =
-            pathfinder_rpc::compose_executor_transaction(&transaction, &db_tx)?;
+            pathfinder_rpc::compose_executor_transaction(transaction, &db_tx)?;
         transactions.push(transaction);
     }
 
