@@ -13,10 +13,8 @@ use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::consts::{
-    GOERLI_INTEGRATION_GENESIS_HASH,
-    GOERLI_TESTNET_GENESIS_HASH,
-    MAINNET_GENESIS_HASH,
-    SEPOLIA_INTEGRATION_GENESIS_HASH,
+    GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH,
+    MAINNET_GENESIS_HASH, SEPOLIA_INTEGRATION_GENESIS_HASH,
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
 use pathfinder_common::receipt::Receipt;
@@ -48,19 +46,16 @@ struct ReplayWork {
 /// transactions from `start_block` to `end_block`. Not checking
 /// that `start_block` and `end_block` are within the limits of the database
 /// history. `db_path` is the file of the `pathfinder` database.
-/// If there are no execution errors, it returns the number of transactions
-/// processed.
 ///
 /// # Errors
 ///
-/// Returns an error if there is any issue retrieving data from the database
+/// Returns an error if there is any error calling `generate_replay_work`
 /// or if `execute` returns an error.
 pub fn run_replay(
     start_block: u64,
     end_block: u64,
     storage: Storage,
-) -> anyhow::Result<usize> {
-    let mut num_transactions = 0;
+) -> anyhow::Result<()> {
     let mut db = storage
         .connection()
         .context("Opening sqlite database connection")?;
@@ -68,7 +63,38 @@ pub fn run_replay(
     let chain_id = get_chain_id(&transaction)?;
 
     // List of blocks to be replayed
-    let replay_work: Vec<ReplayWork> = (start_block..=end_block)
+    let replay_work: Vec<ReplayWork> =
+        generate_replay_work(start_block, end_block, &storage)?;
+
+    // Iterate through each block in `replay_work` and replay all the
+    // transactions
+    replay_work
+        .into_iter()
+        .par_bridge()
+        .try_for_each_with(storage, |storage, block| {
+            execute(storage, chain_id, block)
+        })?;
+    Ok(())
+}
+
+/// `generate_replay_work` queries the pathfinder database to get the list of
+/// transactions that need to be replayed. The list of transactions is taken
+/// from all the transactions from `start_block` to `end_block`.
+
+/// # Errors
+///
+/// Returns an error if there is any issue accessing the pathfinder database
+fn generate_replay_work(
+    start_block: u64,
+    end_block: u64,
+    storage: &Storage,
+) -> anyhow::Result<Vec<ReplayWork>> {
+    let mut db = storage
+        .connection()
+        .context("Opening sqlite database connection")?;
+    let transaction = db.transaction()?;
+
+    (start_block..=end_block)
         .map(|block_number| {
             let block_id =
                 BlockId::Number(BlockNumber::new_or_panic(block_number));
@@ -90,25 +116,13 @@ pub fn run_replay(
             transactions.truncate(1);
             receipts.truncate(1);
 
-            num_transactions += transactions.len();
-
             Ok(ReplayWork {
                 header,
                 transactions,
                 receipts,
             })
         })
-        .collect::<anyhow::Result<Vec<ReplayWork>>>()?;
-
-    // Iterate through each block in `replay_work` and replay all the
-    // transactions
-    replay_work
-        .into_iter()
-        .par_bridge()
-        .try_for_each_with(storage, |storage, block| {
-            execute(storage, chain_id, block)
-        })?;
-    Ok(num_transactions)
+        .collect::<anyhow::Result<Vec<ReplayWork>>>()
 }
 
 /// The function execute replays the block given in argument `work`.

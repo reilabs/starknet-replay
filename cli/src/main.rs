@@ -70,11 +70,11 @@ fn main() -> anyhow::Result<()> {
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
 
     let start_time = std::time::Instant::now();
-    let num_transactions: usize = run_replay(first_block, last_block, storage)?;
+    run_replay(first_block, last_block, storage)?;
 
     let elapsed = start_time.elapsed();
 
-    tracing::info!(%num_transactions, ?elapsed, "Finished");
+    tracing::info!(?elapsed, "Finished");
 
     Ok(())
 }
