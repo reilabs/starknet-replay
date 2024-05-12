@@ -108,8 +108,7 @@ fn generate_replay_work(
                 .context("Reading transactions from sqlite database")?
                 .context(format!(
                     "Transaction data missing from sqlite database for block \
-                     {}",
-                    block_number
+                     {block_number}"
                 ))?;
 
             let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
