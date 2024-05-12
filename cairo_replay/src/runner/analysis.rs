@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use cairo_lang_runner::profiling::{
-    ProfilingInfoProcessor, ProfilingInfoProcessorParams,
+    ProfilingInfoProcessor,
+    ProfilingInfoProcessorParams,
 };
 use cairo_lang_runner::ProfilingInfoCollectionConfig;
 use cairo_lang_sierra::program::Program;
