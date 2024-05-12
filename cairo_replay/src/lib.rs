@@ -13,10 +13,8 @@ use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use pathfinder_common::consts::{
-    GOERLI_INTEGRATION_GENESIS_HASH,
-    GOERLI_TESTNET_GENESIS_HASH,
-    MAINNET_GENESIS_HASH,
-    SEPOLIA_INTEGRATION_GENESIS_HASH,
+    GOERLI_INTEGRATION_GENESIS_HASH, GOERLI_TESTNET_GENESIS_HASH,
+    MAINNET_GENESIS_HASH, SEPOLIA_INTEGRATION_GENESIS_HASH,
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
 use pathfinder_common::receipt::Receipt;
@@ -58,31 +56,20 @@ pub fn run_replay(
     end_block: u64,
     storage: Storage,
 ) -> anyhow::Result<()> {
-    let mut db = storage
-        .connection()
-        .context("Opening sqlite database connection")?;
-    let transaction = db.transaction()?;
-    let chain_id = get_chain_id(&transaction)?;
-
     // List of blocks to be replayed
     let replay_work: Vec<ReplayWork> =
         generate_replay_work(start_block, end_block, &storage)?;
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
-    replay_work
-        .into_iter()
-        .par_bridge()
-        .try_for_each_with(storage, |storage, block| {
-            execute(storage, chain_id, block)
-        })?;
+    replay_transactions(storage, replay_work)?;
     Ok(())
 }
 
 /// `generate_replay_work` queries the pathfinder database to get the list of
 /// transactions that need to be replayed. The list of transactions is taken
 /// from all the transactions from `start_block` to `end_block`.
-
+///
 /// # Errors
 ///
 /// Returns an error if there is any issue accessing the pathfinder database
@@ -124,6 +111,30 @@ fn generate_replay_work(
             })
         })
         .collect::<anyhow::Result<Vec<ReplayWork>>>()
+}
+
+/// This function re-executes the list of transactions in `replay_work`.
+///
+/// # Errors
+///
+/// It returns an error if there is a problem detecting the `chain_id` or if
+/// the function `execute` returns an error.
+fn replay_transactions(
+    storage: Storage,
+    replay_work: Vec<ReplayWork>,
+) -> anyhow::Result<()> {
+    let mut db = storage
+        .connection()
+        .context("Opening sqlite database connection")?;
+    let transaction = db.transaction()?;
+    let chain_id = get_chain_id(&transaction)?;
+
+    replay_work
+        .into_iter()
+        .par_bridge()
+        .try_for_each_with(storage, |storage, block| {
+            execute(storage, chain_id, block)
+        })
 }
 
 /// The function execute replays the block given in argument `work`.
