@@ -11,7 +11,6 @@
 
 use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
-use itertools::Itertools;
 use pathfinder_common::consts::{
     GOERLI_INTEGRATION_GENESIS_HASH,
     GOERLI_TESTNET_GENESIS_HASH,
@@ -42,6 +41,54 @@ struct ReplayWork {
     /// The list of receipts after a transaction is replayed using
     /// `pathfinder` node.
     pub receipts: Vec<Receipt>,
+    /// The key corresponds to the concrete libfunc name and the value
+    /// contains the number of times the libfunc has been called
+    /// during execution of all the transactions in the block
+    pub libfuncs_weight: OrderedHashMap<SmolStr, usize>,
+}
+
+impl ReplayWork {
+    pub fn new(
+        header: BlockHeader,
+        transactions: Vec<Transaction>,
+        receipts: Vec<Receipt>,
+    ) -> ReplayWork {
+        Self {
+            header,
+            transactions,
+            receipts,
+            libfuncs_weight: OrderedHashMap::default(),
+        }
+    }
+
+    /// Updates `self.libfuncs_weight` with the data from `libfuncs_weight`.
+    /// For keys already present in `self.libfuncs_weight`, the value (i.e.
+    /// weight) is added on top.
+    pub fn add_libfuncs(
+        &mut self,
+        libfuncs_weight: &OrderedHashMap<SmolStr, usize>,
+    ) {
+        for (libfunc, weight) in libfuncs_weight.iter() {
+            self.libfuncs_weight
+                .entry(libfunc.clone())
+                .and_modify(|e| *e += weight.clone())
+                .or_insert(weight.clone());
+        }
+    }
+
+    /// The reverse of `self.add_libfuncs`. `libfuncs_weight` is updated with
+    /// data from `self.libfuncs_weight`.
+    pub fn extend_libfunc_stats(
+        &self,
+        libfuncs_weight: &mut OrderedHashMap<SmolStr, usize>,
+    ) {
+        for (libfunc, weight) in self.libfuncs_weight.iter() {
+            libfuncs_weight
+                .entry(libfunc.clone())
+                .and_modify(|e| *e += weight.clone())
+                .or_insert(weight.clone());
+        }
+    }
 }
 
 /// `run_replay` is the entry function in this library. It replays all
@@ -57,15 +104,14 @@ pub fn run_replay(
     start_block: u64,
     end_block: u64,
     storage: Storage,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     // List of blocks to be replayed
-    let replay_work: Vec<ReplayWork> =
+    let mut replay_work: Vec<ReplayWork> =
         generate_replay_work(start_block, end_block, &storage)?;
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
-    replay_transactions(storage, replay_work)?;
-    Ok(())
+    replay_transactions(storage, &mut replay_work)
 }
 
 /// `generate_replay_work` queries the pathfinder database to get the list of
@@ -106,11 +152,7 @@ fn generate_replay_work(
             transactions.truncate(1);
             receipts.truncate(1);
 
-            Ok(ReplayWork {
-                header,
-                transactions,
-                receipts,
-            })
+            Ok(ReplayWork::new(header, transactions, receipts))
         })
         .collect::<anyhow::Result<Vec<ReplayWork>>>()
 }
@@ -123,20 +165,27 @@ fn generate_replay_work(
 /// the function `execute` returns an error.
 fn replay_transactions(
     storage: Storage,
-    replay_work: Vec<ReplayWork>,
-) -> anyhow::Result<()> {
+    replay_work: &mut Vec<ReplayWork>,
+) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     let mut db = storage
         .connection()
         .context("Opening sqlite database connection")?;
     let transaction = db.transaction()?;
     let chain_id = get_chain_id(&transaction)?;
 
-    replay_work
-        .into_iter()
-        .par_bridge()
-        .try_for_each_with(storage, |storage, block| {
-            execute(storage, chain_id, block)
-        })
+    replay_work.iter_mut().par_bridge().try_for_each_with(
+        storage,
+        |storage, mut block| -> anyhow::Result<()> {
+            execute(storage, chain_id, &mut block)?;
+            Ok(())
+        },
+    )?;
+
+    let mut cumulative_libfunc_stat = OrderedHashMap::default();
+    for block in replay_work {
+        block.extend_libfunc_stats(&mut cumulative_libfunc_stat);
+    }
+    Ok(cumulative_libfunc_stat.into())
 }
 
 /// The function execute replays the block given in argument `work`.
@@ -145,7 +194,7 @@ fn replay_transactions(
 fn execute(
     storage: &mut Storage,
     chain_id: ChainId,
-    work: ReplayWork,
+    work: &mut ReplayWork,
 ) -> anyhow::Result<()> {
     let mut db = storage.connection()?;
 
@@ -157,7 +206,7 @@ fn execute(
         ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
 
     let mut transactions = Vec::new();
-    for transaction in work.transactions {
+    for transaction in &work.transactions {
         let transaction =
             pathfinder_rpc::compose_executor_transaction(&transaction, &db_tx)?;
         transactions.push(transaction);
@@ -183,13 +232,7 @@ fn execute(
             &mut cumulative_libfuncs_weight,
         );
     }
-    println!("Weight by concrete libfunc:");
-    for (concrete_name, weight) in cumulative_libfuncs_weight
-        .iter()
-        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
-    {
-        println!("  libfunc {concrete_name}: {weight}");
-    }
+    work.add_libfuncs(&cumulative_libfuncs_weight);
     Ok(())
 }
 

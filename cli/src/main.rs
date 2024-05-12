@@ -16,6 +16,7 @@ use std::path::PathBuf;
 use anyhow::Context;
 use cairo_replay::run_replay;
 use clap::Parser;
+use itertools::Itertools;
 use pathfinder_storage::{BlockId, JournalMode, Storage};
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
@@ -70,7 +71,13 @@ fn main() -> anyhow::Result<()> {
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
 
     let start_time = std::time::Instant::now();
-    run_replay(first_block, last_block, storage)?;
+    let libfunc_stats = run_replay(first_block, last_block, storage)?;
+
+    for (concrete_name, weight) in
+        libfunc_stats.iter().sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+    {
+        tracing::info!("  libfunc {concrete_name}: {weight}");
+    }
 
     let elapsed = start_time.elapsed();
 
