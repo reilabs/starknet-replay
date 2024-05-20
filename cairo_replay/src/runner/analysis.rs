@@ -59,7 +59,7 @@ fn get_class_definition_at_block(
     ContractClass::from_definition_bytes(&class_definition)
 }
 
-/// Converts `ctx` from SierraContractClass to `Program`.
+/// Converts `ctx` from `SierraContractClass` to `Program`.
 ///
 /// # Error
 ///
