@@ -21,7 +21,7 @@ use pathfinder_common::consts::{
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
 use pathfinder_common::{BlockHeader, BlockNumber, ChainId};
-use pathfinder_executor::ExecutionState;
+use pathfinder_executor::{ExecutionState, TransactionExecutionError};
 use pathfinder_storage::{BlockId, Storage};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use smol_str::SmolStr;
@@ -192,10 +192,13 @@ fn generate_replay_work(
                 ))?;
 
             let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
-                transactions_and_receipts.into_iter().unzip();
+                transactions_and_receipts
+                    .into_iter()
+                    .filter(|(_, r)| !r.is_reverted())
+                    .unzip();
 
-            transactions.truncate(1);
-            receipts.truncate(1);
+            // transactions.truncate(3);
+            // receipts.truncate(3);
 
             Ok(ReplayWork::new(header, transactions, receipts))
         })
@@ -229,6 +232,10 @@ fn replay_transactions(
             Ok(())
         },
     )?;
+
+    // for block in replay_work.iter_mut() {
+    //     execute(&mut storage.clone(), chain_id, block)?;
+    // }
 
     let mut cumulative_libfunc_stat = OrderedHashMap::default();
     for block in replay_work {
@@ -270,14 +277,35 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
     }
 
     let skip_validate = false;
-    let skip_fee_charge = false;
-    let simulations = pathfinder_executor::simulate(
+    let skip_fee_charge = true;
+    let simulations = match pathfinder_executor::simulate(
         execution_state,
         transactions,
         skip_validate,
         skip_fee_charge,
-    ).map_err(|error| tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed")).unwrap();
+    ) {
+        Ok(simulation) => simulation,
+        Err(error) => match error {
+            TransactionExecutionError::ExecutionError {
+                transaction_index,
+                error,
+            } => {
+                let receipt_tx = work
+                    .receipts
+                    .iter()
+                    .find(|r| r.transaction_index == transaction_index as u64)
+                    .unwrap();
+                let tx_hash = receipt_tx.transaction_hash;
+                tracing::error!(block_number=%work.header.number, ?transaction_index, ?error, ?tx_hash, "Transaction re-execution failed");
+                bail!("Transaction re-execution failed");
+            }
+            _ => bail!("Transaction simulation failed"),
+        },
+    };
 
+    // else {
+    //     tracing::error!(block_number=%work.header.number, ?error,
+    // "Transaction re-execution failed")).unwrap(); };
     // Using `SmolStr` because it's coming from `LibfuncWeights`
     let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
         OrderedHashMap::default();
