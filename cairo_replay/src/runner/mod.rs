@@ -48,7 +48,9 @@ fn create_metadata(
 
 /// This is a slimmed down version of `SierraCasmRunner`
 /// in order to setup the profiler during transaction
-/// replay.
+/// replay. There is no call to `cairo-vm` because this slimmed down version
+/// takes the list of visited program counters as input in
+/// `collect_profiling_info`.
 pub struct SierraCasmRunnerLight {
     /// The sierra program.
     sierra_program: cairo_lang_sierra::program::Program,
@@ -60,6 +62,13 @@ pub struct SierraCasmRunnerLight {
     pub run_profiler: Option<ProfilingInfoCollectionConfig>,
 }
 impl SierraCasmRunnerLight {
+    /// Takes a `sierra_program` with an optional `metadata_config` and
+    /// `run_profiler` to generate a `SierraCasmRunnerLight`. The field
+    /// `sierra_program` is buffered from the input argument.
+    /// `sierra_program_registry` contains the hashmaps of the concrete libfuncs
+    /// and concrete types used in `sierra_program`.
+    /// `casm_program` contains the compiled `sierra_program` in CASM.
+    /// `run_profiler` is buffered from the input arguments.
     pub fn new(
         sierra_program: cairo_lang_sierra::program::Program,
         metadata_config: Option<MetadataComputationConfig>,
@@ -78,7 +87,6 @@ impl SierraCasmRunnerLight {
             },
         )?;
 
-        // Find all contracts.
         Ok(Self {
             sierra_program,
             sierra_program_registry,
@@ -101,6 +109,7 @@ impl SierraCasmRunnerLight {
     }
 
     /// Collects profiling info of the current run using the trace.
+    // TODO: Will be refactored!
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> ProfilingInfo {
         let sierra_len =
             self.casm_program.debug_info.sierra_statement_info.len();
