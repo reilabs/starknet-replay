@@ -47,6 +47,9 @@ fn main() -> anyhow::Result<()> {
     let n_cpus = rayon::current_num_threads();
 
     let database_path = args.db_path;
+    // Choosing number of concurrent connections to be twice the number of cpu
+    // threads in order to minimise idle time when replying the transactions in
+    // parallel.
     let storage = Storage::migrate(database_path.clone(), JournalMode::WAL, 1)?
         .create_pool(
             NonZeroU32::new(n_cpus.checked_mul(2).unwrap().try_into().unwrap())
