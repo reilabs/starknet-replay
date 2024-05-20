@@ -1,3 +1,6 @@
+//! This file contains the code to process a transaction trace and update the
+//! hashmap which keeps the statistics of the number of calls for each libfunc.
+
 use std::collections::HashMap;
 
 use cairo_lang_runner::profiling::{
@@ -21,6 +24,10 @@ use starknet_api::hash::StarkFelt;
 use crate::runner::replace_ids::replace_sierra_ids_in_program;
 use crate::runner::SierraCasmRunnerLight;
 
+/// Returns the hashmap of visited program counters for the input `trace`.
+/// If it't not an Invoke transaction, it returns None. Otherwise, the result is
+/// a hashmap where the key is the `ClassHash` and the value is the Vector of
+/// visited program counters for each `ClassHash` execution in `trace`.
 fn get_visited_program_counters(
     trace: &TransactionTrace,
 ) -> Option<&HashMap<starknet_api::core::ClassHash, Vec<Vec<usize>>>> {
@@ -30,6 +37,12 @@ fn get_visited_program_counters(
     }
 }
 
+/// Given a `db` and a `class_hash`, this function returns the `ContractClass`
+/// object at `block_num`.
+///
+/// # Error
+///
+/// Returns an error if `class_hash` doesn't exist at block `block_num`.
 fn get_class_definition_at_block(
     block_num: BlockNumber,
     db: &Transaction,
@@ -46,6 +59,11 @@ fn get_class_definition_at_block(
     ContractClass::from_definition_bytes(&class_definition)
 }
 
+/// Converts `ctx` from SierraContractClass to `Program`.
+///
+/// # Error
+///
+/// It returns an error if there is a serde deserialisation issue.
 fn get_sierra_program_from_class_definition(
     ctx: &SierraContractClass,
 ) -> anyhow::Result<Program> {
@@ -80,6 +98,14 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
     }
 }
 
+/// This function takes `trace` and the `block_num` where the trace belongs to
+/// populate `cumulative_libfuncs_weight` from the visited program counters.
+/// `db` is the open `Transaction` with the `pathfinder` database.
+/// `cumulative_libfuncs_weight` is a hashmap where the key is the libfunc name
+/// and the value is the number of times the key has been called. If the libfunc
+/// is never called, it'a not present.
+/// In `cumulative_libfuncs_weight`, the value is increased if the key is
+/// already present.
 pub fn analyse_tx(
     trace: &TransactionTrace,
     block_num: BlockNumber,

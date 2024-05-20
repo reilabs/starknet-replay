@@ -1,3 +1,9 @@
+//! This file contains the implementation of `DebugReplacer` to add debug
+//! information to a `Program` without any. This is because sierra contracts
+//! stored in the Starknet blockchain lack debug data. Without debug
+//! information, the `Program` contains only numeric ids to indicate libfuncs
+//! and types.
+
 use std::sync::Arc;
 
 use cairo_lang_sierra::program::{self};
@@ -5,22 +11,31 @@ use cairo_lang_sierra_generator::db::SierraGeneratorTypeLongId;
 use cairo_lang_sierra_generator::replace_ids::SierraIdReplacer;
 use cairo_lang_utils::extract_matches;
 
-/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId}`
-/// with a dummy ids whose debug string is the string representing
-/// the expanded information about the id. For Libfuncs and Types - that would
-/// be recursively opening their generic arguments. Function aren't included.
-/// For example, while the original debug string
+/// `DebugReplacer` is adapted from `DebugReplacer` contained in the `cario`
+/// crate. The reason for these changes is that when recovering a sierra program
+/// from the blockchain, the `SierraGenGroup` object, which contains compilation
+/// data is lost, therefore only a partial id replacement is possible.
+/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId,
+/// ConcreteTypeId}` with a dummy ids whose debug string is the string
+/// representing the expanded information about the id. For Libfuncs and Types -
+/// that would be recursively opening their generic arguments. Function aren't
+/// included. For example, while the original debug string
 /// may be `[6]`, the resulting debug string may be:
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
 ///  - For user functions: `[6]`.
 /// This is needed because the Sierra Bytecode stored in the database
 /// requires id replacement.
+/// User functions are kept in numeric id form because the names aren't
+/// recoverable after the contract is compiled and deployed in the blockchain.
+/// `DebugReplacer` implements `SierraIdReplacer` to be able to perform the
+/// replacement from id to string.
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct DebugReplacer {
     program: cairo_lang_sierra::program::Program,
 }
 impl DebugReplacer {
+    /// Get the long debug name for the libfunc with id equivalent to `id`.
     fn lookup_intern_concrete_lib_func(
         &self,
         id: &cairo_lang_sierra::ids::ConcreteLibfuncId,
@@ -34,6 +49,7 @@ impl DebugReplacer {
             .long_id
     }
 
+    /// Get the long debug name for the type with id equivalent to `id`.
     fn lookup_intern_concrete_type(
         &self,
         id: &cairo_lang_sierra::ids::ConcreteTypeId,

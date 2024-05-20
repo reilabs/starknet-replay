@@ -1,10 +1,6 @@
-//! The module runner processes the metadata generated from the `cairo-vm` after
-//! a contract entry point execution to generated the number of times
-//! each libfunc has been called during the execution.
-//! `replace_ids.rs` parses a Sierra Program and replaces the id of each
-//! type and libfunc with their respective name.
-//! `analysis.rs` contains the profiler code which iterates through the list
-//! of visited `pc`s to determine which libfuncs have been called.
+//! The module runner contains the code to process the metadata generated
+//! from `cairo-vm`. It determines the number of times each libfunc has
+//! been called during an entry point execution.
 
 use cairo_lang_runner::profiling::{
     user_function_idx_by_sierra_statement_idx,

@@ -94,7 +94,7 @@ impl ReplayWork {
 /// `run_replay` is the entry function in this library. It replays all
 /// transactions from `start_block` to `end_block`. Not checking
 /// that `start_block` and `end_block` are within the limits of the database
-/// history. `db_path` is the file of the `pathfinder` database.
+/// history. `storage` is the connection to the `pathfinder` database.
 ///
 /// # Errors
 ///
@@ -114,9 +114,10 @@ pub fn run_replay(
     replay_transactions(storage, &mut replay_work)
 }
 
-/// `generate_replay_work` queries the pathfinder database to get the list of
-/// transactions that need to be replayed. The list of transactions is taken
-/// from all the transactions from `start_block` to `end_block`.
+/// Query the pathfinder database to get the list of transactions that need to
+/// be replayed. The list of transactions is taken from all the transactions
+/// from `start_block` to `end_block`. `storage` is the connection to the
+/// `pathfinder` database.
 ///
 /// # Errors
 ///
@@ -157,26 +158,22 @@ fn generate_replay_work(
         .collect::<anyhow::Result<Vec<ReplayWork>>>()
 }
 
-/// This function re-executes the list of transactions in `replay_work`.
+/// Re-execute the list of transactions in `replay_work`. `storage` is the
+/// connection to the `pathfinder` database. `replay_work` contains the lists of
+/// transactions to replay grouped by block. Each index in `replay_work`
+/// corresponds to a block.
 ///
 /// # Errors
 ///
-/// It returns an error if there is a problem detecting the `chain_id` or if
-/// the function `execute` returns an error.
+/// It returns an error if the function `execute` fails execution.
 fn replay_transactions(
     storage: Storage,
     replay_work: &mut Vec<ReplayWork>,
 ) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
-    let mut db = storage
-        .connection()
-        .context("Opening sqlite database connection")?;
-    let transaction = db.transaction()?;
-    let chain_id = get_chain_id(&transaction)?;
-
     replay_work.iter_mut().par_bridge().try_for_each_with(
         storage,
         |storage, block| -> anyhow::Result<()> {
-            execute(storage, chain_id, block)?;
+            execute(storage, block)?;
             Ok(())
         },
     )?;
@@ -188,19 +185,21 @@ fn replay_transactions(
     Ok(cumulative_libfunc_stat)
 }
 
-/// The function execute replays the block given in argument `work`.
+/// Replay the list of transactions given in the argument `work`. `storage`
+/// contains the connection to the `pathfinder` database.
+///
+/// # Errors
+///
 /// It returns an error if any transaction fails execution or if there is
 /// any error communicating with the sqlite database.
-fn execute(
-    storage: &mut Storage,
-    chain_id: ChainId,
-    work: &mut ReplayWork,
-) -> anyhow::Result<()> {
+fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
     let mut db = storage.connection()?;
 
     let db_tx = db
         .transaction()
         .expect("Create transaction with sqlite database");
+
+    let chain_id = get_chain_id(&db_tx)?;
 
     let execution_state =
         ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
@@ -236,13 +235,19 @@ fn execute(
     Ok(())
 }
 
-// Detect the chain from the hash of the first block in the database
+/// Detect the chain used by quering the hash of the first block in the
+/// database. `tx` is the open `Transaction` object with the databse. It can
+/// detect only Mainnet, Goerli, Sepolia networks.
+///
+/// # Errors
+///
+/// It returns an error if the first block doesn't have a hash matching one of
+/// the known hashes or there is an error querying the database.
 fn get_chain_id(
     tx: &pathfinder_storage::Transaction<'_>,
 ) -> anyhow::Result<ChainId> {
     let (_, genesis_hash) = tx
-        .block_id(BlockNumber::GENESIS.into())
-        .unwrap()
+        .block_id(BlockNumber::GENESIS.into())?
         .context("Getting genesis hash")?;
 
     let chain = match genesis_hash {
