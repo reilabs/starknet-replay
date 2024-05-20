@@ -109,7 +109,7 @@ impl SierraCasmRunnerLight {
     }
 
     /// Collects profiling info of the current run using the trace.
-    // TODO: Will be refactored!
+    // TODO: To be refactored!
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> ProfilingInfo {
         let sierra_len =
             self.casm_program.debug_info.sierra_statement_info.len();
