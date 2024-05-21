@@ -11,6 +11,8 @@ use cairo_lang_sierra_generator::db::SierraGeneratorTypeLongId;
 use cairo_lang_sierra_generator::replace_ids::SierraIdReplacer;
 use cairo_lang_utils::extract_matches;
 
+/// Replace the ids in a sierra program.
+///
 /// `DebugReplacer` is adapted from `DebugReplacer` contained in the `cario`
 /// crate. The reason for these changes is that when recovering a sierra program
 /// from the blockchain, the `SierraGenGroup` object, which contains compilation
@@ -32,6 +34,7 @@ use cairo_lang_utils::extract_matches;
 /// replacement from id to string.
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct DebugReplacer {
+    /// The Sierra program to replace ids from
     program: cairo_lang_sierra::program::Program,
 }
 impl DebugReplacer {
@@ -123,15 +126,17 @@ impl SierraIdReplacer for DebugReplacer {
     }
 }
 
-/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId,
-/// FunctionId}` with a dummy ids whose debug string is the string representing
-/// the expanded information about the id. For Libfuncs and Types - that would
-/// be recursively opening their generic arguments, for functions - that would
-/// be getting their original name. For example, while the original debug string
-/// may be `[6]`, the resulting debug string may be:
+/// Returns a sierra `program` with replaced ids.
+///
+/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId}` with
+/// a dummy ids whose debug string is the string representing the expanded
+/// information about the id. For Libfuncs and Types - that would be recursively
+/// opening their generic arguments, for functions no changes are done because
+/// of lack of data saved in the blockchain. For example, while the original
+/// debug string may be `[6]`, the resulting debug string may be:
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
-///  - For user functions: `test::foo`.
+///  - For user functions: `[6]`.
 ///
 /// Similar to [`replace_sierra_ids`] except that it acts on
 /// [`cairo_lang_sierra::program::Program`].

@@ -13,7 +13,7 @@
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use cairo_replay::run_replay;
 use clap::Parser;
 use itertools::Itertools;
@@ -28,10 +28,14 @@ static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 #[derive(Parser, Debug)]
 struct Args {
     #[arg(long)]
+    /// The path of the Pathfinder database file.
     db_path: PathBuf,
     #[arg(long)]
+    /// The starting block to replay transactions.
     start_block: u64,
     #[arg(long)]
+    /// The final block (included) to stop replaying transactions. It is
+    /// reduced if bigger than the biggest block in the database.
     end_block: u64,
 }
 
@@ -43,6 +47,10 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     let args = Args::parse();
+
+    if args.start_block > args.end_block {
+        bail!("end_block must be greater or equal to start_block.")
+    }
 
     let n_cpus = rayon::current_num_threads();
 

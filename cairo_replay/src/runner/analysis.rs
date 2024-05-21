@@ -25,9 +25,16 @@ use crate::runner::replace_ids::replace_sierra_ids_in_program;
 use crate::runner::SierraCasmRunnerLight;
 
 /// Returns the hashmap of visited program counters for the input `trace`.
-/// If it't not an Invoke transaction, it returns None. Otherwise, the result is
-/// a hashmap where the key is the `ClassHash` and the value is the Vector of
-/// visited program counters for each `ClassHash` execution in `trace`.
+///
+/// The result is a hashmap where the key is the `ClassHash` and the value is
+/// the Vector of visited program counters for each `ClassHash` execution in
+/// `trace`.
+/// If `trace` is not an Invoke transaction, it returns None.
+///
+/// # Arguments
+///
+/// - `trace`: the `TransactionTrace` to extract the visited program counters
+///   from.
 fn get_visited_program_counters(
     trace: &TransactionTrace,
 ) -> Option<&HashMap<starknet_api::core::ClassHash, Vec<Vec<usize>>>> {
@@ -37,12 +44,20 @@ fn get_visited_program_counters(
     }
 }
 
-/// Given a `db` and a `class_hash`, this function returns the `ContractClass`
-/// object at `block_num`.
+/// Return the `ContractClass` object of a `class_hash` at `block_num` from the
+/// Pathfinder database `db`.
 ///
-/// # Error
+/// # Arguments
 ///
-/// Returns an error if `class_hash` doesn't exist at block `block_num`.
+/// - `block_num`: The block number at which to retrieve the `ContractClass`.
+/// - `db`: The connection with the Pathfinder database.
+/// - `class_hash`: The class hash of the `ContractClass` to return
+///
+/// # Errors
+///
+/// Returns [`Err`] if:
+///
+/// - `class_hash` doesn't exist at block `block_num` in `db`.
 fn get_class_definition_at_block(
     block_num: BlockNumber,
     db: &Transaction,
@@ -61,9 +76,15 @@ fn get_class_definition_at_block(
 
 /// Converts `ctx` from `SierraContractClass` to `Program`.
 ///
-/// # Error
+/// # Arguments
 ///
-/// It returns an error if there is a serde deserialisation issue.
+/// - `ctx`: The input `SierraContractClass`
+///
+/// # Errors
+///
+/// Returns [`Err`] if:
+///
+/// - there is a serde deserialisation issue.
 fn get_sierra_program_from_class_definition(
     ctx: &SierraContractClass,
 ) -> anyhow::Result<Program> {
@@ -80,10 +101,13 @@ fn get_sierra_program_from_class_definition(
     Ok(sierra_program)
 }
 
-// To collect the list of libfunc being used during contract invocation,
-// we only need to know the concrete_likbfunc or the generic_libfunc.
-// `concrete_libfunc` differentiates between different instantiations of a
-// generic type, unlike `generic_libfunc`.
+/// Configure the options for the Sierra compiler using
+/// `ProfilingInfoProcessorParams`.
+///
+/// To collect the list of libfunc being used during contract invocation, we
+/// only need to know the concrete_likbfunc or the generic_libfunc.
+/// `concrete_libfunc` differentiates between different instantiations of a
+/// generic type, unlike `generic_libfunc`.
 fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
     ProfilingInfoProcessorParams {
         min_weight: 1,
@@ -98,14 +122,21 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
     }
 }
 
-/// This function takes `trace` and the `block_num` where the trace belongs to
+/// Update `cumulative_libfuncs_weight` with the frequency of libfuncs called in
+/// transaction `trace`.
+///
+/// It takes the `trace` and the `block_num` where the trace belongs to
 /// populate `cumulative_libfuncs_weight` from the visited program counters.
-/// `db` is the open `Transaction` with the `pathfinder` database.
-/// `cumulative_libfuncs_weight` is a hashmap where the key is the libfunc name
-/// and the value is the number of times the key has been called. If the libfunc
-/// is never called, it'a not present.
-/// In `cumulative_libfuncs_weight`, the value is increased if the key is
-/// already present.
+///
+/// # Arguments
+///
+/// - `trace`: the transaction analysed.
+/// - `block_num`: the block where `trace` is inserted in.
+/// - `db`: is the open `Transaction` with the `pathfinder` database.
+/// - `cumulative_libfuncs_weight`: is a hashmap where the key is the libfunc
+///   name and the value is the number of times the key has been called. If the
+///   libfunc is never called, it'a not present. The value is increased if the
+///   key is already present.
 pub fn analyse_tx(
     trace: &TransactionTrace,
     block_num: BlockNumber,

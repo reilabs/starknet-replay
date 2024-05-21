@@ -28,9 +28,23 @@ use itertools::chain;
 pub mod analysis;
 pub mod replace_ids;
 
+/// Big enough number to handle the contracts in Starknet.
+/// Verified with random testing.
 const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
-/// Creates the metadata required for a Sierra program lowering to casm.
+/// Creates the metadata required for a Sierra program lowering to CASM.
+///
+/// # Arguments
+///
+/// - `sierra_program`: the sierra program
+/// - `metadata_config`: optional. It contains the configuration options.
+///
+/// # Errors
+///
+/// Returns [`Err`] if:
+///
+/// - call to `calc_metadata` fails
+/// - call to `calc_metadata_ap_change_only` fails
 fn create_metadata(
     sierra_program: &cairo_lang_sierra::program::Program,
     metadata_config: Option<MetadataComputationConfig>,
@@ -62,13 +76,25 @@ pub struct SierraCasmRunnerLight {
     pub run_profiler: Option<ProfilingInfoCollectionConfig>,
 }
 impl SierraCasmRunnerLight {
+    /// Generate a new `SierraCasmRunnerLight` object.
+    ///
     /// Takes a `sierra_program` with an optional `metadata_config` and
-    /// `run_profiler` to generate a `SierraCasmRunnerLight`. The field
-    /// `sierra_program` is buffered from the input argument.
-    /// `sierra_program_registry` contains the hashmaps of the concrete libfuncs
-    /// and concrete types used in `sierra_program`.
-    /// `casm_program` contains the compiled `sierra_program` in CASM.
-    /// `run_profiler` is buffered from the input arguments.
+    /// `run_profiler` to generate a `SierraCasmRunnerLight`.
+    ///
+    /// # Arguments
+    ///
+    /// - `sierra_program`: the sierra program considered in the runner.
+    /// - `metadata_config`: optional. Configuration for the compilation from
+    ///   Sierra to CASM.
+    /// - `run_profiler`: optional. It contains configuration parameters for the
+    ///   profiler.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if:
+    ///
+    /// - there is any error in the call to `create_metadata`
+    /// - there is an error in the generation of the `sierra_program_registry`
     pub fn new(
         sierra_program: cairo_lang_sierra::program::Program,
         metadata_config: Option<MetadataComputationConfig>,

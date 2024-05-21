@@ -48,6 +48,18 @@ struct ReplayWork {
 }
 
 impl ReplayWork {
+    /// Create a new `ReplayWork`
+    ///
+    /// Not checking that `transactions` and `receipts` have the same length.
+    /// The receipt for transaction at index I is found at index I of `receipt`.
+    ///
+    /// # Arguments
+    ///
+    /// - `header`: the header of the block `transactions` belong to.
+    /// - `transactions`: the list of transactions in the block that need to be
+    ///   profiled.
+    /// - `receipts`: the list of receipts for the execution of the
+    ///   transactions. Must be the same length as `transactions`.
     pub fn new(
         header: BlockHeader,
         transactions: Vec<Transaction>,
@@ -61,9 +73,15 @@ impl ReplayWork {
         }
     }
 
+    /// Update `libfuncs_weight` from the input `libfuncs_weight`
+    ///
     /// Updates `self.libfuncs_weight` with the data from `libfuncs_weight`.
     /// For keys already present in `self.libfuncs_weight`, the value (i.e.
     /// weight) is added on top.
+    ///
+    /// # Arguments
+    ///
+    /// - `libfuncs_weight`: the input hashmap to update `self.libfuncs_weight`
     pub fn add_libfuncs(
         &mut self,
         libfuncs_weight: &OrderedHashMap<SmolStr, usize>,
@@ -76,8 +94,14 @@ impl ReplayWork {
         }
     }
 
-    /// The reverse of `self.add_libfuncs`. `libfuncs_weight` is updated with
-    /// data from `self.libfuncs_weight`.
+    /// `libfuncs_weight` is updated with data from `self.libfuncs_weight`.
+    ///
+    /// The reverse of `self.add_libfuncs`.
+    ///
+    /// # Arguments
+    ///
+    /// - `libfuncs_weight`: the output hashmap to update with data in
+    ///   `self.libfuncs_weight`
     pub fn extend_libfunc_stats(
         &self,
         libfuncs_weight: &mut OrderedHashMap<SmolStr, usize>,
@@ -91,15 +115,24 @@ impl ReplayWork {
     }
 }
 
-/// `run_replay` is the entry function in this library. It replays all
-/// transactions from `start_block` to `end_block`. Not checking
-/// that `start_block` and `end_block` are within the limits of the database
-/// history. `storage` is the connection to the `pathfinder` database.
+/// Replays all transactions from `start_block` to `end_block`.
+///
+/// This function does not check that the `start_block` and `end_block` are
+/// within the database history. It is expected that the user does this of their
+/// own accord.
+///
+/// # Arguments
+///
+/// - `start_block`: starting block of the replay
+/// - 'end_block`: ending block (included) of the replay.
+/// - `storage`: connection with the Pathfinder database
 ///
 /// # Errors
 ///
-/// Returns an error if there is any error calling `generate_replay_work`
-/// or if `execute` returns an error.
+/// Returns [`Err`] if:
+///
+/// there is any issue calling `generate_replay_work` or if
+/// `replay_transactions` returns an error.
 pub fn run_replay(
     start_block: u64,
     end_block: u64,
@@ -114,14 +147,23 @@ pub fn run_replay(
     replay_transactions(storage, &mut replay_work)
 }
 
-/// Query the pathfinder database to get the list of transactions that need to
-/// be replayed. The list of transactions is taken from all the transactions
-/// from `start_block` to `end_block`. `storage` is the connection to the
-/// `pathfinder` database.
+/// Generates the list of transactions to be replayed.
+///
+/// This function queries the Pathfinder database to get the list of
+/// transactions that need to be replayed. The list of transactions is taken
+/// from all the transactions from `start_block` to `end_block` (included).
+///
+/// # Arguments
+///
+/// - `start_block`: starting block of the replay
+/// - 'end_block`: ending block (included) of the replay.
+/// - `storage`: connection with the Pathfinder database
 ///
 /// # Errors
 ///
-/// Returns an error if there is any issue accessing the pathfinder database
+/// Returns [`Err`] if:
+///
+/// there is any issue accessing the Pathfinder database
 fn generate_replay_work(
     start_block: u64,
     end_block: u64,
@@ -158,14 +200,22 @@ fn generate_replay_work(
         .collect::<anyhow::Result<Vec<ReplayWork>>>()
 }
 
-/// Re-execute the list of transactions in `replay_work`. `storage` is the
-/// connection to the `pathfinder` database. `replay_work` contains the lists of
-/// transactions to replay grouped by block. Each index in `replay_work`
-/// corresponds to a block.
+/// Re-execute the list of transactions in `replay_work` and return the
+/// statistics on libfunc usage.
+///
+/// `replay_work` contains the lists of transactions to replay grouped by block.
+/// Each index in `replay_work` corresponds to a block.
+///
+/// # Arguments
+///
+/// - `replay_work`: the list of blocks to be replayed.
+/// - `storage`: connection with the Pathfinder database.
 ///
 /// # Errors
 ///
-/// It returns an error if the function `execute` fails execution.
+/// Returns [`Err`] if:
+///
+/// the function `execute` fails execution.
 fn replay_transactions(
     storage: Storage,
     replay_work: &mut Vec<ReplayWork>,
@@ -185,13 +235,19 @@ fn replay_transactions(
     Ok(cumulative_libfunc_stat)
 }
 
-/// Replay the list of transactions given in the argument `work`. `storage`
-/// contains the connection to the `pathfinder` database.
+/// Replay the list of transactions in a block.
+///
+/// # Arguments
+///
+/// - `storage`: connection with the Pathfinder database.
+/// - `work`: the block to be re-executed
 ///
 /// # Errors
 ///
-/// It returns an error if any transaction fails execution or if there is
-/// any error communicating with the sqlite database.
+/// Returns [`Err`] if:
+///
+/// any transaction fails execution or if there is any error communicating with
+/// the Pathfinder database.
 fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
     let mut db = storage.connection()?;
 
@@ -235,13 +291,20 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Get the `chain_id` of the Pathfinder databse.
+///
 /// Detect the chain used by quering the hash of the first block in the
-/// database. `tx` is the open `Transaction` object with the databse. It can
-/// detect only Mainnet, Goerli, Sepolia networks.
+/// database. It can detect only Mainnet, Goerli, Sepolia networks.
+///
+/// # Arguments
+///
+/// - `tx` is the open `Transaction` object with the databse.
 ///
 /// # Errors
 ///
-/// It returns an error if the first block doesn't have a hash matching one of
+/// Returns [`Err`] if:
+///
+/// the first block doesn't have a hash matching one of
 /// the known hashes or there is an error querying the database.
 fn get_chain_id(
     tx: &pathfinder_storage::Transaction<'_>,
