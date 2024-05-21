@@ -30,8 +30,8 @@ use crate::runner::analysis::analyse_tx;
 
 mod runner;
 
-/// `ReplayWork` contains the data to replay a single block from Starknet
-/// blockchain.
+/// `ReplayWork` contains the data necessary to replay a single block from
+/// the Starknet blockchain.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 struct ReplayWork {
     /// The header of the block being replayed.
@@ -48,7 +48,7 @@ struct ReplayWork {
 }
 
 impl ReplayWork {
-    /// Create a new `ReplayWork`
+    /// Create a new batch of work to be replayed.
     ///
     /// Not checking that `transactions` and `receipts` have the same length.
     /// The receipt for transaction at index I is found at index I of `receipt`.
