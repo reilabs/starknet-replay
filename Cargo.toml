@@ -16,9 +16,6 @@ repository = "https://github.com/reilabs/cairo-replay"
 keywords = ["cairo", "starknet"]
 readme = "README.md"
 
-# Prevent publishing by accident.
-publish = false
-
 [workspace.dependencies]
 anyhow = "1.0.75"
 # Hardcoding the commit hash until the changes to pathfinder are merged in the main branch of `eqlabs/pathfinder`

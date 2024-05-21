@@ -9,6 +9,9 @@ repository.workspace = true
 readme.workspace = true
 keywords.workspace = true
 
+# Prevent publishing by accident.
+publish = false
+
 [dependencies]
 cairo-replay = { path = "../cairo_replay" }
 clap = { version = "4.5.3", features = ["derive"] }

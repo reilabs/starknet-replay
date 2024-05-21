@@ -9,6 +9,9 @@ repository.workspace = true
 readme.workspace = true
 keywords.workspace = true
 
+# Prevent publishing by accident.
+publish = false
+
 [dependencies]
 # All `cairo-lang-` crates must have the same version
 cairo-lang-starknet-classes = "2.6.0"
