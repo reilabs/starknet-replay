@@ -4,6 +4,18 @@
 data from Pathfinder database. It reports the frequency each `libfunc` has been
 called when replaying the transactions.
 
+Only `INVOKE` transactions of Sierra contracts are used for this report because
+only Sierra contracts use libfuncs and only `INVOKE` transactions execute Sierra
+code. Rejected transactions are included.
+
+Gathering of these data can have many benefits among which:
+
+- Knowing which libfuncs require top scrutinity because most frequent
+- Knowing if any libfunc can be deprecated because of little use
+- Identifying potential new libfuncs due to recurrent patterns
+- How usage of libfuncs changes over time
+- Rate of adoption of new libfuncs
+
 Next features to be added:
 
 - Support OF `papyrus` database
@@ -27,3 +39,4 @@ Tested only on `pathfinder-v0.11.x`.
 - [Papyrus](https://github.com/starkware-libs/papyrus)
 - [Starknet](https://docs.starknet.io/documentation/)
 - [Libfunc](https://github.com/lambdaclass/cairo_native?tab=readme-ov-file#implemented-library-functions)
+- [Starknet Transactions](https://docs.starknet.io/documentation/architecture_and_concepts/Network_Architecture/transactions/)
