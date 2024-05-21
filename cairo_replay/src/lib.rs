@@ -162,9 +162,7 @@ pub fn run_replay(
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// there is any issue accessing the Pathfinder database
+/// Returns [`Err`] if there is an issue accessing the Pathfinder database.
 fn generate_replay_work(
     start_block: u64,
     end_block: u64,
