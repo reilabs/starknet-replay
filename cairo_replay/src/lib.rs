@@ -1,6 +1,3 @@
-#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
-#![allow(clippy::multiple_crate_versions)]
-
 //! Replays transactions from `pathfinder` sqlite database
 //! and prints the histogram of the usage of `libfuncs`
 //! in the blocks replayed. This is the back end of the package.
@@ -8,6 +5,9 @@
 //! the number of `libfuncs` called during execution of the transaction.
 //! It also contains the code to replace the ids of the libfuncs with their
 //! respective name.
+
+#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
+#![allow(clippy::multiple_crate_versions)]
 
 use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
