@@ -162,9 +162,7 @@ pub fn run_replay(
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// there is any issue accessing the Pathfinder database
+/// Returns [`Err`] if there is any issue accessing the Pathfinder database
 fn generate_replay_work(
     start_block: u64,
     end_block: u64,
@@ -214,9 +212,7 @@ fn generate_replay_work(
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// the function `execute` fails execution.
+/// Returns [`Err`] if the function `execute` fails to replay any transaction.
 fn replay_transactions(
     storage: Storage,
     replay_work: &mut Vec<ReplayWork>,
@@ -245,10 +241,8 @@ fn replay_transactions(
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// any transaction fails execution or if there is any error communicating with
-/// the Pathfinder database.
+/// Returns [`Err`] if any transaction fails execution or if there is any error
+/// communicating with the Pathfinder database.
 fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
     let mut db = storage.connection()?;
 
@@ -305,8 +299,9 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
 ///
 /// Returns [`Err`] if:
 ///
-/// the first block doesn't have a hash matching one of
-/// the known hashes or there is an error querying the database.
+/// - The first block doesn't have a hash matching one of
+/// the known hashes
+/// - There is an error querying the database.
 fn get_chain_id(
     tx: &pathfinder_storage::Transaction<'_>,
 ) -> anyhow::Result<ChainId> {

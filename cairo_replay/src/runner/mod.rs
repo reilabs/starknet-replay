@@ -43,8 +43,8 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 ///
 /// Returns [`Err`] if:
 ///
-/// - call to `calc_metadata` fails
-/// - call to `calc_metadata_ap_change_only` fails
+/// - Call to `calc_metadata` fails
+/// - Call to `calc_metadata_ap_change_only` fails
 fn create_metadata(
     sierra_program: &cairo_lang_sierra::program::Program,
     metadata_config: Option<MetadataComputationConfig>,
@@ -93,8 +93,8 @@ impl SierraCasmRunnerLight {
     ///
     /// Returns [`Err`] if:
     ///
-    /// - There is any error in the call to `create_metadata`
-    /// - There is an error in the generation of the `sierra_program_registry`
+    /// - The call to `create_metadata` fails
+    /// - The generation of `sierra_program_registry` fails
     pub fn new(
         sierra_program: cairo_lang_sierra::program::Program,
         metadata_config: Option<MetadataComputationConfig>,

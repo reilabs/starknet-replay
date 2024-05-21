@@ -55,9 +55,7 @@ fn get_visited_program_counters(
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// - `class_hash` doesn't exist at block `block_num` in `db`.
+/// Returns [`Err`] if `class_hash` doesn't exist at block `block_num` in `db`.
 fn get_class_definition_at_block(
     block_num: BlockNumber,
     db: &Transaction,
@@ -82,9 +80,7 @@ fn get_class_definition_at_block(
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// - there is a serde deserialisation issue.
+/// Returns [`Err`] if there is a serde deserialisation issue.
 fn get_sierra_program_from_class_definition(
     ctx: &SierraContractClass,
 ) -> anyhow::Result<Program> {
