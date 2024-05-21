@@ -115,7 +115,8 @@ impl ReplayWork {
     }
 }
 
-/// Replays all transactions from `start_block` to `end_block`.
+/// Replays all transactions from `start_block` to `end_block` and gathers
+/// statistics while doing so.
 ///
 /// This function does not check that the `start_block` and `end_block` are
 /// within the database history. It is expected that the user does this of their
