@@ -26,7 +26,7 @@ use rayon::current_num_threads;
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-#[derive(Parser, Debug)]
+#[derive(Clone, Parser, Debug)]
 struct Args {
     #[arg(long)]
     /// The path of the Pathfinder database file.
