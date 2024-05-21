@@ -1,8 +1,8 @@
 [package]
 name = "cli"
+version = "0.1.0"
 description = "A CLI tool to replay Starknet transactions and print histogram of libfuncs usage"
 categories = ["cryptography::cryptocurrencies"]
-version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

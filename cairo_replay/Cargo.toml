@@ -1,8 +1,8 @@
 [package]
 name = "cairo-replay"
+version = "0.1.0"
 description = "Back end to replay Starknet transactions and print histogram of libfuncs usage."
 categories = ["cryptography::cryptocurrencies"]
-version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
