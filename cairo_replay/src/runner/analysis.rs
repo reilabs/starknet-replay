@@ -130,13 +130,13 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
 ///
 /// # Arguments
 ///
-/// - `trace`: the transaction analysed.
-/// - `block_num`: the block where `trace` is inserted in.
-/// - `db`: is the open `Transaction` with the `pathfinder` database.
-/// - `cumulative_libfuncs_weight`: is a hashmap where the key is the libfunc
-///   name and the value is the number of times the key has been called. If the
-///   libfunc is never called, it'a not present. The value is increased if the
-///   key is already present.
+/// - `trace`: The transaction analysed.
+/// - `block_num`: The block where `trace` is inserted in.
+/// - `db`: This is the open `Transaction` with the `pathfinder` database.
+/// - `cumulative_libfuncs_weight`: This is a hashmap where the key is the
+///   libfunc name and the value is the number of times the key has been called.
+///   If the libfunc is never called, it'a not present. The value is increased
+///   if the key is already present.
 pub fn analyse_tx(
     trace: &TransactionTrace,
     block_num: BlockNumber,

@@ -55,10 +55,10 @@ impl ReplayWork {
     ///
     /// # Arguments
     ///
-    /// - `header`: the header of the block `transactions` belong to.
-    /// - `transactions`: the list of transactions in the block that need to be
+    /// - `header`: The header of the block `transactions` belong to.
+    /// - `transactions`: The list of transactions in the block that need to be
     ///   profiled.
-    /// - `receipts`: the list of receipts for the execution of the
+    /// - `receipts`: The list of receipts for the execution of the
     ///   transactions. Must be the same length as `transactions`.
     pub fn new(
         header: BlockHeader,
@@ -81,7 +81,7 @@ impl ReplayWork {
     ///
     /// # Arguments
     ///
-    /// - `libfuncs_weight`: the input hashmap to update `self.libfuncs_weight`
+    /// - `libfuncs_weight`: The input hashmap to update `self.libfuncs_weight`
     pub fn add_libfuncs(
         &mut self,
         libfuncs_weight: &OrderedHashMap<SmolStr, usize>,
@@ -100,7 +100,7 @@ impl ReplayWork {
     ///
     /// # Arguments
     ///
-    /// - `libfuncs_weight`: the output hashmap to update with data in
+    /// - `libfuncs_weight`: The output hashmap to update with data in
     ///   `self.libfuncs_weight`
     pub fn extend_libfunc_stats(
         &self,
@@ -123,9 +123,9 @@ impl ReplayWork {
 ///
 /// # Arguments
 ///
-/// - `start_block`: starting block of the replay
-/// - `end_block`: ending block (included) of the replay.
-/// - `storage`: connection with the Pathfinder database
+/// - `start_block`: Starting block of the replay
+/// - `end_block`: Ending block (included) of the replay.
+/// - `storage`: Connection with the Pathfinder database
 ///
 /// # Errors
 ///
@@ -155,9 +155,9 @@ pub fn run_replay(
 ///
 /// # Arguments
 ///
-/// - `start_block`: starting block of the replay
-/// - `end_block`: ending block (included) of the replay.
-/// - `storage`: connection with the Pathfinder database
+/// - `start_block`: Starting block of the replay
+/// - `end_block`: Ending block (included) of the replay.
+/// - `storage`: Connection with the Pathfinder database
 ///
 /// # Errors
 ///
@@ -208,8 +208,8 @@ fn generate_replay_work(
 ///
 /// # Arguments
 ///
-/// - `replay_work`: the list of blocks to be replayed.
-/// - `storage`: connection with the Pathfinder database.
+/// - `replay_work`: The list of blocks to be replayed.
+/// - `storage`: Connection with the Pathfinder database.
 ///
 /// # Errors
 ///
@@ -239,8 +239,8 @@ fn replay_transactions(
 ///
 /// # Arguments
 ///
-/// - `storage`: connection with the Pathfinder database.
-/// - `work`: the block to be re-executed
+/// - `storage`: Connection with the Pathfinder database.
+/// - `work`: The block to be re-executed
 ///
 /// # Errors
 ///
@@ -298,7 +298,7 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
 ///
 /// # Arguments
 ///
-/// - `tx` is the open `Transaction` object with the databse.
+/// - `tx`: This is the open `Transaction` object with the databse.
 ///
 /// # Errors
 ///

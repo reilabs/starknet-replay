@@ -36,8 +36,8 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 ///
 /// # Arguments
 ///
-/// - `sierra_program`: the sierra program
-/// - `metadata_config`: optional. It contains the configuration options.
+/// - `sierra_program`: The sierra program
+/// - `metadata_config`: Optional. It contains the configuration options.
 ///
 /// # Errors
 ///
@@ -83,18 +83,18 @@ impl SierraCasmRunnerLight {
     ///
     /// # Arguments
     ///
-    /// - `sierra_program`: the sierra program considered in the runner.
-    /// - `metadata_config`: optional. Configuration for the compilation from
+    /// - `sierra_program`: The sierra program considered in the runner.
+    /// - `metadata_config`: Optional. Configuration for the compilation from
     ///   Sierra to CASM.
-    /// - `run_profiler`: optional. It contains configuration parameters for the
+    /// - `run_profiler`: Optional. It contains configuration parameters for the
     ///   profiler.
     ///
     /// # Errors
     ///
     /// Returns [`Err`] if:
     ///
-    /// - there is any error in the call to `create_metadata`
-    /// - there is an error in the generation of the `sierra_program_registry`
+    /// - There is any error in the call to `create_metadata`
+    /// - There is an error in the generation of the `sierra_program_registry`
     pub fn new(
         sierra_program: cairo_lang_sierra::program::Program,
         metadata_config: Option<MetadataComputationConfig>,
@@ -122,7 +122,7 @@ impl SierraCasmRunnerLight {
     }
 
     fn sierra_statement_index_by_pc(&self, pc: usize) -> StatementIdx {
-        // the `-1` here can't cause an underflow as the first statement is
+        // The `-1` here can't cause an underflow as the first statement is
         // always at offset 0, so it is always on the left side of the
         // partition, and thus the partition index is >0.
         StatementIdx(
