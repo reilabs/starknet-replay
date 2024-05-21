@@ -1,25 +1,23 @@
-## About
+# Cairo Replay
 
 `cairo-replay` is a CLI application to replay Starknet transactions locally using
-data from Pathfinder database. It reports the frequency each `libfunc` has been
+data from the Pathfinder database. It reports the frequency with which each `libfunc` has been
 called when replaying the transactions.
 
 Only `INVOKE` transactions of Sierra contracts are used for this report because
 only Sierra contracts use libfuncs and only `INVOKE` transactions execute Sierra
 code. Rejected transactions are included.
 
-Gathering of these data can have many benefits among which:
+Gathering this data allows actions to be taken based on libfunc usage,
+examples of which include designating certain functions for extra
+scrutiny based on their popularity and allowing deprecation of less-used
+libfuncs. This information allows allows analysis of how libfunc usage
+changes over time, and how new functions are adopted by the community.
 
-- Knowing which libfuncs require top scrutinity because most frequent
-- Knowing if any libfunc can be deprecated because of little use
-- Identifying potential new libfuncs due to recurrent patterns
-- How usage of libfuncs changes over time
-- Rate of adoption of new libfuncs
+In the future, this tool is likely to evolve to support:
 
-Next features to be added:
-
-- Support of `papyrus` database
-- Replay transactions with changes to the storage layer.
+- Use of the `papyrus` database as an alternative to pathfinder.
+- Analysis of changes to the storage layer during the transaction replay.
 
 ## How to Use
 
