@@ -32,6 +32,21 @@ database is generated from running a `pathfinder` node. Further information is
 available
 [here](https://github.com/eqlabs/pathfinder/tree/v0.11.6?tab=readme-ov-file#database-snapshots).
 
+## Example
+
+```bash
+cargo run -- --db-path ../pathfinder/mainnet.sqlite --start-block 632917 --end-block 632917
+```
+
+The command above replays all transactions of block [632917](https://starkscan.co/block/632917#transactions)
+
+## Limitations
+
+- Some transactions trigger `TransactionExecutionError::ExecutionError`
+- Libfunc frequency results haven't been checked yet
+
+## Requirements
+
 Tested only on `pathfinder-v0.11.x`. More recent version of Pathfinder use a
 size optimised database which may require some changes.
 
