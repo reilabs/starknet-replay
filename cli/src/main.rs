@@ -30,9 +30,11 @@ struct Args {
     #[arg(long)]
     /// The path of the Pathfinder database file.
     db_path: PathBuf,
+    
     #[arg(long)]
     /// The starting block to replay transactions.
     start_block: u64,
+    
     #[arg(long)]
     /// The final block (included) to stop replaying transactions. It is
     /// reduced if bigger than the biggest block in the database.
