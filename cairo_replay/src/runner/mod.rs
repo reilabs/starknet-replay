@@ -12,9 +12,13 @@ use cairo_lang_sierra::extensions::core::{
     CoreLibfunc,
     CoreType,
 };
-use cairo_lang_sierra::program::{GenStatement, StatementIdx};
+use cairo_lang_sierra::program::{GenStatement, Program, StatementIdx};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
-use cairo_lang_sierra_to_casm::compiler::{CairoProgram, SierraToCasmConfig};
+use cairo_lang_sierra_to_casm::compiler::{
+    compile,
+    CairoProgram,
+    SierraToCasmConfig,
+};
 use cairo_lang_sierra_to_casm::metadata::{
     calc_metadata,
     calc_metadata_ap_change_only,
@@ -46,7 +50,7 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 /// - Call to `calc_metadata` fails
 /// - Call to `calc_metadata_ap_change_only` fails
 fn create_metadata(
-    sierra_program: &cairo_lang_sierra::program::Program,
+    sierra_program: &Program,
     metadata_config: Option<MetadataComputationConfig>,
 ) -> Result<Metadata, RunnerError> {
     if let Some(metadata_config) = metadata_config {
@@ -67,7 +71,7 @@ fn create_metadata(
 /// `collect_profiling_info`.
 pub struct SierraCasmRunnerLight {
     /// The sierra program.
-    sierra_program: cairo_lang_sierra::program::Program,
+    sierra_program: Program,
     /// Program registry for the Sierra program.
     sierra_program_registry: ProgramRegistry<CoreType, CoreLibfunc>,
     /// The casm program matching the Sierra code.
@@ -96,7 +100,7 @@ impl SierraCasmRunnerLight {
     /// - The call to `create_metadata` fails
     /// - The generation of `sierra_program_registry` fails
     pub fn new(
-        sierra_program: cairo_lang_sierra::program::Program,
+        sierra_program: Program,
         metadata_config: Option<MetadataComputationConfig>,
         run_profiler: Option<ProfilingInfoCollectionConfig>,
     ) -> Result<Self, RunnerError> {
@@ -104,7 +108,7 @@ impl SierraCasmRunnerLight {
         let metadata = create_metadata(&sierra_program, metadata_config)?;
         let sierra_program_registry =
             ProgramRegistry::<CoreType, CoreLibfunc>::new(&sierra_program)?;
-        let casm_program = cairo_lang_sierra_to_casm::compiler::compile(
+        let casm_program = compile(
             &sierra_program,
             &metadata,
             SierraToCasmConfig {

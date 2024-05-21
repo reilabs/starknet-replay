@@ -6,7 +6,8 @@
 
 use std::sync::Arc;
 
-use cairo_lang_sierra::program::{self};
+use cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId};
+use cairo_lang_sierra::program::{self, ConcreteLibfuncLongId, Program};
 use cairo_lang_sierra_generator::db::SierraGeneratorTypeLongId;
 use cairo_lang_sierra_generator::replace_ids::SierraIdReplacer;
 use cairo_lang_utils::extract_matches;
@@ -35,14 +36,14 @@ use cairo_lang_utils::extract_matches;
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct DebugReplacer {
     /// The Sierra program to replace ids from
-    program: cairo_lang_sierra::program::Program,
+    program: Program,
 }
 impl DebugReplacer {
     /// Get the long debug name for the libfunc with id equivalent to `id`.
     fn lookup_intern_concrete_lib_func(
         &self,
-        id: &cairo_lang_sierra::ids::ConcreteLibfuncId,
-    ) -> cairo_lang_sierra::program::ConcreteLibfuncLongId {
+        id: &ConcreteLibfuncId,
+    ) -> ConcreteLibfuncLongId {
         self.program
             .libfunc_declarations
             .iter()
@@ -55,7 +56,7 @@ impl DebugReplacer {
     /// Get the long debug name for the type with id equivalent to `id`.
     fn lookup_intern_concrete_type(
         &self,
-        id: &cairo_lang_sierra::ids::ConcreteTypeId,
+        id: &ConcreteTypeId,
     ) -> SierraGeneratorTypeLongId {
         let concrete_type = self
             .program
@@ -68,22 +69,16 @@ impl DebugReplacer {
     }
 }
 impl SierraIdReplacer for DebugReplacer {
-    fn replace_libfunc_id(
-        &self,
-        id: &cairo_lang_sierra::ids::ConcreteLibfuncId,
-    ) -> cairo_lang_sierra::ids::ConcreteLibfuncId {
+    fn replace_libfunc_id(&self, id: &ConcreteLibfuncId) -> ConcreteLibfuncId {
         let mut long_id = self.lookup_intern_concrete_lib_func(id);
         self.replace_generic_args(&mut long_id.generic_args);
-        cairo_lang_sierra::ids::ConcreteLibfuncId {
+        ConcreteLibfuncId {
             id: id.id,
             debug_name: Some(long_id.to_string().into()),
         }
     }
 
-    fn replace_type_id(
-        &self,
-        id: &cairo_lang_sierra::ids::ConcreteTypeId,
-    ) -> cairo_lang_sierra::ids::ConcreteTypeId {
+    fn replace_type_id(&self, id: &ConcreteTypeId) -> ConcreteTypeId {
         match self.lookup_intern_concrete_type(id) {
             SierraGeneratorTypeLongId::CycleBreaker(ty) => todo!("{:?}", ty),
             SierraGeneratorTypeLongId::Regular(long_id) => {
@@ -108,7 +103,7 @@ impl SierraIdReplacer for DebugReplacer {
                         long_id.generic_args.clear();
                     }
                 }
-                cairo_lang_sierra::ids::ConcreteTypeId {
+                ConcreteTypeId {
                     id: id.id,
                     debug_name: Some(long_id.to_string().into()),
                 }
@@ -118,10 +113,7 @@ impl SierraIdReplacer for DebugReplacer {
 
     /// Helper for [`replace_sierra_ids`] and [`replace_sierra_ids_in_program`]
     /// replacing function ids.
-    fn replace_function_id(
-        &self,
-        sierra_id: &cairo_lang_sierra::ids::FunctionId,
-    ) -> cairo_lang_sierra::ids::FunctionId {
+    fn replace_function_id(&self, sierra_id: &FunctionId) -> FunctionId {
         sierra_id.clone()
     }
 }
@@ -141,9 +133,7 @@ impl SierraIdReplacer for DebugReplacer {
 ///
 /// Similar to [`replace_sierra_ids`] except that it acts on
 /// [`cairo_lang_sierra::program::Program`].
-pub fn replace_sierra_ids_in_program(
-    program: &cairo_lang_sierra::program::Program,
-) -> cairo_lang_sierra::program::Program {
+pub fn replace_sierra_ids_in_program(program: &Program) -> Program {
     DebugReplacer {
         program: program.clone(),
     }

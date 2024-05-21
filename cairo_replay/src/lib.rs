@@ -19,10 +19,15 @@ use pathfinder_common::consts::{
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
 use pathfinder_common::receipt::Receipt;
-use pathfinder_common::transaction::Transaction;
+use pathfinder_common::transaction::Transaction as StarknetTransaction;
 use pathfinder_common::{BlockHeader, BlockNumber, ChainId};
 use pathfinder_executor::ExecutionState;
-use pathfinder_storage::{BlockId, Storage};
+use pathfinder_rpc::compose_executor_transaction;
+use pathfinder_storage::{
+    BlockId,
+    Storage,
+    Transaction as DatabaseTransaction,
+};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use smol_str::SmolStr;
 
@@ -37,7 +42,7 @@ struct ReplayWork {
     /// The header of the block being replayed.
     pub header: BlockHeader,
     /// The list of transactions to be replayed.
-    pub transactions: Vec<Transaction>,
+    pub transactions: Vec<StarknetTransaction>,
     /// The list of receipts after a transaction is replayed using
     /// `pathfinder` node.
     pub receipts: Vec<Receipt>,
@@ -62,7 +67,7 @@ impl ReplayWork {
     ///   transactions. Must be the same length as `transactions`.
     pub fn new(
         header: BlockHeader,
-        transactions: Vec<Transaction>,
+        transactions: Vec<StarknetTransaction>,
         receipts: Vec<Receipt>,
     ) -> ReplayWork {
         Self {
@@ -257,8 +262,7 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
 
     let mut transactions = Vec::new();
     for transaction in &work.transactions {
-        let transaction =
-            pathfinder_rpc::compose_executor_transaction(transaction, &db_tx)?;
+        let transaction = compose_executor_transaction(transaction, &db_tx)?;
         transactions.push(transaction);
     }
 
@@ -302,9 +306,7 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
 /// - The first block doesn't have a hash matching one of
 /// the known hashes
 /// - There is an error querying the database.
-fn get_chain_id(
-    tx: &pathfinder_storage::Transaction<'_>,
-) -> anyhow::Result<ChainId> {
+fn get_chain_id(tx: &DatabaseTransaction<'_>) -> anyhow::Result<ChainId> {
     let (_, genesis_hash) = tx
         .block_id(BlockNumber::GENESIS.into())?
         .context("Getting genesis hash")?;

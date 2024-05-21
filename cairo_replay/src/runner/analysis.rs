@@ -13,12 +13,13 @@ use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
-use pathfinder_common::BlockNumber;
+use pathfinder_common::{BlockNumber, ClassHash as PathfinderClassHash};
 use pathfinder_executor::types::TransactionTrace;
 use pathfinder_executor::IntoFelt;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
 use pathfinder_storage::{BlockId, Transaction};
 use smol_str::SmolStr;
+use starknet_api::core::ClassHash as StarknetClassHash;
 use starknet_api::hash::StarkFelt;
 
 use crate::runner::replace_ids::replace_sierra_ids_in_program;
@@ -26,9 +27,9 @@ use crate::runner::SierraCasmRunnerLight;
 
 /// Returns the hashmap of visited program counters for the input `trace`.
 ///
-/// The result is a hashmap where the key is the `ClassHash` and the value is
-/// the Vector of visited program counters for each `ClassHash` execution in
-/// `trace`.
+/// The result is a hashmap where the key is the `StarknetClassHash` and the
+/// value is the Vector of visited program counters for each `StarknetClassHash`
+/// execution in `trace`.
 /// If `trace` is not an Invoke transaction, it returns None.
 ///
 /// # Arguments
@@ -37,7 +38,7 @@ use crate::runner::SierraCasmRunnerLight;
 ///   from.
 fn get_visited_program_counters(
     trace: &TransactionTrace,
-) -> Option<&HashMap<starknet_api::core::ClassHash, Vec<Vec<usize>>>> {
+) -> Option<&HashMap<StarknetClassHash, Vec<Vec<usize>>>> {
     match trace {
         TransactionTrace::Invoke(tx) => Some(&tx.visited_pcs),
         _ => None,
@@ -59,13 +60,13 @@ fn get_visited_program_counters(
 fn get_class_definition_at_block(
     block_num: BlockNumber,
     db: &Transaction,
-    class_hash: &starknet_api::core::ClassHash,
+    class_hash: &StarknetClassHash,
 ) -> anyhow::Result<ContractClass> {
     let block_id = BlockId::Number(block_num);
     let class_hash: StarkFelt = class_hash.0;
     let class_definition = db.class_definition_at(
         block_id,
-        pathfinder_common::ClassHash(class_hash.into_felt()),
+        PathfinderClassHash(class_hash.into_felt()),
     );
     let class_definition = class_definition?.unwrap();
 
