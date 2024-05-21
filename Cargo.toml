@@ -9,10 +9,16 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+# Version chosen only because 1.78.0 is the stable version when writing this Cargo.toml
+# If this version is changed, amend the version set in `build.yml`
+rust-version = "1.78.0"
 license = "Apache-2.0"
 repository = "https://github.com/reilabs/cairo-replay"
 keywords = ["cairo", "starknet"]
 readme = "README.md"
+
+# Prevent publishing by accident.
+publish = false
 
 [workspace.dependencies]
 anyhow = "1.0.75"

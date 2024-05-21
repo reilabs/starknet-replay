@@ -2,6 +2,7 @@ name: Push Checks
 on: push
 
 env:
+  RUST_VERSION: 1.78.0
   CARGO_TERM_COLOR: always
 
 jobs:
