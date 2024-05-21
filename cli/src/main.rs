@@ -18,6 +18,7 @@ use cairo_replay::run_replay;
 use clap::Parser;
 use itertools::Itertools;
 use pathfinder_storage::{BlockId, JournalMode, Storage};
+use rayon::current_num_threads;
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
@@ -30,11 +31,11 @@ struct Args {
     #[arg(long)]
     /// The path of the Pathfinder database file.
     db_path: PathBuf,
-    
+
     #[arg(long)]
     /// The starting block to replay transactions.
     start_block: u64,
-    
+
     #[arg(long)]
     /// The final block (included) to stop replaying transactions. It is
     /// reduced if bigger than the biggest block in the database.
@@ -54,7 +55,7 @@ fn main() -> anyhow::Result<()> {
         bail!("end_block must be greater or equal to start_block.")
     }
 
-    let n_cpus = rayon::current_num_threads();
+    let n_cpus = current_num_threads();
 
     let database_path = args.db_path;
     // Choosing number of concurrent connections to be twice the number of cpu

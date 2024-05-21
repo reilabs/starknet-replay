@@ -2226,7 +2226,6 @@ dependencies = [
  "cairo-lang-starknet-classes",
  "cairo-lang-utils 2.6.3",
  "itertools 0.11.0",
- "jemallocator",
  "pathfinder-common",
  "pathfinder-executor",
  "pathfinder-rpc",
@@ -2237,7 +2236,6 @@ dependencies = [
  "smol_str 0.2.1",
  "starknet_api",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -2348,26 +2346,12 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cairo-lang-compiler 2.6.3",
- "cairo-lang-runner",
- "cairo-lang-sierra 2.6.3",
- "cairo-lang-sierra-generator 2.6.3",
- "cairo-lang-sierra-to-casm 2.6.3",
- "cairo-lang-starknet-classes",
- "cairo-lang-utils 2.6.3",
  "cairo-replay",
  "clap",
  "itertools 0.11.0",
  "jemallocator",
- "pathfinder-common",
- "pathfinder-executor",
- "pathfinder-rpc",
  "pathfinder-storage",
  "rayon",
- "serde",
- "serde_json",
- "smol_str 0.2.1",
- "starknet_api",
  "tracing",
  "tracing-subscriber",
 ]

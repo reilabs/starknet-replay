@@ -10,24 +10,24 @@ readme.workspace = true
 keywords.workspace = true
 
 [dependencies]
+# All `cairo-lang-` crates must have the same version
+cairo-lang-starknet-classes = "2.6.0"
+cairo-lang-sierra-to-casm = "2.6.0"
+cairo-lang-runner = "2.6.0"
+cairo-lang-compiler = "2.6.0"
+cairo-lang-sierra = "2.6.0"
+cairo-lang-utils = "2.6.0"
+cairo-lang-sierra-generator = "2.6.0"
+# Hardcoding the commit hash until the changes to pathfinder are merged in the main branch of `eqlabs/pathfinder`
+pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
+pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
+pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
+starknet_api = "0.10.0"
+serde = "1.0.130"
+serde_json = "1.0.81"
+smol_str = { version = "0.2.0", features = ["serde"] }
 anyhow.workspace = true
-cairo-lang-starknet-classes.workspace = true
-cairo-lang-sierra-to-casm.workspace = true
-cairo-lang-runner.workspace = true
-cairo-lang-compiler.workspace = true
-cairo-lang-sierra.workspace = true
-cairo-lang-utils.workspace = true
-cairo-lang-sierra-generator.workspace = true
-jemallocator.workspace = true
-pathfinder-common.workspace = true
-pathfinder-executor.workspace = true
-pathfinder-rpc.workspace = true
 pathfinder-storage.workspace = true
 rayon.workspace = true
-starknet_api.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
-smol_str.workspace = true
 itertools.workspace = true
