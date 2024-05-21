@@ -105,7 +105,7 @@ fn get_sierra_program_from_class_definition(
 /// `ProfilingInfoProcessorParams`.
 ///
 /// To collect the list of libfunc being used during contract invocation, we
-/// only need to know the concrete_likbfunc or the generic_libfunc.
+/// only need to know the `concrete_likbfunc` or the `generic_libfunc`.
 /// `concrete_libfunc` differentiates between different instantiations of a
 /// generic type, unlike `generic_libfunc`.
 fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {

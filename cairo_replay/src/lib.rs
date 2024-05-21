@@ -124,7 +124,7 @@ impl ReplayWork {
 /// # Arguments
 ///
 /// - `start_block`: starting block of the replay
-/// - 'end_block`: ending block (included) of the replay.
+/// - `end_block`: ending block (included) of the replay.
 /// - `storage`: connection with the Pathfinder database
 ///
 /// # Errors
@@ -156,7 +156,7 @@ pub fn run_replay(
 /// # Arguments
 ///
 /// - `start_block`: starting block of the replay
-/// - 'end_block`: ending block (included) of the replay.
+/// - `end_block`: ending block (included) of the replay.
 /// - `storage`: connection with the Pathfinder database
 ///
 /// # Errors
