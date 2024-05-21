@@ -18,7 +18,7 @@ Gathering of these data can have many benefits among which:
 
 Next features to be added:
 
-- Support OF `papyrus` database
+- Support of `papyrus` database
 - Replay transactions with changes to the storage layer.
 
 ## How to Use
