@@ -286,7 +286,7 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Get the `chain_id` of the Pathfinder databse.
+/// Get the `chain_id` of the Pathfinder database.
 ///
 /// Detect the chain used by quering the hash of the first block in the
 /// database. It can detect only Mainnet, Goerli, Sepolia networks.
