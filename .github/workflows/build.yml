@@ -7,7 +7,7 @@ env:
 
 jobs:
   build:
-    name: Build and test
+    name: Test
     runs-on: ubuntu-latest
     steps:
     - name: Checkout source
@@ -28,7 +28,7 @@ jobs:
       run: cargo test
 
   clippy:
-    name: Clippy
+    name: Lint
     runs-on: ubuntu-latest
     steps:
     - name: Checkout source
@@ -47,7 +47,7 @@ jobs:
       run: cargo clippy --locked --all-targets --all-features -- -D warnings
 
   lint:
-    name: Rustfmt
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
     - name: Checkout source
