@@ -36,7 +36,7 @@ pub mod replace_ids;
 /// Verified with random testing.
 const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
-/// Creates the metadata required for a Sierra program lowering to CASM.
+/// Creates the metadata required for a lowering a Sierra program to CASM.
 ///
 /// # Arguments
 ///
