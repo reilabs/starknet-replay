@@ -55,7 +55,7 @@ impl ReplayWork {
     ///
     /// # Arguments
     ///
-    /// - `header`: the header of the block `transactions` belong to.
+    /// - `header`: The header of the block that the `transactions` belong to.
     /// - `transactions`: the list of transactions in the block that need to be
     ///   profiled.
     /// - `receipts`: the list of receipts for the execution of the
