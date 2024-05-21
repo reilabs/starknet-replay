@@ -134,6 +134,7 @@ impl SierraIdReplacer for DebugReplacer {
 /// opening their generic arguments, for functions no changes are done because
 /// of lack of data saved in the blockchain. For example, while the original
 /// debug string may be `[6]`, the resulting debug string may be:
+///
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
 ///  - For user functions: `[6]`.
