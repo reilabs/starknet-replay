@@ -30,6 +30,8 @@ use crate::runner::analysis::analyse_tx;
 
 mod runner;
 
+pub use crate::runner::histogram::export_histogram;
+
 /// `ReplayWork` contains the data to replay a single block from Starknet
 /// blockchain.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]

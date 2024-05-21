@@ -14,7 +14,7 @@ use std::num::NonZeroU32;
 use std::path::PathBuf;
 
 use anyhow::{bail, Context};
-use cairo_replay::run_replay;
+use cairo_replay::{export_histogram, run_replay};
 use clap::Parser;
 use itertools::Itertools;
 use pathfinder_storage::{BlockId, JournalMode, Storage};
@@ -93,6 +93,12 @@ fn main() -> anyhow::Result<()> {
     let elapsed = start_time.elapsed();
 
     tracing::info!(?elapsed, "Finished");
+
+    let filename = "hist.svg";
+    let title = format!(
+        "Libfuncs usage from block {first_block} to block {last_block}"
+    );
+    export_histogram(filename, title.as_str(), libfunc_stats)?;
 
     Ok(())
 }

@@ -26,6 +26,7 @@ use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::chain;
 
 pub mod analysis;
+pub mod histogram;
 pub mod replace_ids;
 
 /// Big enough number to handle the contracts in Starknet.

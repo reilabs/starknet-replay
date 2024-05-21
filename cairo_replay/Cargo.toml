@@ -10,6 +10,7 @@ readme.workspace = true
 keywords.workspace = true
 
 [dependencies]
+plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "9b05119c36d586822e32871436f6c2c5e869d99a" } #"0.3.5"
 anyhow.workspace = true
 cairo-lang-starknet-classes.workspace = true
 cairo-lang-sierra-to-casm.workspace = true
