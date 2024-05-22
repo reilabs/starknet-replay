@@ -67,8 +67,10 @@ struct ReplayWork {
     // TODO: analyse if there is a workaround to enforce that transactions
     // aren't misplaced in the wrong block
     pub transactions: Vec<StarknetTransaction>,
-    /// The list of receipts after a transaction is replayed using
-    /// `pathfinder` node.
+    /// The list of receipts of `transactions`.
+    ///
+    /// The receipt of each transaction in the `transactions` vector is found
+    /// at matching index in the `receipts` vector.
     pub receipts: Vec<Receipt>,
     /// The key corresponds to the concrete libfunc name and the value
     /// contains the number of times the libfunc has been called
@@ -93,13 +95,19 @@ impl ReplayWork {
         header: BlockHeader,
         transactions: Vec<StarknetTransaction>,
         receipts: Vec<Receipt>,
-    ) -> ReplayWork {
-        Self {
+    ) -> anyhow::Result<ReplayWork> {
+        if transactions.len() != receipts.len() {
+            bail!(
+                "The length of `transactions` must match the length of \
+                 `receipts` to create a new `ReplayWork` struct."
+            )
+        }
+        Ok(Self {
             header,
             transactions,
             receipts,
             libfuncs_weight: OrderedHashMap::default(),
-        }
+        })
     }
 
     /// Update `libfuncs_weight` from the input `libfuncs_weight`
@@ -223,7 +231,7 @@ fn generate_replay_work(
             transactions.truncate(1);
             receipts.truncate(1);
 
-            Ok(ReplayWork::new(header, transactions, receipts))
+            ReplayWork::new(header, transactions, receipts)
         })
         .collect::<anyhow::Result<Vec<ReplayWork>>>()
 }
