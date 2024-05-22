@@ -86,7 +86,7 @@ impl SierraCasmRunnerLight {
     /// Generate a new `SierraCasmRunnerLight` object.
     ///
     /// Takes a `sierra_program` with an optional `metadata_config` and
-    /// `run_profiler` to generate a `SierraCasmRunnerLight`.
+    /// `run_profiler` to generate a `SierraCasmRunnerLight` object.
     ///
     /// # Arguments
     ///
@@ -142,6 +142,13 @@ impl SierraCasmRunnerLight {
     }
 
     /// Collects profiling info of the current run using the trace.
+    ///
+    /// This function has been copied from `cairo-lang-runner` crate but it was
+    /// written for Cairo programs. It needs to be adapted for use with Starknet
+    /// contracts.
+    ///
+    /// In particular, the variable `end_of_program_reached` doesn't
+    /// seem to be valid for Starknet contracts.
     // TODO: To be refactored!
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> ProfilingInfo {
         let sierra_len =
@@ -202,13 +209,6 @@ impl SierraCasmRunnerLight {
                 continue;
             }
 
-            // if _end_of_program_reached {
-            //     unreachable!(
-            //         "End of program reached, but trace continues. Left {}",
-            //         pcs.len() - i
-            //     );
-            // }
-
             cur_weight += 1;
 
             // TODO(yuval): Maintain a map of pc to sierra statement index (only
@@ -268,8 +268,8 @@ impl SierraCasmRunnerLight {
                             cur_weight;
 
                         let Some(popped) = function_stack.pop() else {
-                            // End of the program.
-                            // _end_of_program_reached = true;
+                            // End of the program. Not valid for Starknet
+                            // contracts.
                             continue;
                         };
                         cur_weight += popped.1;
