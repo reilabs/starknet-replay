@@ -168,8 +168,8 @@ impl ReplayWork {
 ///
 /// Returns [`Err`] if:
 ///
-/// - There is any issue calling `generate_replay_work` or if
-///   `replay_transactions` returns an error.
+/// - A block number doesn't exist in the database history
+/// - `end_block` is less than `start_block`
 pub fn run_replay(
     start_block: u64,
     end_block: u64,
