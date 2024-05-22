@@ -34,6 +34,9 @@ pub mod replace_ids;
 
 /// Big enough number to handle the contracts in Starknet.
 /// Verified with random testing.
+///
+/// This is used in the function `collect_profiling_info` to limit the max depth
+/// of the stack for nested calls of functions.
 const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
 /// Creates the metadata required for a lowering a Sierra program to CASM.
