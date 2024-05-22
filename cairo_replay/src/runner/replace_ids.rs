@@ -22,13 +22,16 @@ use cairo_lang_utils::extract_matches;
 /// ConcreteTypeId}` with a dummy ids whose debug string is the string
 /// representing the expanded information about the id. For Libfuncs and Types -
 /// that would be recursively opening their generic arguments. Function aren't
-/// included. For example, while the original debug string may be `[6]`, the
+/// included.
+///
+/// This is needed because the Sierra Bytecode stored in the database
+/// requires id replacement for ease of readability.
+///
+/// For example, while the original debug string may be `[6]`, the
 /// resulting debug string may be:
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
 ///  - For user functions: `[6]`.
-/// This is needed because the Sierra Bytecode stored in the database
-/// requires id replacement.
 ///
 /// User functions are kept in numeric id form because the names aren't
 /// recoverable after the contract is compiled and deployed in the blockchain.
