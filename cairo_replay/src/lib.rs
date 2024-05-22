@@ -20,7 +20,8 @@
 //! Beyond [`run_replay`], the other key public functions of the library are as
 //! follows:
 //!
-//! - [`runner::analyse_tx`] which updates the cumulative usage of libfuncs
+//! - [`runner::extract_libfuncs_weight`] which updates the cumulative usage of
+//!   libfuncs
 //! - [`runner::replace_sierra_ids_in_program`] which replaces the ids of
 //!   libfuncs and types with their debug name in a Sierra program.
 
@@ -49,7 +50,7 @@ use pathfinder_storage::{
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use smol_str::SmolStr;
 
-use crate::runner::analysis::analyse_tx;
+use crate::runner::analysis::extract_libfuncs_weight;
 
 mod runner;
 
@@ -310,7 +311,7 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
     let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
         OrderedHashMap::default();
     for simulation in &simulations {
-        analyse_tx(
+        extract_libfuncs_weight(
             &simulation.trace,
             work.header.number,
             &db_tx,

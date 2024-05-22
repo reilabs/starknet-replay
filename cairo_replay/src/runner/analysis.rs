@@ -121,8 +121,9 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
 /// Update `cumulative_libfuncs_weight` with the frequency of libfuncs called in
 /// transaction `trace`.
 ///
-/// It takes the `trace` and the `block_num` where the trace belongs to
-/// populate `cumulative_libfuncs_weight` from the visited program counters.
+/// To extract the libfuncs called, it needs to query the Starknet contract from
+/// the Pathfinder database. Then, it runs the profiler over the transaction
+/// `trace`.
 ///
 /// # Arguments
 ///
@@ -133,7 +134,7 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
 ///   libfunc name and the value is the number of times the key has been called.
 ///   If the libfunc is never called, it'a not present. The value is increased
 ///   if the key is already present.
-pub fn analyse_tx(
+pub fn extract_libfuncs_weight(
     trace: &TransactionTrace,
     block_num: BlockNumber,
     db: &Transaction,
