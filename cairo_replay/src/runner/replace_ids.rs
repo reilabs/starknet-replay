@@ -15,21 +15,21 @@ use cairo_lang_utils::extract_matches;
 /// Replace the ids in a Sierra program.
 ///
 /// `DebugReplacer` is adapted from `DebugReplacer` contained in the crate
-/// `cairo-lang-sierra-generator`. The reason for these changes is that when
-/// recovering a sierra program from the blockchain, the `SierraGenGroup`
-/// object, which contains compilation data is lost, therefore only a partial id
-/// replacement is possible.
+/// `cairo-lang-sierra-generator`. These changes are required because the
+/// `SierraGenGroup` object is not recoverable from Starknet blockchain data.
+///
 /// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId,
 /// ConcreteTypeId}` with a dummy ids whose debug string is the string
 /// representing the expanded information about the id. For Libfuncs and Types -
 /// that would be recursively opening their generic arguments. Function aren't
-/// included. For example, while the original debug string
-/// may be `[6]`, the resulting debug string may be:
+/// included. For example, while the original debug string may be `[6]`, the
+/// resulting debug string may be:
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
 ///  - For user functions: `[6]`.
 /// This is needed because the Sierra Bytecode stored in the database
 /// requires id replacement.
+///
 /// User functions are kept in numeric id form because the names aren't
 /// recoverable after the contract is compiled and deployed in the blockchain.
 /// `DebugReplacer` implements `SierraIdReplacer` to be able to perform the
