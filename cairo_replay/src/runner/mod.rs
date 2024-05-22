@@ -64,8 +64,11 @@ fn create_metadata(
     })
 }
 
-/// This is a slimmed down version of `SierraCasmRunner`
-/// in order to setup the profiler during transaction
+/// Extract profiling data from the list of visited program counters.
+///
+/// This is a slimmed down version of `SierraCasmRunner` from
+/// `cairo-lang-runner` crate adapted for use in Starknet contracts instead of
+/// Cairo programs. It is needed to setup the profiler during transaction
 /// replay. There is no call to `cairo-vm` because this slimmed down version
 /// takes the list of visited program counters as input in
 /// `collect_profiling_info`.

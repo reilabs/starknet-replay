@@ -12,12 +12,13 @@ use cairo_lang_sierra_generator::db::SierraGeneratorTypeLongId;
 use cairo_lang_sierra_generator::replace_ids::SierraIdReplacer;
 use cairo_lang_utils::extract_matches;
 
-/// Replace the ids in a sierra program.
+/// Replace the ids in a Sierra program.
 ///
-/// `DebugReplacer` is adapted from `DebugReplacer` contained in the `cario`
-/// crate. The reason for these changes is that when recovering a sierra program
-/// from the blockchain, the `SierraGenGroup` object, which contains compilation
-/// data is lost, therefore only a partial id replacement is possible.
+/// `DebugReplacer` is adapted from `DebugReplacer` contained in the crate
+/// `cairo-lang-sierra-generator`. The reason for these changes is that when
+/// recovering a sierra program from the blockchain, the `SierraGenGroup`
+/// object, which contains compilation data is lost, therefore only a partial id
+/// replacement is possible.
 /// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId,
 /// ConcreteTypeId}` with a dummy ids whose debug string is the string
 /// representing the expanded information about the id. For Libfuncs and Types -

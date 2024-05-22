@@ -1,10 +1,28 @@
-//! Replays transactions from `pathfinder` sqlite database
-//! and prints the histogram of the usage of `libfuncs`
-//! in the blocks replayed. This is the back end of the package.
-//! The module runner contains the code for the profiler which counts
-//! the number of `libfuncs` called during execution of the transaction.
-//! It also contains the code to replace the ids of the libfuncs with their
-//! respective name.
+//! Replays transactions from the `pathfinder` sqlite database and
+//! collects statistics on the execution of those transactions.
+//!
+//! At the current time, the library focuses on gathering usage
+//! statistics of the various library functions (libfuncs) in the
+//! blocks being replayed. In the future it may be expanded to
+//! collect more kinds of data during replay.
+//!
+//! The simplest interaction with this library is to call the function
+//! [`run_replay`] which returns the usage statistics of libfuncs.
+//!
+//! The key structs of the library are as follows:
+//!
+//! - [`ReplayWork`] struct which contains a single block of transactions.
+//! - [`runner::SierraCasmRunnerLight`] struct to extract profiling data from a
+//!   list of visited program counters.
+//! - [`DebugReplacer`] struct replaces the ids of libfuncs and types in a
+//!   Sierra program.
+//!
+//! Beyond [`run_replay`], the other key public functions of the library are as
+//! follows:
+//!
+//! - [`runner::analyse_tx`] which updates the cumulative usage of libfuncs
+//! - [`runner::replace_sierra_ids_in_program`] which replaces the ids of
+//!   libfuncs and types with their debug name in a Sierra program.
 
 #![warn(clippy::all, clippy::cargo, clippy::pedantic)]
 #![allow(clippy::multiple_crate_versions)]
