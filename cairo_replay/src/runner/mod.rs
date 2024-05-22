@@ -41,6 +41,8 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
 /// Creates the metadata required for a lowering a Sierra program to CASM.
 ///
+/// Copied from crate `cairo-lang-runner` because it isn't public.
+///
 /// # Arguments
 ///
 /// - `sierra_program`: The sierra program
