@@ -231,14 +231,6 @@ mod tests {
         assert!(profiling_info_processor_params.process_by_concrete_libfunc);
     }
 
-    #[ignore]
-    #[test]
-    fn test_class_definition_at_block() {
-        // No trait is available to mock the `Transaction` struct
-        // Need to use a real `pathfinder` db
-        todo!()
-    }
-
     #[test]
     fn test_get_sierra_program_from_class_definition() {
         let sierra_program_json_file = "/test_data/sierra_felt.json";
