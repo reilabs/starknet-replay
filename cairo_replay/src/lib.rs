@@ -60,6 +60,12 @@ struct ReplayWork {
     /// The header of the block being replayed.
     pub header: BlockHeader,
     /// The list of transactions to be replayed.
+    ///
+    /// There isn't any check that:
+    /// - the transactions belong to block `header`
+    /// - there aren't missing transactions from block `header`
+    // TODO: analyse if there is a workaround to enforce that transactions
+    // aren't misplaced in the wrong block
     pub transactions: Vec<StarknetTransaction>,
     /// The list of receipts after a transaction is replayed using
     /// `pathfinder` node.
