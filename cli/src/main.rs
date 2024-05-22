@@ -1,14 +1,11 @@
-#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
-#![allow(clippy::multiple_crate_versions)]
-
-//! Re-execute transactions in a range of blocks.
+//! Re-execute Starknet transactions in a range of blocks.
 //!
 //! Iterates over specified blocks in the database and re-executes all
-//! transactions within those blocks
-//!
-//! Usage:
-//! `cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM>
-//! --end-block <BLOCK_NUM>`
+//! transactions within those blocks. This is only the CLI front-end. All the
+//! logic is contained in the library `cairo-replay`.
+
+#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
+#![allow(clippy::multiple_crate_versions)]
 
 use std::num::NonZeroU32;
 use std::path::PathBuf;
