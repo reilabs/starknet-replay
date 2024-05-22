@@ -239,11 +239,11 @@ fn generate_replay_work(
 /// statistics on libfunc usage.
 ///
 /// `replay_work` contains the lists of transactions to replay grouped by block.
-/// Each index in `replay_work` corresponds to a block.
 ///
 /// # Arguments
 ///
-/// - `replay_work`: The list of blocks to be replayed.
+/// - `replay_work`: The list of blocks to be replayed. Each index in
+///   corresponds to a block.
 /// - `storage`: Connection with the Pathfinder database.
 ///
 /// # Errors
