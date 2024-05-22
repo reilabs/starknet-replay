@@ -112,9 +112,8 @@ impl ReplayWork {
 
     /// Update `libfuncs_weight` from the input `libfuncs_weight`
     ///
-    /// Updates `self.libfuncs_weight` with the data from `libfuncs_weight`.
-    /// For keys already present in `self.libfuncs_weight`, the value (i.e.
-    /// weight) is added on top.
+    /// Data in `libfuncs_weight` is used to update the cumulative block
+    /// statistics on the usage of libfuncs.
     ///
     /// # Arguments
     ///
