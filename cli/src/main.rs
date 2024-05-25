@@ -7,15 +7,12 @@
 #![warn(clippy::all, clippy::cargo, clippy::pedantic)]
 #![allow(clippy::multiple_crate_versions)]
 
-use std::num::NonZeroU32;
 use std::path::PathBuf;
 
-use anyhow::{bail, Context};
-use cairo_replay::run_replay;
+use anyhow::bail;
+use cairo_replay::{connect_to_database, get_latest_block_number, run_replay};
 use clap::Parser;
 use itertools::Itertools;
-use pathfinder_storage::{BlockId, JournalMode, Storage};
-use rayon::current_num_threads;
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
@@ -48,36 +45,59 @@ fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    if args.start_block > args.end_block {
-        bail!("end_block must be greater or equal to start_block.")
+    let database_path = args.db_path;
+    let start_block = args.start_block;
+    let end_block = args.end_block;
+
+    run(start_block, end_block, database_path)
+}
+
+/// Take the command line input arguments and call cairo-replay.
+///
+/// Sanitisation of the inputs is done in this function.
+///
+/// # Arguments
+///
+/// - `start_block`: First block to replay.
+/// - `end_block`: Final block to replay.
+/// - `database_path`: Path of the Pathfinder database.
+///
+/// # Errors
+///
+/// Returns [`Err`] if:
+///
+/// - `start_block` is greater than `end_block`.
+/// - Not enough blocks in the database to cover the required range of blocks to
+///   replay.
+/// - Any error during execution of `cairo-replay`.
+fn run(
+    start_block: u64,
+    end_block: u64,
+    database_path: PathBuf,
+) -> anyhow::Result<()> {
+    if start_block > end_block {
+        bail!(
+            "Exiting because end_block must be greater or equal to \
+             start_block."
+        )
     }
 
-    let n_cpus = current_num_threads();
+    let storage = connect_to_database(database_path)?;
 
-    let database_path = args.db_path;
-    // Choosing number of concurrent connections to be twice the number of cpu
-    // threads in order to minimise idle time when replying the transactions in
-    // parallel.
-    let storage = Storage::migrate(database_path.clone(), JournalMode::WAL, 1)?
-        .create_pool(
-            NonZeroU32::new(n_cpus.checked_mul(2).unwrap().try_into().unwrap())
-                .unwrap(),
-        )?;
-    let mut db = storage
-        .connection()
-        .context("Opening database connection")?;
+    let first_block: u64 = start_block;
 
-    let first_block: u64 = args.start_block;
+    let latest_block: u64 = get_latest_block_number(&storage)?;
 
-    let latest_block = {
-        let tx = db.transaction().unwrap();
-        let (latest_block, _) = tx.block_id(BlockId::Latest)?.unwrap();
-        drop(tx);
-        drop(db);
-        latest_block.get()
-    };
+    let last_block: u64 = end_block.min(latest_block);
 
-    let last_block = args.end_block.min(latest_block);
+    if start_block > last_block {
+        bail!(
+            "Most recent block found in the databse is {}. Exiting because \
+             less than start_block {}",
+            last_block,
+            start_block
+        )
+    }
 
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
 

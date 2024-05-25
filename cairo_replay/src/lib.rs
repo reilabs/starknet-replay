@@ -50,8 +50,10 @@ use pathfinder_storage::{
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use smol_str::SmolStr;
 
+pub use crate::pathfinder_db::{connect_to_database, get_latest_block_number};
 use crate::runner::analysis::extract_libfuncs_weight;
 
+mod pathfinder_db;
 mod runner;
 
 /// `ReplayWork` contains the data necessary to replay a single block from
