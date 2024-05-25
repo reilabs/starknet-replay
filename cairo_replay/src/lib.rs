@@ -91,7 +91,7 @@ pub fn run_replay(
 ///
 /// This function queries the Pathfinder database to get the list of
 /// transactions that need to be replayed. The list of transactions is taken
-/// from all the transactions from `start_block` to `end_block` (included).
+/// from all the transactions from `start_block` to `end_block` (inclusive).
 ///
 /// # Arguments
 ///
