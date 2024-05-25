@@ -31,6 +31,7 @@ use itertools::chain;
 
 pub mod analysis;
 pub mod replace_ids;
+pub mod replay_block;
 
 /// Big enough number to handle the contracts in Starknet.
 /// Verified with random testing.
