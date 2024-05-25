@@ -11,7 +11,7 @@
 //!
 //! The key structs of the library are as follows:
 //!
-//! - [`ReplayWork`] struct which contains a single block of transactions.
+//! - [`ReplayBlock`] struct which contains a single block of transactions.
 //! - [`runner::SierraCasmRunnerLight`] struct to extract profiling data from a
 //!   list of visited program counters.
 //! - [`DebugReplacer`] struct replaces the ids of libfuncs and types in a
@@ -56,10 +56,10 @@ use crate::runner::analysis::extract_libfuncs_weight;
 mod pathfinder_db;
 mod runner;
 
-/// `ReplayWork` contains the data necessary to replay a single block from
+/// `ReplayBlock` contains the data necessary to replay a single block from
 /// the Starknet blockchain.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
-struct ReplayWork {
+struct ReplayBlock {
     /// The header of the block being replayed.
     pub header: BlockHeader,
     /// The list of transactions to be replayed.
@@ -81,7 +81,7 @@ struct ReplayWork {
     pub libfuncs_weight: OrderedHashMap<SmolStr, usize>,
 }
 
-impl ReplayWork {
+impl ReplayBlock {
     /// Create a new batch of work to be replayed.
     ///
     /// Not checking that `transactions` and `receipts` have the same length.
@@ -98,11 +98,11 @@ impl ReplayWork {
         header: BlockHeader,
         transactions: Vec<StarknetTransaction>,
         receipts: Vec<Receipt>,
-    ) -> anyhow::Result<ReplayWork> {
+    ) -> anyhow::Result<ReplayBlock> {
         if transactions.len() != receipts.len() {
             bail!(
                 "The length of `transactions` must match the length of \
-                 `receipts` to create a new `ReplayWork` struct."
+                 `receipts` to create a new `ReplayBlock` struct."
             )
         }
         Ok(Self {
@@ -179,7 +179,7 @@ pub fn run_replay(
     storage: Storage,
 ) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     // List of blocks to be replayed
-    let mut replay_work: Vec<ReplayWork> =
+    let mut replay_work: Vec<ReplayBlock> =
         generate_replay_work(start_block, end_block, &storage)?;
 
     // Iterate through each block in `replay_work` and replay all the
@@ -206,7 +206,7 @@ fn generate_replay_work(
     start_block: u64,
     end_block: u64,
     storage: &Storage,
-) -> anyhow::Result<Vec<ReplayWork>> {
+) -> anyhow::Result<Vec<ReplayBlock>> {
     let mut db = storage
         .connection()
         .context("Opening sqlite database connection")?;
@@ -233,9 +233,9 @@ fn generate_replay_work(
             transactions.truncate(1);
             receipts.truncate(1);
 
-            ReplayWork::new(header, transactions, receipts)
+            ReplayBlock::new(header, transactions, receipts)
         })
-        .collect::<anyhow::Result<Vec<ReplayWork>>>()
+        .collect::<anyhow::Result<Vec<ReplayBlock>>>()
 }
 
 /// Re-execute the list of transactions in `replay_work` and return the
@@ -254,7 +254,7 @@ fn generate_replay_work(
 /// Returns [`Err`] if the function `execute` fails to replay any transaction.
 fn replay_transactions(
     storage: Storage,
-    replay_work: &mut Vec<ReplayWork>,
+    replay_work: &mut Vec<ReplayBlock>,
 ) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     replay_work.iter_mut().par_bridge().try_for_each_with(
         storage,
@@ -282,7 +282,10 @@ fn replay_transactions(
 ///
 /// Returns [`Err`] if any transaction fails execution or if there is any error
 /// communicating with the Pathfinder database.
-fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
+fn execute(
+    storage: &mut Storage,
+    work: &mut ReplayBlock,
+) -> anyhow::Result<()> {
     let mut db = storage.connection()?;
 
     let db_tx = db
