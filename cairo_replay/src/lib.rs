@@ -51,6 +51,7 @@ use smol_str::SmolStr;
 
 pub use crate::pathfinder_db::{connect_to_database, get_latest_block_number};
 use crate::runner::analysis::extract_libfuncs_weight;
+pub use crate::runner::replay_range::ReplayRange;
 
 mod pathfinder_db;
 mod runner;
@@ -64,8 +65,7 @@ mod runner;
 ///
 /// # Arguments
 ///
-/// - `start_block`: Starting block of the replay
-/// - `end_block`: Ending block (included) of the replay.
+/// - `replay_range`: The range of blocks to be replayed.
 /// - `storage`: Connection with the Pathfinder database
 ///
 /// # Errors
@@ -75,13 +75,12 @@ mod runner;
 /// - A block number doesn't exist in the database history
 /// - `end_block` is less than `start_block`
 pub fn run_replay(
-    start_block: u64,
-    end_block: u64,
+    replay_range: ReplayRange,
     storage: Storage,
 ) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     // List of blocks to be replayed
     let mut replay_work: Vec<ReplayBlock> =
-        generate_replay_work(start_block, end_block, &storage)?;
+        generate_replay_work(replay_range, &storage)?;
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
@@ -96,22 +95,23 @@ pub fn run_replay(
 ///
 /// # Arguments
 ///
-/// - `start_block`: Starting block of the replay
-/// - `end_block`: Ending block (included) of the replay.
+/// - `replay_range`: The range of blocks to be replayed.
 /// - `storage`: Connection with the Pathfinder database
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if there is an issue accessing the Pathfinder database.
 fn generate_replay_work(
-    start_block: u64,
-    end_block: u64,
+    replay_range: ReplayRange,
     storage: &Storage,
 ) -> anyhow::Result<Vec<ReplayBlock>> {
     let mut db = storage
         .connection()
         .context("Opening sqlite database connection")?;
     let transaction = db.transaction()?;
+
+    let start_block = replay_range.get_start_block();
+    let end_block = replay_range.get_end_block();
 
     (start_block..=end_block)
         .map(|block_number| {

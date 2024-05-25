@@ -10,7 +10,12 @@
 use std::path::PathBuf;
 
 use anyhow::bail;
-use cairo_replay::{connect_to_database, get_latest_block_number, run_replay};
+use cairo_replay::{
+    connect_to_database,
+    get_latest_block_number,
+    run_replay,
+    ReplayRange,
+};
 use clap::Parser;
 use itertools::Itertools;
 
@@ -99,10 +104,12 @@ fn run(
         )
     }
 
+    let replay_range = ReplayRange::new(first_block, last_block)?;
+
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
 
     let start_time = std::time::Instant::now();
-    let libfunc_stats = run_replay(first_block, last_block, storage)?;
+    let libfunc_stats = run_replay(replay_range, storage)?;
 
     for (concrete_name, weight) in
         libfunc_stats.iter().sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
