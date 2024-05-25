@@ -109,7 +109,7 @@ fn run(
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
 
     let start_time = std::time::Instant::now();
-    let libfunc_stats = run_replay(replay_range, storage)?;
+    let libfunc_stats = run_replay(&replay_range, storage)?;
 
     for (concrete_name, weight) in
         libfunc_stats.iter().sorted_by(|a, b| Ord::cmp(&a.1, &b.1))

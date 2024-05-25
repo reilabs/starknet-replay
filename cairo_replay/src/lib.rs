@@ -75,7 +75,7 @@ mod runner;
 /// - A block number doesn't exist in the database history
 /// - `end_block` is less than `start_block`
 pub fn run_replay(
-    replay_range: ReplayRange,
+    replay_range: &ReplayRange,
     storage: Storage,
 ) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     // List of blocks to be replayed
@@ -102,7 +102,7 @@ pub fn run_replay(
 ///
 /// Returns [`Err`] if there is an issue accessing the Pathfinder database.
 fn generate_replay_work(
-    replay_range: ReplayRange,
+    replay_range: &ReplayRange,
     storage: &Storage,
 ) -> anyhow::Result<Vec<ReplayBlock>> {
     let mut db = storage

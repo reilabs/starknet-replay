@@ -42,10 +42,12 @@ impl ReplayRange {
         })
     }
 
+    #[must_use]
     pub fn get_start_block(&self) -> u64 {
         self.start_block
     }
 
+    #[must_use]
     pub fn get_end_block(&self) -> u64 {
         self.end_block
     }
