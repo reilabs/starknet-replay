@@ -5,7 +5,7 @@
 //! logic is contained in the library `cairo-replay`.
 
 #![warn(clippy::all, clippy::cargo, clippy::pedantic)]
-#![allow(clippy::multiple_crate_versions)]
+#![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
 use std::path::PathBuf;
 

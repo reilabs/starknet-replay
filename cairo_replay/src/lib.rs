@@ -26,7 +26,7 @@
 //!   libfuncs and types with their debug name in a Sierra program.
 
 #![warn(clippy::all, clippy::cargo, clippy::pedantic)]
-#![allow(clippy::multiple_crate_versions)]
+#![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
 use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
