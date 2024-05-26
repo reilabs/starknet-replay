@@ -28,6 +28,8 @@
 #![warn(clippy::all, clippy::cargo, clippy::pedantic)]
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
+use std::sync::mpsc::channel;
+
 use anyhow::{bail, Context};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use pathfinder_common::consts::{
@@ -79,12 +81,12 @@ pub fn run_replay(
     storage: Storage,
 ) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     // List of blocks to be replayed
-    let mut replay_work: Vec<ReplayBlock> =
+    let replay_work: Vec<ReplayBlock> =
         generate_replay_work(replay_range, &storage)?;
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
-    replay_transactions(storage, &mut replay_work)
+    replay_blocks(storage, &replay_work)
 }
 
 /// Generates the list of transactions to be replayed.
@@ -152,22 +154,33 @@ fn generate_replay_work(
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if the function `execute` fails to replay any transaction.
-fn replay_transactions(
+/// Returns [`Err`] if the function `execute_block` fails to replay any
+/// transaction.
+fn replay_blocks(
     storage: Storage,
-    replay_work: &mut Vec<ReplayBlock>,
+    replay_work: &Vec<ReplayBlock>,
 ) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
-    replay_work.iter_mut().par_bridge().try_for_each_with(
-        storage,
-        |storage, block| -> anyhow::Result<()> {
-            execute(storage, block)?;
+    let (sender, receiver) = channel();
+    replay_work.iter().par_bridge().try_for_each_with(
+        (storage, sender),
+        |(storage, sender), block| -> anyhow::Result<()> {
+            let block_libfuncs_weight = execute_block(storage, block)?;
+            sender.send(block_libfuncs_weight)?;
             Ok(())
         },
     )?;
 
+    let res: Vec<_> = receiver.iter().collect();
+
     let mut cumulative_libfunc_stat = OrderedHashMap::default();
-    for block in replay_work {
-        block.extend_libfunc_stats(&mut cumulative_libfunc_stat);
+
+    for block_libfuncs in res {
+        for (libfunc, weight) in block_libfuncs.iter() {
+            cumulative_libfunc_stat
+                .entry(libfunc.clone())
+                .and_modify(|e| *e += *weight)
+                .or_insert(*weight);
+        }
     }
     Ok(cumulative_libfunc_stat)
 }
@@ -183,10 +196,10 @@ fn replay_transactions(
 ///
 /// Returns [`Err`] if any transaction fails execution or if there is any error
 /// communicating with the Pathfinder database.
-fn execute(
+fn execute_block(
     storage: &mut Storage,
-    work: &mut ReplayBlock,
-) -> anyhow::Result<()> {
+    work: &ReplayBlock,
+) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     let mut db = storage.connection()?;
 
     let db_tx = db
@@ -217,15 +230,19 @@ fn execute(
     let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
         OrderedHashMap::default();
     for simulation in &simulations {
-        extract_libfuncs_weight(
+        let libfunc_transaction = extract_libfuncs_weight(
             &simulation.trace,
             work.header.number,
             &db_tx,
-            &mut cumulative_libfuncs_weight,
-        );
+        )?;
+        for (libfunc, weight) in libfunc_transaction.iter() {
+            cumulative_libfuncs_weight
+                .entry(libfunc.clone())
+                .and_modify(|e| *e += *weight)
+                .or_insert(*weight);
+        }
     }
-    work.add_libfuncs(&cumulative_libfuncs_weight);
-    Ok(())
+    Ok(cumulative_libfuncs_weight)
 }
 
 /// Get the `chain_id` of the Pathfinder database.

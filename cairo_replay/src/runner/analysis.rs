@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use anyhow::bail;
 use cairo_lang_runner::profiling::{
     ProfilingInfoProcessor,
     ProfilingInfoProcessorParams,
@@ -138,12 +139,13 @@ pub fn extract_libfuncs_weight(
     trace: &TransactionTrace,
     block_num: BlockNumber,
     db: &Transaction,
-    cumulative_libfuncs_weight: &mut OrderedHashMap<SmolStr, usize>,
-) {
+) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     let Some(visited_pcs) = get_visited_program_counters(trace) else {
-        return;
+        bail!("Error getting visited program counters from trace")
     };
 
+    let mut local_cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
+        OrderedHashMap::default();
     for (class_hash, all_pcs) in visited_pcs {
         // First get the class_definition from the db using the class_hash
         let Ok(ContractClass::Sierra(ctx)) =
@@ -196,13 +198,14 @@ pub fn extract_libfuncs_weight(
             concrete_libfunc_weights
                 .iter()
                 .for_each(|(libfunc, weight)| {
-                    cumulative_libfuncs_weight
+                    local_cumulative_libfuncs_weight
                         .entry(libfunc.clone())
                         .and_modify(|e| *e += *weight)
                         .or_insert(*weight);
                 });
         }
     }
+    Ok(local_cumulative_libfuncs_weight)
 }
 
 #[cfg(test)]
