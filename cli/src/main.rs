@@ -60,7 +60,7 @@ fn main() {
     match run(start_block, end_block, database_path) {
         Ok(()) => process::exit(OK),
         Err(e) => {
-            eprintln!("Error: {e}");
+            eprintln!("Internal software error: {e}");
             process::exit(SOFTWARE);
         }
     }
