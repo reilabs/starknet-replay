@@ -8,6 +8,7 @@
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
 use std::path::PathBuf;
+use std::process;
 
 use anyhow::bail;
 use cairo_replay::{
@@ -17,11 +18,13 @@ use cairo_replay::{
     ReplayRange,
 };
 use clap::Parser;
+use exitcode::{OK, SOFTWARE};
 use itertools::Itertools;
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
 // performance by using jemalloc (compared to the Linux glibc allocator).
+// TODO: review in other operating systems.
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
@@ -41,7 +44,7 @@ struct Args {
     end_block: u64,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
@@ -54,7 +57,13 @@ fn main() -> anyhow::Result<()> {
     let start_block = args.start_block;
     let end_block = args.end_block;
 
-    run(start_block, end_block, database_path)
+    match run(start_block, end_block, database_path) {
+        Ok(()) => process::exit(OK),
+        Err(e) => {
+            eprintln!("Error: {e}");
+            process::exit(SOFTWARE);
+        }
+    }
 }
 
 /// Take the command line input arguments and call cairo-replay.
