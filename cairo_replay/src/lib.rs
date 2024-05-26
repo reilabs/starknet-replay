@@ -158,7 +158,7 @@ fn generate_replay_work(
 /// transaction.
 fn replay_blocks(
     storage: Storage,
-    replay_work: &Vec<ReplayBlock>,
+    replay_work: &[ReplayBlock],
 ) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
     let (sender, receiver) = channel();
     replay_work.iter().par_bridge().try_for_each_with(
