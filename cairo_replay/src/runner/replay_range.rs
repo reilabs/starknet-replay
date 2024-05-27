@@ -30,7 +30,7 @@ impl ReplayRange {
         end_block: u64,
     ) -> Result<ReplayRange, RunnerError> {
         if start_block > end_block {
-            return Err(RunnerError::Error(
+            return Err(RunnerError::Unknown(
                 "Exiting because end_block must be greater or equal to \
                  start_block."
                     .to_string(),

@@ -1,13 +1,13 @@
 use thiserror::Error;
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum DatabaseError {
+pub enum Error {
     #[error("error communicating with Pathfinder database")]
-    Error(String),
+    Unknown(String),
 }
 
-impl From<anyhow::Error> for DatabaseError {
+impl From<anyhow::Error> for Error {
     fn from(value: anyhow::Error) -> Self {
-        DatabaseError::Error(value.to_string())
+        Error::Unknown(value.to_string())
     }
 }

@@ -4,38 +4,38 @@ use cairo_lang_sierra_to_casm::compiler::CompilationError;
 use thiserror::Error;
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum RunnerError {
+pub enum Error {
     #[error("error while replaying block")]
-    Error(String),
+    Unknown(String),
 }
 
-impl From<anyhow::Error> for RunnerError {
+impl From<anyhow::Error> for Error {
     fn from(value: anyhow::Error) -> Self {
-        RunnerError::Error(value.to_string())
+        Error::Unknown(value.to_string())
     }
 }
 
 // TODO: should it be in a separate error variant?
-impl From<serde_json::Error> for RunnerError {
+impl From<serde_json::Error> for Error {
     fn from(value: serde_json::Error) -> Self {
-        RunnerError::Error(value.to_string())
+        Error::Unknown(value.to_string())
     }
 }
 
-impl From<CairoError> for RunnerError {
+impl From<CairoError> for Error {
     fn from(value: CairoError) -> Self {
-        RunnerError::Error(value.to_string())
+        Error::Unknown(value.to_string())
     }
 }
 
-impl From<Box<ProgramRegistryError>> for RunnerError {
+impl From<Box<ProgramRegistryError>> for Error {
     fn from(value: Box<ProgramRegistryError>) -> Self {
-        RunnerError::Error(value.to_string())
+        Error::Unknown(value.to_string())
     }
 }
 
-impl From<Box<CompilationError>> for RunnerError {
+impl From<Box<CompilationError>> for Error {
     fn from(value: Box<CompilationError>) -> Self {
-        RunnerError::Error(value.to_string())
+        Error::Unknown(value.to_string())
     }
 }

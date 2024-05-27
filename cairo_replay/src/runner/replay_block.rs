@@ -44,7 +44,7 @@ impl ReplayBlock {
         receipts: Vec<Receipt>,
     ) -> Result<ReplayBlock, RunnerError> {
         if transactions.len() != receipts.len() {
-            return Err(RunnerError::Error(
+            return Err(RunnerError::Unknown(
                 "The length of `transactions` must match the length of \
                  `receipts` to create a new `ReplayBlock` struct."
                     .to_string(),

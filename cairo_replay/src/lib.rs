@@ -122,7 +122,7 @@ fn generate_replay_work(
             let block_id =
                 BlockId::Number(BlockNumber::new_or_panic(block_number));
             let Some(header) = transaction.block_header(block_id)? else {
-                return Err(RunnerError::Error(
+                return Err(RunnerError::Unknown(
                     format!("Missing block: {block_number}",).to_string(),
                 ));
             };
@@ -277,7 +277,7 @@ fn get_chain_id(tx: &DatabaseTransaction<'_>) -> Result<ChainId, RunnerError> {
         GOERLI_INTEGRATION_GENESIS_HASH => ChainId::GOERLI_INTEGRATION,
         SEPOLIA_TESTNET_GENESIS_HASH => ChainId::SEPOLIA_TESTNET,
         SEPOLIA_INTEGRATION_GENESIS_HASH => ChainId::SEPOLIA_INTEGRATION,
-        _ => return Err(RunnerError::Error("Unknown chain".to_string())),
+        _ => return Err(RunnerError::Unknown("Unknown chain".to_string())),
     };
 
     Ok(chain)

@@ -144,7 +144,7 @@ pub fn extract_libfuncs_weight(
     db: &Transaction,
 ) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
     let Some(visited_pcs) = get_visited_program_counters(trace) else {
-        return Err(RunnerError::Error(
+        return Err(RunnerError::Unknown(
             "Error getting visited program counters from trace".to_string(),
         ));
     };
