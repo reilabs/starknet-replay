@@ -30,8 +30,9 @@
 
 use std::sync::mpsc::channel;
 
-use anyhow::{bail, Context};
+use anyhow::Context;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+use error::RunnerError;
 use pathfinder_common::consts::{
     GOERLI_INTEGRATION_GENESIS_HASH,
     GOERLI_TESTNET_GENESIS_HASH,
@@ -55,6 +56,7 @@ pub use crate::pathfinder_db::{connect_to_database, get_latest_block_number};
 use crate::runner::analysis::extract_libfuncs_weight;
 pub use crate::runner::replay_range::ReplayRange;
 
+mod error;
 mod pathfinder_db;
 mod runner;
 
@@ -79,7 +81,7 @@ mod runner;
 pub fn run_replay(
     replay_range: &ReplayRange,
     storage: Storage,
-) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
+) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
     // List of blocks to be replayed
     let replay_work: Vec<ReplayBlock> =
         generate_replay_work(replay_range, &storage)?;
@@ -106,7 +108,7 @@ pub fn run_replay(
 fn generate_replay_work(
     replay_range: &ReplayRange,
     storage: &Storage,
-) -> anyhow::Result<Vec<ReplayBlock>> {
+) -> Result<Vec<ReplayBlock>, RunnerError> {
     let mut db = storage
         .connection()
         .context("Opening sqlite database connection")?;
@@ -120,7 +122,9 @@ fn generate_replay_work(
             let block_id =
                 BlockId::Number(BlockNumber::new_or_panic(block_number));
             let Some(header) = transaction.block_header(block_id)? else {
-                bail!("Missing block: {}", block_number);
+                return Err(RunnerError::Error(
+                    format!("Missing block: {block_number}",).to_string(),
+                ));
             };
             let transactions_and_receipts = transaction
                 .transaction_data_for_block(block_id)
@@ -138,7 +142,7 @@ fn generate_replay_work(
 
             ReplayBlock::new(header, transactions, receipts)
         })
-        .collect::<anyhow::Result<Vec<ReplayBlock>>>()
+        .collect::<Result<Vec<ReplayBlock>, RunnerError>>()
 }
 
 /// Re-execute the list of transactions in `replay_work` and return the
@@ -159,7 +163,7 @@ fn generate_replay_work(
 fn replay_blocks(
     storage: Storage,
     replay_work: &[ReplayBlock],
-) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
+) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
     let (sender, receiver) = channel();
     replay_work.iter().par_bridge().try_for_each_with(
         (storage, sender),
@@ -199,7 +203,7 @@ fn replay_blocks(
 fn execute_block(
     storage: &mut Storage,
     work: &ReplayBlock,
-) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
+) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
     let mut db = storage.connection()?;
 
     let db_tx = db
@@ -261,7 +265,8 @@ fn execute_block(
 /// - The first block doesn't have a hash matching one of
 /// the known hashes
 /// - There is an error querying the database.
-fn get_chain_id(tx: &DatabaseTransaction<'_>) -> anyhow::Result<ChainId> {
+// TODO: Should it return to `DatabaseError`?
+fn get_chain_id(tx: &DatabaseTransaction<'_>) -> Result<ChainId, RunnerError> {
     let (_, genesis_hash) = tx
         .block_id(BlockNumber::GENESIS.into())?
         .context("Getting genesis hash")?;
@@ -272,7 +277,7 @@ fn get_chain_id(tx: &DatabaseTransaction<'_>) -> anyhow::Result<ChainId> {
         GOERLI_INTEGRATION_GENESIS_HASH => ChainId::GOERLI_INTEGRATION,
         SEPOLIA_TESTNET_GENESIS_HASH => ChainId::SEPOLIA_TESTNET,
         SEPOLIA_INTEGRATION_GENESIS_HASH => ChainId::SEPOLIA_INTEGRATION,
-        _ => anyhow::bail!("Unknown chain"),
+        _ => return Err(RunnerError::Error("Unknown chain".to_string())),
     };
 
     Ok(chain)

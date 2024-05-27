@@ -1,7 +1,8 @@
-use anyhow::bail;
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction as StarknetTransaction;
 use pathfinder_common::BlockHeader;
+
+use crate::error::RunnerError;
 
 /// `ReplayBlock` contains the data necessary to replay a single block from
 /// the Starknet blockchain.
@@ -41,12 +42,13 @@ impl ReplayBlock {
         header: BlockHeader,
         transactions: Vec<StarknetTransaction>,
         receipts: Vec<Receipt>,
-    ) -> anyhow::Result<ReplayBlock> {
+    ) -> Result<ReplayBlock, RunnerError> {
         if transactions.len() != receipts.len() {
-            bail!(
+            return Err(RunnerError::Error(
                 "The length of `transactions` must match the length of \
                  `receipts` to create a new `ReplayBlock` struct."
-            )
+                    .to_string(),
+            ));
         }
         Ok(Self {
             header,

@@ -8,6 +8,8 @@ use anyhow::Context;
 use pathfinder_storage::{BlockId, JournalMode, Storage};
 use rayon::current_num_threads;
 
+use crate::error::DatabaseError;
+
 /// Connect to the Pathfinder database
 ///
 /// The connection to the Pathfinder database is established with the
@@ -25,7 +27,9 @@ use rayon::current_num_threads;
 ///
 /// Returns [`Err`] if this function is called more than once in the
 /// application.
-pub fn connect_to_database(database_path: PathBuf) -> anyhow::Result<Storage> {
+pub fn connect_to_database(
+    database_path: PathBuf,
+) -> Result<Storage, DatabaseError> {
     let n_cpus = current_num_threads();
     let n_parallel_connections: u32 =
         n_cpus.checked_mul(2).unwrap_or(1).try_into().unwrap_or(1);
@@ -33,7 +37,9 @@ pub fn connect_to_database(database_path: PathBuf) -> anyhow::Result<Storage> {
         unreachable!("n_parallel_connections should never be less than 1.")
     };
 
-    Storage::migrate(database_path, JournalMode::WAL, 1)?.create_pool(capacity)
+    let store_manager = Storage::migrate(database_path, JournalMode::WAL, 1)?;
+    let pool = store_manager.create_pool(capacity)?;
+    Ok(pool)
 }
 
 /// Returns the latest (most recent) block number in the database
@@ -47,7 +53,9 @@ pub fn connect_to_database(database_path: PathBuf) -> anyhow::Result<Storage> {
 /// # Errors
 ///
 /// Returns [`Err`] if the low level API with the database returns an error.
-pub fn get_latest_block_number(storage: &Storage) -> anyhow::Result<u64> {
+pub fn get_latest_block_number(
+    storage: &Storage,
+) -> Result<u64, DatabaseError> {
     let mut db = storage
         .connection()
         .context("Opening database connection")?;

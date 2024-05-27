@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 
-use anyhow::bail;
 use cairo_lang_runner::profiling::{
     ProfilingInfoProcessor,
     ProfilingInfoProcessorParams,
@@ -23,6 +22,7 @@ use smol_str::SmolStr;
 use starknet_api::core::ClassHash as StarknetClassHash;
 use starknet_api::hash::StarkFelt;
 
+use crate::error::RunnerError;
 use crate::runner::replace_ids::replace_sierra_ids_in_program;
 use crate::runner::SierraCasmRunnerLight;
 
@@ -58,11 +58,11 @@ fn get_visited_program_counters(
 /// # Errors
 ///
 /// Returns [`Err`] if `class_hash` doesn't exist at block `block_num` in `db`.
-fn get_class_definition_at_block(
+fn get_contract_class_at_block(
     block_num: BlockNumber,
     db: &Transaction,
     class_hash: &StarknetClassHash,
-) -> anyhow::Result<ContractClass> {
+) -> Result<ContractClass, RunnerError> {
     let block_id = BlockId::Number(block_num);
     let class_hash: StarkFelt = class_hash.0;
     let class_definition = db.class_definition_at(
@@ -71,7 +71,9 @@ fn get_class_definition_at_block(
     );
     let class_definition = class_definition?.unwrap();
 
-    ContractClass::from_definition_bytes(&class_definition)
+    let contract_class =
+        ContractClass::from_definition_bytes(&class_definition)?;
+    Ok(contract_class)
 }
 
 /// Converts `ctx` from `SierraContractClass` to `Program`.
@@ -85,7 +87,7 @@ fn get_class_definition_at_block(
 /// Returns [`Err`] if there is a serde deserialisation issue.
 fn get_sierra_program_from_class_definition(
     ctx: &SierraContractClass,
-) -> anyhow::Result<Program> {
+) -> Result<Program, RunnerError> {
     let json = serde_json::json!({
         "abi": [],
         "sierra_program": ctx.sierra_program,
@@ -94,7 +96,8 @@ fn get_sierra_program_from_class_definition(
     });
     let contract_class: CairoContractClass =
         serde_json::from_value::<CairoContractClass>(json)?;
-    let sierra_program = contract_class.extract_sierra_program()?;
+    // TODO: fix From<Felt252SerdeError> for error conversion
+    let sierra_program = contract_class.extract_sierra_program().unwrap();
     let sierra_program = replace_sierra_ids_in_program(&sierra_program);
     Ok(sierra_program)
 }
@@ -139,9 +142,11 @@ pub fn extract_libfuncs_weight(
     trace: &TransactionTrace,
     block_num: BlockNumber,
     db: &Transaction,
-) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
+) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
     let Some(visited_pcs) = get_visited_program_counters(trace) else {
-        bail!("Error getting visited program counters from trace")
+        return Err(RunnerError::Error(
+            "Error getting visited program counters from trace".to_string(),
+        ));
     };
 
     let mut local_cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
@@ -149,7 +154,7 @@ pub fn extract_libfuncs_weight(
     for (class_hash, all_pcs) in visited_pcs {
         // First get the class_definition from the db using the class_hash
         let Ok(ContractClass::Sierra(ctx)) =
-            get_class_definition_at_block(block_num, db, class_hash)
+            get_contract_class_at_block(block_num, db, class_hash)
         else {
             continue;
         };
@@ -165,8 +170,7 @@ pub fn extract_libfuncs_weight(
             sierra_program.clone(),
             Some(MetadataComputationConfig::default()),
             Some(ProfilingInfoCollectionConfig::default()),
-        )
-        .unwrap();
+        )?;
 
         // Fourth iterate through each run of the contract
         for pcs in all_pcs {

@@ -2235,6 +2235,7 @@ dependencies = [
  "serde_json",
  "smol_str 0.2.2",
  "starknet_api",
+ "thiserror",
  "tracing",
 ]
 

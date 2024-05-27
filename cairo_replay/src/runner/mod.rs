@@ -6,7 +6,10 @@ use cairo_lang_runner::profiling::{
     user_function_idx_by_sierra_statement_idx,
     ProfilingInfo,
 };
-use cairo_lang_runner::{ProfilingInfoCollectionConfig, RunnerError};
+use cairo_lang_runner::{
+    ProfilingInfoCollectionConfig,
+    RunnerError as CairoError,
+};
 use cairo_lang_sierra::extensions::core::{
     CoreConcreteLibfunc,
     CoreLibfunc,
@@ -28,6 +31,8 @@ use cairo_lang_sierra_to_casm::metadata::{
 };
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::chain;
+
+use crate::error::RunnerError;
 
 pub mod analysis;
 pub mod replace_ids;
@@ -60,15 +65,16 @@ fn create_metadata(
     sierra_program: &Program,
     metadata_config: Option<MetadataComputationConfig>,
 ) -> Result<Metadata, RunnerError> {
-    if let Some(metadata_config) = metadata_config {
+    let metadata = if let Some(metadata_config) = metadata_config {
         calc_metadata(sierra_program, metadata_config)
     } else {
         calc_metadata_ap_change_only(sierra_program)
     }
     .map_err(|err| match err {
-        MetadataError::ApChangeError(err) => RunnerError::ApChangeError(err),
-        MetadataError::CostError(_) => RunnerError::FailedGasCalculation,
-    })
+        MetadataError::ApChangeError(err) => CairoError::ApChangeError(err),
+        MetadataError::CostError(_) => CairoError::FailedGasCalculation,
+    })?;
+    Ok(metadata)
 }
 
 /// Extract profiling data from the list of visited program counters.

@@ -1,4 +1,4 @@
-use anyhow::bail;
+use crate::error::RunnerError;
 
 /// `ReplayRange` contains the block range that is replayed by `cairo-replay`.
 /// The fields are not public to ensure no tampering after the struct is
@@ -28,12 +28,13 @@ impl ReplayRange {
     pub fn new(
         start_block: u64,
         end_block: u64,
-    ) -> anyhow::Result<ReplayRange> {
+    ) -> Result<ReplayRange, RunnerError> {
         if start_block > end_block {
-            bail!(
+            return Err(RunnerError::Error(
                 "Exiting because end_block must be greater or equal to \
                  start_block."
-            )
+                    .to_string(),
+            ));
         }
 
         Ok(Self {
