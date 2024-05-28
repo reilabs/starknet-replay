@@ -1,3 +1,7 @@
+//! This module contains the implementation of `ReplayRange` to keep track of
+//! the range of blocks to be replayed. This struct also ensures to the user
+//! that starting block is not greater than end block.
+
 use crate::error::RunnerError;
 
 /// `ReplayRange` contains the block range that is replayed by `cairo-replay`.
