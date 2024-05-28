@@ -120,8 +120,10 @@ fn run(
     let start_time = std::time::Instant::now();
     let libfunc_stats = run_replay(&replay_range, storage)?;
 
-    for (concrete_name, weight) in
-        libfunc_stats.iter().sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+    for (concrete_name, weight) in libfunc_stats
+        .concrete_libfunc
+        .iter()
+        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
     {
         tracing::info!("  libfunc {concrete_name}: {weight}");
     }

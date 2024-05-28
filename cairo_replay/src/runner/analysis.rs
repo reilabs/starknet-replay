@@ -11,17 +11,16 @@ use cairo_lang_runner::ProfilingInfoCollectionConfig;
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use pathfinder_common::{BlockNumber, ClassHash as PathfinderClassHash};
 use pathfinder_executor::types::TransactionTrace;
 use pathfinder_executor::IntoFelt;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
 use pathfinder_storage::{BlockId, Transaction};
-use smol_str::SmolStr;
 use starknet_api::core::ClassHash as StarknetClassHash;
 use starknet_api::hash::StarkFelt;
 
+use super::replay_statistics::ReplayStatistics;
 use crate::error::RunnerError;
 use crate::runner::replace_ids::replace_sierra_ids_in_program;
 use crate::runner::SierraCasmRunnerLight;
@@ -142,15 +141,15 @@ pub fn extract_libfuncs_weight(
     trace: &TransactionTrace,
     block_num: BlockNumber,
     db: &Transaction,
-) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
+) -> Result<ReplayStatistics, RunnerError> {
     let Some(visited_pcs) = get_visited_program_counters(trace) else {
         return Err(RunnerError::Unknown(
             "Error getting visited program counters from trace".to_string(),
         ));
     };
 
-    let mut local_cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
-        OrderedHashMap::default();
+    let mut local_cumulative_libfuncs_weight: ReplayStatistics =
+        ReplayStatistics::new();
     for (class_hash, all_pcs) in visited_pcs {
         // First get the class_definition from the db using the class_hash
         let Ok(ContractClass::Sierra(ctx)) =
@@ -199,14 +198,8 @@ pub fn extract_libfuncs_weight(
             else {
                 continue;
             };
-            concrete_libfunc_weights
-                .iter()
-                .for_each(|(libfunc, weight)| {
-                    local_cumulative_libfuncs_weight
-                        .entry(libfunc.clone())
-                        .and_modify(|e| *e += *weight)
-                        .or_insert(*weight);
-                });
+            local_cumulative_libfuncs_weight
+                .add_statistics(&concrete_libfunc_weights);
         }
     }
     Ok(local_cumulative_libfuncs_weight)

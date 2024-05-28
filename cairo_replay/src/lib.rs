@@ -31,7 +31,6 @@
 use std::sync::mpsc::channel;
 
 use anyhow::Context;
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use error::RunnerError;
 use pathfinder_common::consts::{
     GOERLI_INTEGRATION_GENESIS_HASH,
@@ -50,7 +49,7 @@ use pathfinder_storage::{
 };
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use runner::replay_block::ReplayBlock;
-use smol_str::SmolStr;
+use runner::replay_statistics::ReplayStatistics;
 
 pub use crate::pathfinder_db::{connect_to_database, get_latest_block_number};
 use crate::runner::analysis::extract_libfuncs_weight;
@@ -81,7 +80,7 @@ mod runner;
 pub fn run_replay(
     replay_range: &ReplayRange,
     storage: Storage,
-) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
+) -> Result<ReplayStatistics, RunnerError> {
     // List of blocks to be replayed
     let replay_work: Vec<ReplayBlock> =
         generate_replay_work(replay_range, &storage)?;
@@ -163,7 +162,7 @@ fn generate_replay_work(
 fn replay_blocks(
     storage: Storage,
     replay_work: &[ReplayBlock],
-) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
+) -> Result<ReplayStatistics, RunnerError> {
     let (sender, receiver) = channel();
     replay_work.iter().par_bridge().try_for_each_with(
         (storage, sender),
@@ -176,15 +175,10 @@ fn replay_blocks(
 
     let res: Vec<_> = receiver.iter().collect();
 
-    let mut cumulative_libfunc_stat = OrderedHashMap::default();
+    let mut cumulative_libfunc_stat = ReplayStatistics::new();
 
     for block_libfuncs in res {
-        for (libfunc, weight) in block_libfuncs.iter() {
-            cumulative_libfunc_stat
-                .entry(libfunc.clone())
-                .and_modify(|e| *e += *weight)
-                .or_insert(*weight);
-        }
+        cumulative_libfunc_stat.merge(&block_libfuncs);
     }
     Ok(cumulative_libfunc_stat)
 }
@@ -203,7 +197,7 @@ fn replay_blocks(
 fn execute_block(
     storage: &mut Storage,
     work: &ReplayBlock,
-) -> Result<OrderedHashMap<SmolStr, usize>, RunnerError> {
+) -> Result<ReplayStatistics, RunnerError> {
     let mut db = storage.connection()?;
 
     let db_tx = db
@@ -231,20 +225,15 @@ fn execute_block(
     ).map_err(|error| tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed")).unwrap();
 
     // Using `SmolStr` because it's coming from `LibfuncWeights`
-    let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
-        OrderedHashMap::default();
+    let mut cumulative_libfuncs_weight: ReplayStatistics =
+        ReplayStatistics::new();
     for simulation in &simulations {
         let libfunc_transaction = extract_libfuncs_weight(
             &simulation.trace,
             work.header.number,
             &db_tx,
         )?;
-        for (libfunc, weight) in libfunc_transaction.iter() {
-            cumulative_libfuncs_weight
-                .entry(libfunc.clone())
-                .and_modify(|e| *e += *weight)
-                .or_insert(*weight);
-        }
+        cumulative_libfuncs_weight.merge(&libfunc_transaction);
     }
     Ok(cumulative_libfuncs_weight)
 }

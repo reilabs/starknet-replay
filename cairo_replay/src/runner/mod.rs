@@ -38,6 +38,7 @@ pub mod analysis;
 pub mod replace_ids;
 pub mod replay_block;
 pub mod replay_range;
+pub mod replay_statistics;
 
 /// Big enough number to handle the contracts in Starknet.
 /// Verified with random testing.
