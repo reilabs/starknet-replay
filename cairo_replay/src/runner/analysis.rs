@@ -163,11 +163,7 @@ pub fn extract_libfuncs_weight(
         };
 
         // Third setup the runner
-        let runner = SierraCasmRunnerLight::new(
-            sierra_program.clone(),
-            Some(MetadataComputationConfig::default()),
-            Some(ProfilingInfoCollectionConfig::default()),
-        )?;
+        let runner = SierraCasmRunnerLight::new(sierra_program.clone())?;
 
         // Fourth iterate through each run of the contract
         for pcs in all_pcs {

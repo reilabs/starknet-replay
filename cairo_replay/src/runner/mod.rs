@@ -54,7 +54,8 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 /// # Arguments
 ///
 /// - `sierra_program`: The sierra program
-/// - `metadata_config`: Optional. It contains the configuration options.
+/// - `metadata_config`: It contains the configuration options. If not provided,
+///   `create_metadata` will skip gas usage calculations.
 ///
 /// # Errors
 ///
@@ -99,16 +100,9 @@ pub struct SierraCasmRunnerLight {
 impl SierraCasmRunnerLight {
     /// Generate a new `SierraCasmRunnerLight` object.
     ///
-    /// Takes a `sierra_program` with an optional `metadata_config` and
-    /// `run_profiler` to generate a `SierraCasmRunnerLight` object.
-    ///
     /// # Arguments
     ///
     /// - `sierra_program`: The sierra program considered in the runner.
-    /// - `metadata_config`: Optional. Configuration for the compilation from
-    ///   Sierra to CASM.
-    /// - `run_profiler`: Optional. It contains configuration parameters for the
-    ///   profiler. TODO What happens if I don't provide it
     ///
     /// # Errors
     ///
@@ -116,11 +110,13 @@ impl SierraCasmRunnerLight {
     ///
     /// - The call to `create_metadata` fails
     /// - The generation of `sierra_program_registry` fails
-    pub fn new(
-        sierra_program: Program,
-        metadata_config: Option<MetadataComputationConfig>,
-        run_profiler: Option<ProfilingInfoCollectionConfig>,
-    ) -> Result<Self, RunnerError> {
+    pub fn new(sierra_program: Program) -> Result<Self, RunnerError> {
+        // `run_profiler` and `metadata_config` are set as per default values
+        // preventing the user from choosing `None` as in the original
+        // `SierraCasmRunner`. This is to ensure the profiler is always run with
+        // the same configuration.
+        let run_profiler = Some(ProfilingInfoCollectionConfig::default());
+        let metadata_config = Some(MetadataComputationConfig::default());
         let gas_usage_check = metadata_config.is_some();
         let metadata = create_metadata(&sierra_program, metadata_config)?;
         let sierra_program_registry =

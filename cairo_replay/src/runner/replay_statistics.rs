@@ -6,6 +6,10 @@ use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 pub struct ReplayStatistics {
     /// This field contains the association between libfunc name (key) and
     /// number of calls (value).
+    ///
+    /// It is using `OrderedHashMap` because inherited from Cairo crate.
+    /// However, there is no architectural reason in `cairo-replay` that
+    /// requires it and it can be changed as needed.
     pub concrete_libfunc: OrderedHashMap<String, usize>,
 }
 
