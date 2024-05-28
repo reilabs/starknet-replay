@@ -1,3 +1,5 @@
+//! This module contains the definition of the struct `ReplayBlock`.
+
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction as StarknetTransaction;
 use pathfinder_common::BlockHeader;
@@ -16,7 +18,7 @@ pub struct ReplayBlock {
     /// - the transactions belong to block `header`
     /// - there aren't missing transactions from block `header`
     // TODO: analyse if there is a workaround to enforce that transactions
-    // aren't misplaced in the wrong block
+    // aren't misplaced in the wrong block. Issue #22
     pub transactions: Vec<StarknetTransaction>,
     /// The list of receipts of `transactions`.
     ///
