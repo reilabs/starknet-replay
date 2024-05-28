@@ -51,7 +51,7 @@ fn get_visited_program_counters(
 /// # Arguments
 ///
 /// - `block_num`: The block number at which to retrieve the `ContractClass`.
-/// - `db`: The connection with the Pathfinder database.
+/// - `db`: The object to query the Pathfinder database.
 /// - `class_hash`: The class hash of the `ContractClass` to return
 ///
 /// # Errors
