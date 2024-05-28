@@ -142,14 +142,12 @@ pub fn extract_libfuncs_weight(
     block_num: BlockNumber,
     db: &Transaction,
 ) -> Result<ReplayStatistics, RunnerError> {
-    let Some(visited_pcs) = get_visited_program_counters(trace) else {
-        return Err(RunnerError::Unknown(
-            "Error getting visited program counters from trace".to_string(),
-        ));
-    };
-
     let mut local_cumulative_libfuncs_weight: ReplayStatistics =
         ReplayStatistics::new();
+    let Some(visited_pcs) = get_visited_program_counters(trace) else {
+        return Ok(local_cumulative_libfuncs_weight);
+    };
+
     for (class_hash, all_pcs) in visited_pcs {
         // First get the class_definition from the db using the class_hash
         let Ok(ContractClass::Sierra(ctx)) =
