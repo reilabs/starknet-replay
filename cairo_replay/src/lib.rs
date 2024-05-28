@@ -110,8 +110,10 @@ fn generate_replay_work(
 ) -> Result<Vec<ReplayBlock>, RunnerError> {
     let mut db = storage
         .connection()
-        .context("Opening sqlite database connection")?;
-    let transaction = db.transaction()?;
+        .context("Opening sqlite database connection")
+        .map_err(RunnerError::GenerateReplayWork)?;
+    let transaction =
+        db.transaction().map_err(RunnerError::GenerateReplayWork)?;
 
     let start_block = replay_range.get_start_block();
     let end_block = replay_range.get_end_block();
@@ -120,18 +122,23 @@ fn generate_replay_work(
         .map(|block_number| {
             let block_id =
                 BlockId::Number(BlockNumber::new_or_panic(block_number));
-            let Some(header) = transaction.block_header(block_id)? else {
+            let Some(header) = transaction
+                .block_header(block_id)
+                .map_err(RunnerError::GenerateReplayWork)?
+            else {
                 return Err(RunnerError::Unknown(
                     format!("Missing block: {block_number}",).to_string(),
                 ));
             };
             let transactions_and_receipts = transaction
                 .transaction_data_for_block(block_id)
-                .context("Reading transactions from sqlite database")?
+                .context("Reading transactions from sqlite database")
+                .map_err(RunnerError::GenerateReplayWork)?
                 .context(format!(
                     "Transaction data missing from sqlite database for block \
                      {block_number}"
-                ))?;
+                ))
+                .map_err(RunnerError::GenerateReplayWork)?;
 
             let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
@@ -164,14 +171,18 @@ fn replay_blocks(
     replay_work: &[ReplayBlock],
 ) -> Result<ReplayStatistics, RunnerError> {
     let (sender, receiver) = channel();
-    replay_work.iter().par_bridge().try_for_each_with(
-        (storage, sender),
-        |(storage, sender), block| -> anyhow::Result<()> {
-            let block_libfuncs_weight = execute_block(storage, block)?;
-            sender.send(block_libfuncs_weight)?;
-            Ok(())
-        },
-    )?;
+    replay_work
+        .iter()
+        .par_bridge()
+        .try_for_each_with(
+            (storage, sender),
+            |(storage, sender), block| -> anyhow::Result<()> {
+                let block_libfuncs_weight = execute_block(storage, block)?;
+                sender.send(block_libfuncs_weight)?;
+                Ok(())
+            },
+        )
+        .map_err(RunnerError::ReplayBlocks)?;
 
     let res: Vec<_> = receiver.iter().collect();
 
@@ -198,7 +209,7 @@ fn execute_block(
     storage: &mut Storage,
     work: &ReplayBlock,
 ) -> Result<ReplayStatistics, RunnerError> {
-    let mut db = storage.connection()?;
+    let mut db = storage.connection().map_err(RunnerError::ExecuteBlock)?;
 
     let db_tx = db
         .transaction()
@@ -211,7 +222,8 @@ fn execute_block(
 
     let mut transactions = Vec::new();
     for transaction in &work.transactions {
-        let transaction = compose_executor_transaction(transaction, &db_tx)?;
+        let transaction = compose_executor_transaction(transaction, &db_tx)
+            .map_err(RunnerError::ExecuteBlock)?;
         transactions.push(transaction);
     }
 
@@ -260,8 +272,10 @@ fn execute_block(
 // TODO: Should it return to `DatabaseError`?
 fn get_chain_id(tx: &DatabaseTransaction<'_>) -> Result<ChainId, RunnerError> {
     let (_, genesis_hash) = tx
-        .block_id(BlockNumber::GENESIS.into())?
-        .context("Getting genesis hash")?;
+        .block_id(BlockNumber::GENESIS.into())
+        .map_err(RunnerError::GetChainId)?
+        .context("Getting genesis hash")
+        .map_err(RunnerError::GetChainId)?;
 
     let chain = match genesis_hash {
         MAINNET_GENESIS_HASH => ChainId::MAINNET,

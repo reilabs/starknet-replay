@@ -66,10 +66,13 @@ fn get_contract_class_at_block(
         block_id,
         PathfinderClassHash(class_hash.into_felt()),
     );
-    let class_definition = class_definition?.unwrap();
+    let class_definition = class_definition
+        .map_err(RunnerError::GetContractClassAtBlock)?
+        .unwrap();
 
     let contract_class =
-        ContractClass::from_definition_bytes(&class_definition)?;
+        ContractClass::from_definition_bytes(&class_definition)
+            .map_err(RunnerError::GetContractClassAtBlock)?;
     Ok(contract_class)
 }
 
