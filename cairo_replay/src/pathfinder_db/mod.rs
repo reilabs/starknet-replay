@@ -37,8 +37,11 @@ pub fn connect_to_database(
         unreachable!("n_parallel_connections should never be less than 1.")
     };
 
-    let store_manager = Storage::migrate(database_path, JournalMode::WAL, 1)?;
-    let pool = store_manager.create_pool(capacity)?;
+    let store_manager = Storage::migrate(database_path, JournalMode::WAL, 1)
+        .map_err(DatabaseError::ConnectToDatabase)?;
+    let pool = store_manager
+        .create_pool(capacity)
+        .map_err(DatabaseError::ConnectToDatabase)?;
     Ok(pool)
 }
 
@@ -58,9 +61,17 @@ pub fn get_latest_block_number(
 ) -> Result<u64, DatabaseError> {
     let mut db = storage
         .connection()
-        .context("Opening database connection")?;
-    let tx = db.transaction()?;
-    let Some((latest_block, _)) = tx.block_id(BlockId::Latest)? else {
+        .context("Opening database connection")
+        .map_err(DatabaseError::GetLatestBlockNumber)?;
+    let tx = db
+        .transaction()
+        .map_err(DatabaseError::GetLatestBlockNumber)?;
+    let Some((latest_block, _)) = tx
+        .block_id(BlockId::Latest)
+        .map_err(DatabaseError::GetLatestBlockNumber)?
+    else {
+        drop(tx);
+        drop(db);
         return Ok(0);
     };
     drop(tx);

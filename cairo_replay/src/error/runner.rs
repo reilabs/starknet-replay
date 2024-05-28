@@ -29,6 +29,7 @@ pub enum Error {
     #[error(transparent)]
     PathfinderExecutor(#[from] TransactionExecutionError),
 
+    /// For any other uncategorised error.
     #[error("error during block replay")]
     Unknown(String),
 }
