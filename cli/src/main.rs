@@ -25,17 +25,17 @@ static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[derive(Clone, Parser, Debug)]
 struct Args {
-    #[arg(long)]
     /// The path of the Pathfinder database file.
+    #[arg(long)]
     db_path: PathBuf,
 
-    #[arg(long)]
     /// The starting block to replay transactions.
+    #[arg(long)]
     start_block: u64,
 
-    #[arg(long)]
     /// The final block (included) to stop replaying transactions. It is
     /// reduced if bigger than the biggest block in the database.
+    #[arg(long)]
     end_block: u64,
 }
 
