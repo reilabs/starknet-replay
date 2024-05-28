@@ -31,10 +31,7 @@ impl ReplayStatistics {
     /// # Arguments
     ///
     /// - `input`: Input map of libfuncs.
-    pub fn add_statistics(
-        &mut self,
-        input: &OrderedHashMap<impl ToString, usize>,
-    ) {
+    pub fn add_statistics(&mut self, input: &OrderedHashMap<impl ToString, usize>) {
         for (func_name, weight) in input.iter() {
             self.concrete_libfunc
                 .entry(func_name.to_string())

@@ -25,15 +25,10 @@ impl ReplayRange {
     /// # Errors
     ///
     /// Returns [`Err`] if `start_block` is greater than `end_block`.
-    pub fn new(
-        start_block: u64,
-        end_block: u64,
-    ) -> Result<ReplayRange, RunnerError> {
+    pub fn new(start_block: u64, end_block: u64) -> Result<ReplayRange, RunnerError> {
         if start_block > end_block {
             return Err(RunnerError::Unknown(
-                "Exiting because end_block must be greater or equal to \
-                 start_block."
-                    .to_string(),
+                "Exiting because end_block must be greater or equal to start_block.".to_string(),
             ));
         }
 

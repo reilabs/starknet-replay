@@ -2,26 +2,12 @@
 //! from `cairo-vm`. It determines the number of times each libfunc has
 //! been called during an entry point execution.
 
-use cairo_lang_runner::profiling::{
-    user_function_idx_by_sierra_statement_idx,
-    ProfilingInfo,
-};
-use cairo_lang_runner::{
-    ProfilingInfoCollectionConfig,
-    RunnerError as CairoError,
-};
-use cairo_lang_sierra::extensions::core::{
-    CoreConcreteLibfunc,
-    CoreLibfunc,
-    CoreType,
-};
+use cairo_lang_runner::profiling::{user_function_idx_by_sierra_statement_idx, ProfilingInfo};
+use cairo_lang_runner::{ProfilingInfoCollectionConfig, RunnerError as CairoError};
+use cairo_lang_sierra::extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType};
 use cairo_lang_sierra::program::{GenStatement, Program, StatementIdx};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
-use cairo_lang_sierra_to_casm::compiler::{
-    compile,
-    CairoProgram,
-    SierraToCasmConfig,
-};
+use cairo_lang_sierra_to_casm::compiler::{compile, CairoProgram, SierraToCasmConfig};
 use cairo_lang_sierra_to_casm::metadata::{
     calc_metadata,
     calc_metadata_ap_change_only,
@@ -161,8 +147,7 @@ impl SierraCasmRunnerLight {
     /// seem to be valid for Starknet contracts.
     // TODO: To be refactored!
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> ProfilingInfo {
-        let sierra_len =
-            self.casm_program.debug_info.sierra_statement_info.len();
+        let sierra_len = self.casm_program.debug_info.sierra_statement_info.len();
         let bytecode_len = self
             .casm_program
             .debug_info
@@ -223,8 +208,7 @@ impl SierraCasmRunnerLight {
 
             // TODO(yuval): Maintain a map of pc to sierra statement index (only
             // for PCs we saw), to save lookups.
-            let sierra_statement_idx =
-                self.sierra_statement_index_by_pc(real_pc);
+            let sierra_statement_idx = self.sierra_statement_index_by_pc(real_pc);
             let user_function_idx = user_function_idx_by_sierra_statement_idx(
                 &self.sierra_program,
                 sierra_statement_idx,
@@ -234,13 +218,9 @@ impl SierraCasmRunnerLight {
                 .entry(sierra_statement_idx)
                 .or_insert(0) += 1;
 
-            let Some(gen_statement) =
-                self.sierra_program.statements.get(sierra_statement_idx.0)
+            let Some(gen_statement) = self.sierra_program.statements.get(sierra_statement_idx.0)
             else {
-                panic!(
-                    "Failed fetching statement index {}",
-                    sierra_statement_idx.0
-                );
+                panic!("Failed fetching statement index {}", sierra_statement_idx.0);
             };
 
             match gen_statement {
@@ -248,15 +228,10 @@ impl SierraCasmRunnerLight {
                     let libfunc_found = self
                         .sierra_program_registry
                         .get_libfunc(&invocation.libfunc_id);
-                    if matches!(
-                        libfunc_found,
-                        Ok(CoreConcreteLibfunc::FunctionCall(_))
-                    ) {
+                    if matches!(libfunc_found, Ok(CoreConcreteLibfunc::FunctionCall(_))) {
                         // Push to the stack.
-                        if function_stack_depth < MAX_STACK_TRACE_DEPTH_DEFAULT
-                        {
-                            function_stack
-                                .push((user_function_idx, cur_weight));
+                        if function_stack_depth < MAX_STACK_TRACE_DEPTH_DEFAULT {
+                            function_stack.push((user_function_idx, cur_weight));
                             cur_weight = 0;
                         } else {
                             tracing::info!("Exceeding depth");
@@ -269,13 +244,10 @@ impl SierraCasmRunnerLight {
                     if function_stack_depth <= MAX_STACK_TRACE_DEPTH_DEFAULT {
                         // The current stack trace, including the current
                         // function.
-                        let cur_stack: Vec<_> = chain!(
-                            function_stack.iter().map(|f| f.0),
-                            [user_function_idx]
-                        )
-                        .collect();
-                        *stack_trace_weights.entry(cur_stack).or_insert(0) +=
-                            cur_weight;
+                        let cur_stack: Vec<_> =
+                            chain!(function_stack.iter().map(|f| f.0), [user_function_idx])
+                                .collect();
+                        *stack_trace_weights.entry(cur_stack).or_insert(0) += cur_weight;
 
                         let Some(popped) = function_stack.pop() else {
                             // End of the program. Not valid for Starknet

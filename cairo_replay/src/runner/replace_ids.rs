@@ -44,10 +44,7 @@ struct DebugReplacer {
 }
 impl DebugReplacer {
     /// Get the long debug name for the libfunc with id equivalent to `id`.
-    fn lookup_intern_concrete_lib_func(
-        &self,
-        id: &ConcreteLibfuncId,
-    ) -> ConcreteLibfuncLongId {
+    fn lookup_intern_concrete_lib_func(&self, id: &ConcreteLibfuncId) -> ConcreteLibfuncLongId {
         self.program
             .libfunc_declarations
             .iter()
@@ -58,10 +55,7 @@ impl DebugReplacer {
     }
 
     /// Get the long debug name for the type with id equivalent to `id`.
-    fn lookup_intern_concrete_type(
-        &self,
-        id: &ConcreteTypeId,
-    ) -> SierraGeneratorTypeLongId {
+    fn lookup_intern_concrete_type(&self, id: &ConcreteTypeId) -> SierraGeneratorTypeLongId {
         let concrete_type = self
             .program
             .type_declarations
@@ -88,18 +82,13 @@ impl SierraIdReplacer for DebugReplacer {
             SierraGeneratorTypeLongId::Regular(long_id) => {
                 let mut long_id = long_id.as_ref().clone();
                 self.replace_generic_args(&mut long_id.generic_args);
-                if long_id.generic_id == "Enum".into()
-                    || long_id.generic_id == "Struct".into()
-                {
-                    long_id.generic_id = extract_matches!(
-                        &long_id.generic_args[0],
-                        program::GenericArg::UserType
-                    )
-                    .to_string()
-                    .into();
+                if long_id.generic_id == "Enum".into() || long_id.generic_id == "Struct".into() {
+                    long_id.generic_id =
+                        extract_matches!(&long_id.generic_args[0], program::GenericArg::UserType)
+                            .to_string()
+                            .into();
                     if long_id.generic_id == "Tuple".into() {
-                        long_id.generic_args =
-                            long_id.generic_args.into_iter().skip(1).collect();
+                        long_id.generic_args = long_id.generic_args.into_iter().skip(1).collect();
                         if long_id.generic_args.is_empty() {
                             long_id.generic_id = "Unit".into();
                         }
@@ -155,8 +144,7 @@ mod tests {
 
     fn read_test_file(filename: &str) -> io::Result<String> {
         let out_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-        let sierra_program_json_file =
-            [out_dir.as_str(), filename].iter().join("");
+        let sierra_program_json_file = [out_dir.as_str(), filename].iter().join("");
         let sierra_program_json_file = sierra_program_json_file.as_str();
         fs::read_to_string(sierra_program_json_file)
     }
@@ -165,39 +153,23 @@ mod tests {
     fn test_replace_id() {
         let sierra_program_file = "/test_data/sierra_program.json";
         let sierra_program_json = read_test_file(sierra_program_file)
-            .unwrap_or_else(|_| {
-                panic!("Unable to read file {sierra_program_file}")
-            });
-        let sierra_program_json: serde_json::Value =
-            serde_json::from_str(&sierra_program_json).unwrap_or_else(|_| {
-                panic!("Unable to parse {sierra_program_file} to json")
-            });
-        let sierra_program: Program =
-            serde_json::from_value::<Program>(sierra_program_json)
-                .unwrap_or_else(|_| {
-                    panic!("Unable to parse {sierra_program_file} to Program")
-                });
+            .unwrap_or_else(|_| panic!("Unable to read file {sierra_program_file}"));
+        let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
+            .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_file} to json"));
+        let sierra_program: Program = serde_json::from_value::<Program>(sierra_program_json)
+            .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_file} to Program"));
         let sierra_program = replace_sierra_ids_in_program(&sierra_program);
 
-        let sierra_program_test_file =
-            "/test_data/sierra_program_replaced_id.json";
+        let sierra_program_test_file = "/test_data/sierra_program_replaced_id.json";
         let sierra_program_test_json = read_test_file(sierra_program_test_file)
-            .unwrap_or_else(|_| {
-                panic!("Unable to read file {sierra_program_test_file}")
-            });
-        let sierra_program_test_json: serde_json::Value = serde_json::from_str(
-            &sierra_program_test_json,
-        )
-        .unwrap_or_else(|_| {
-            panic!("Unable to parse {sierra_program_test_file} to json")
-        });
+            .unwrap_or_else(|_| panic!("Unable to read file {sierra_program_test_file}"));
+        let sierra_program_test_json: serde_json::Value =
+            serde_json::from_str(&sierra_program_test_json)
+                .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_test_file} to json"));
         let sierra_program_test: Program =
-            serde_json::from_value::<Program>(sierra_program_test_json)
-                .unwrap_or_else(|_| {
-                    panic!(
-                        "Unable to parse {sierra_program_test_file} to Program"
-                    )
-                });
+            serde_json::from_value::<Program>(sierra_program_test_json).unwrap_or_else(|_| {
+                panic!("Unable to parse {sierra_program_test_file} to Program")
+            });
 
         assert_eq!(
             sierra_program_test.libfunc_declarations,

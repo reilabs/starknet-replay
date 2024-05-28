@@ -11,4 +11,4 @@ group_imports = "StdExternalCrate"
 imports_granularity = "Module"
 
 comment_width = 80
-max_width = 80
+max_width = 100

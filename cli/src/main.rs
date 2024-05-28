@@ -11,12 +11,7 @@ use std::path::PathBuf;
 use std::process;
 
 use anyhow::bail;
-use cairo_replay::{
-    connect_to_database,
-    get_latest_block_number,
-    run_replay,
-    ReplayRange,
-};
+use cairo_replay::{connect_to_database, get_latest_block_number, run_replay, ReplayRange};
 use clap::Parser;
 use exitcode::{OK, SOFTWARE};
 use itertools::Itertools;
@@ -84,16 +79,9 @@ fn main() {
 /// - Not enough blocks in the database to cover the required range of blocks to
 ///   replay.
 /// - Any error during execution of `cairo-replay`.
-fn run(
-    start_block: u64,
-    end_block: u64,
-    database_path: PathBuf,
-) -> anyhow::Result<()> {
+fn run(start_block: u64, end_block: u64, database_path: PathBuf) -> anyhow::Result<()> {
     if start_block > end_block {
-        bail!(
-            "Exiting because end_block must be greater or equal to \
-             start_block."
-        )
+        bail!("Exiting because end_block must be greater or equal to start_block.")
     }
 
     let storage = connect_to_database(database_path)?;
@@ -106,8 +94,8 @@ fn run(
 
     if start_block > last_block {
         bail!(
-            "Most recent block found in the databse is {}. Exiting because \
-             less than start_block {}",
+            "Most recent block found in the databse is {}. Exiting because less than start_block \
+             {}",
             last_block,
             start_block
         )

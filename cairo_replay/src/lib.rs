@@ -42,11 +42,7 @@ use pathfinder_common::consts::{
 use pathfinder_common::{BlockNumber, ChainId};
 use pathfinder_executor::ExecutionState;
 use pathfinder_rpc::compose_executor_transaction;
-use pathfinder_storage::{
-    BlockId,
-    Storage,
-    Transaction as DatabaseTransaction,
-};
+use pathfinder_storage::{BlockId, Storage, Transaction as DatabaseTransaction};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use runner::replay_block::ReplayBlock;
 use runner::replay_statistics::ReplayStatistics;
@@ -82,8 +78,7 @@ pub fn run_replay(
     storage: Storage,
 ) -> Result<ReplayStatistics, RunnerError> {
     // List of blocks to be replayed
-    let replay_work: Vec<ReplayBlock> =
-        generate_replay_work(replay_range, &storage)?;
+    let replay_work: Vec<ReplayBlock> = generate_replay_work(replay_range, &storage)?;
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
@@ -112,16 +107,14 @@ fn generate_replay_work(
         .connection()
         .context("Opening sqlite database connection")
         .map_err(RunnerError::GenerateReplayWork)?;
-    let transaction =
-        db.transaction().map_err(RunnerError::GenerateReplayWork)?;
+    let transaction = db.transaction().map_err(RunnerError::GenerateReplayWork)?;
 
     let start_block = replay_range.get_start_block();
     let end_block = replay_range.get_end_block();
 
     (start_block..=end_block)
         .map(|block_number| {
-            let block_id =
-                BlockId::Number(BlockNumber::new_or_panic(block_number));
+            let block_id = BlockId::Number(BlockNumber::new_or_panic(block_number));
             let Some(header) = transaction
                 .block_header(block_id)
                 .map_err(RunnerError::GenerateReplayWork)?
@@ -135,8 +128,7 @@ fn generate_replay_work(
                 .context("Reading transactions from sqlite database")
                 .map_err(RunnerError::GenerateReplayWork)?
                 .context(format!(
-                    "Transaction data missing from sqlite database for block \
-                     {block_number}"
+                    "Transaction data missing from sqlite database for block {block_number}"
                 ))
                 .map_err(RunnerError::GenerateReplayWork)?;
 
@@ -217,13 +209,12 @@ fn execute_block(
 
     let chain_id = get_chain_id(&db_tx)?;
 
-    let execution_state =
-        ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
+    let execution_state = ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
 
     let mut transactions = Vec::new();
     for transaction in &work.transactions {
-        let transaction = compose_executor_transaction(transaction, &db_tx)
-            .map_err(RunnerError::ExecuteBlock)?;
+        let transaction =
+            compose_executor_transaction(transaction, &db_tx).map_err(RunnerError::ExecuteBlock)?;
         transactions.push(transaction);
     }
 
@@ -240,14 +231,10 @@ fn execute_block(
     })?;
 
     // Using `SmolStr` because it's coming from `LibfuncWeights`
-    let mut cumulative_libfuncs_weight: ReplayStatistics =
-        ReplayStatistics::new();
+    let mut cumulative_libfuncs_weight: ReplayStatistics = ReplayStatistics::new();
     for simulation in &simulations {
-        let libfunc_transaction = extract_libfuncs_weight(
-            &simulation.trace,
-            work.header.number,
-            &db_tx,
-        )?;
+        let libfunc_transaction =
+            extract_libfuncs_weight(&simulation.trace, work.header.number, &db_tx)?;
         cumulative_libfuncs_weight.merge(&libfunc_transaction);
     }
     Ok(cumulative_libfuncs_weight)
