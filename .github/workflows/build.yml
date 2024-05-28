@@ -15,7 +15,7 @@ jobs:
     - name: Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        shared-key: "rust-build-cache"
+        shared-key: "build-cache"
         cache-all-crates: "true"
         cache-directories: |
           ~/.cargo/registry/index/
@@ -23,9 +23,9 @@ jobs:
           ~/.cargo/git/db/
           target/
     - name: Build
-      run: cargo build
+      run: cargo build --locked
     - name: Run tests
-      run: cargo test
+      run: cargo test --locked
 
   clippy:
     name: Lint
@@ -36,7 +36,7 @@ jobs:
     - name: Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        shared-key: "rust-clippy-cache"
+        shared-key: "clippy-cache"
         cache-all-crates: "true"
         cache-directories: |
           ~/.cargo/registry/index/
@@ -55,7 +55,7 @@ jobs:
     - name: Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        shared-key: "rust-fmt-cache"
+        shared-key: "fmt-cache"
         cache-all-crates: "true"
         cache-directories: |
           ~/.cargo/registry/index/
