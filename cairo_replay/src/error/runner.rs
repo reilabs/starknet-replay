@@ -63,9 +63,3 @@ pub enum Error {
     #[error("error during block replay")]
     Unknown(String),
 }
-
-// impl From<anyhow::Error> for Error {
-//     fn from(value: anyhow::Error) -> Self {
-//         Error::Unknown(value.to_string())
-//     }
-// }
