@@ -120,22 +120,27 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
     }
 }
 
-/// Update `cumulative_libfuncs_weight` with the frequency of libfuncs called in
-/// transaction `trace`.
+/// Extract the frequency of libfuncs called in transaction `trace`.
 ///
-/// To extract the libfuncs called, it needs to query the Starknet contract from
-/// the Pathfinder database. Then, it runs the profiler over the transaction
-/// `trace`.
+/// If the transaction type is not `INVOKE`, the returned `ReplayStatistics`
+/// object is empty because no libfuncs have been called.
+///
+/// The process to extract the frequency of libfuncs called is:
+/// 1- Get the vector of visited program counters
+/// 2- Query the pathfinder database to extract the Starknet contract from the
+/// class hash.
+/// 3- Run the profiler over the list of visited program counters to determine
+/// which lines of the Sierra code have been executed and collect the results.
 ///
 /// # Arguments
 ///
 /// - `trace`: The transaction analysed.
 /// - `block_num`: The block where `trace` is inserted in.
 /// - `db`: This is the open `Transaction` with the `pathfinder` database.
-/// - `cumulative_libfuncs_weight`: This is a hashmap where the key is the
-///   libfunc name and the value is the number of times the key has been called.
-///   If the libfunc is never called, it'a not present. The value is increased
-///   if the key is already present.
+///
+/// # Errors
+///
+/// Returns [`Err`] if the constructor of `SierraCasmRunnerLight` fails.
 pub fn extract_libfuncs_weight(
     trace: &TransactionTrace,
     block_num: BlockNumber,
@@ -147,21 +152,17 @@ pub fn extract_libfuncs_weight(
     };
 
     for (class_hash, all_pcs) in visited_pcs {
-        // First get the class_definition from the db using the class_hash
         let Ok(ContractClass::Sierra(ctx)) = get_contract_class_at_block(block_num, db, class_hash)
         else {
             continue;
         };
 
-        // Second from the class_definition, generate the sierra_program
         let Ok(sierra_program) = get_sierra_program_from_class_definition(&ctx) else {
             continue;
         };
 
-        // Third setup the runner
         let runner = SierraCasmRunnerLight::new(sierra_program.clone())?;
 
-        // Fourth iterate through each run of the contract
         for pcs in all_pcs {
             let raw_profiling_info = runner
                 .run_profiler
