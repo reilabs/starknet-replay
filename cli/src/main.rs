@@ -19,7 +19,7 @@ use itertools::Itertools;
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
 // performance by using jemalloc (compared to the Linux glibc allocator).
-// TODO: review in other operating systems.
+// TODO: review in other operating systems. Issue #21
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
