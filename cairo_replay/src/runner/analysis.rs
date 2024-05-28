@@ -94,7 +94,7 @@ fn get_sierra_program_from_class_definition(
     // which is private. For ease of integration with `thiserror`, it needs to be
     // made public. Issue #20
     let sierra_program = contract_class.extract_sierra_program().map_err(|_| {
-        RunnerError::Unknown(format!("Error extracting sierra program",).to_string())
+        RunnerError::Unknown("Error extracting sierra program".to_string().to_string())
     })?;
     let sierra_program = replace_sierra_ids_in_program(&sierra_program);
     Ok(sierra_program)
