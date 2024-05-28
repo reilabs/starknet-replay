@@ -1,6 +1,13 @@
 //! This module contains all the errors returned by the `cairo-replay` library.
+//!
 //! I am deriving only `Debug` and `Error` because not all inherited error types
 //! implement `Clone` and `Eq`.
+//!
+//! Some libraries return `anyhow::Error`. Because it's not possible to
+//! differentiate the origin of the error, `anyhow::Error` is transformed into
+//! the `Unknown` type variant by implementing the `From<T>` trait.
+//! In other cases, the error enum variant matches the library name from which
+//! the error originates.
 
 // Allowing `module_name_repetitions` helps to keep `DatabaseError` and
 // `RunnerError`. Alternatively, shortening the name would limit expressiveness
@@ -18,12 +25,12 @@ pub mod runner;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `CairoReplayError::Database` error is caused by issues quering the
+    /// `Error::Database` error is caused by issues quering the
     /// Pathfinder database.
     #[error(transparent)]
     Database(#[from] DatabaseError),
 
-    /// `CairoReplayError::Runner` error is caused by issues with transaction
+    /// `Error::Runner` error is caused by issues with transaction
     /// replay or profiling.
     #[error(transparent)]
     Runner(#[from] RunnerError),

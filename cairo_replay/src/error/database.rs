@@ -1,3 +1,6 @@
+//! This file contains the enum `Error` for all the errors returned by the
+//! module `pathfinder_db`.
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
