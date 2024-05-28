@@ -1,4 +1,4 @@
-//! This file contains the implementation of `DebugReplacer` to add debug
+//! This module contains the implementation of `DebugReplacer` to add debug
 //! information to a `Program` without any. This is because sierra contracts
 //! stored in the Starknet blockchain lack debug data. Without debug
 //! information, the `Program` contains only numeric ids to indicate libfuncs
