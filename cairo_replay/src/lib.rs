@@ -222,7 +222,10 @@ fn execute_block(
         transactions,
         skip_validate,
         skip_fee_charge,
-    ).map_err(|error| tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed")).unwrap();
+    ).map_err(|error| {
+        tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed");
+        error
+    }).unwrap();
 
     // Using `SmolStr` because it's coming from `LibfuncWeights`
     let mut cumulative_libfuncs_weight: ReplayStatistics =

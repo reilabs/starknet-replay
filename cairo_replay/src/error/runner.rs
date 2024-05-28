@@ -24,6 +24,8 @@ pub enum Error {
     #[error(transparent)]
     CairoLangSierraToCasm(#[from] Box<CompilationError>),
 
+    // #[error(transparent)]
+    // Pathfinder(#[from] TransactionExecutionError),
     #[error("error during block replay")]
     Unknown(String),
 }

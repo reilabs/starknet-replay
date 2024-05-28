@@ -1,7 +1,6 @@
 //! The module which provides an interface to libfunc usage statistics.
 
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
-use smol_str::SmolStr;
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ReplayStatistics {
@@ -29,10 +28,15 @@ impl ReplayStatistics {
     ///
     /// - `input`: Input map of libfuncs.
     // TODO: Change in `OrderedHashMap<impl Into<String>, usize>`
-    pub fn add_statistics(&mut self, input: &OrderedHashMap<SmolStr, usize>) {
+    pub fn add_statistics(
+        &mut self,
+        input: &OrderedHashMap<impl Into<String> + Clone, usize>,
+    ) {
         input.iter().for_each(|(libfunc, weight)| {
+            let libfunc = libfunc.clone();
+            let libfunc: String = libfunc.into();
             self.concrete_libfunc
-                .entry(libfunc.to_string())
+                .entry(libfunc)
                 .and_modify(|e| *e += *weight)
                 .or_insert(*weight);
         });
