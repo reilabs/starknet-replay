@@ -22,10 +22,10 @@ cairo-lang-sierra = "2.6.0"
 cairo-lang-utils = "2.6.0"
 cairo-lang-sierra-generator = "2.6.0"
 # Hardcoding the commit hash until the changes to pathfinder are merged in the main branch of `eqlabs/pathfinder`
-pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
-pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
-pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
-pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "82a749e6c0c2b88e1242cad202004bea165dcbd6" }
+pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
 rayon = "1.8.0"
 starknet_api = "0.10.0"
 serde = "1.0.192"

@@ -225,7 +225,7 @@ fn execute_block(
     ).map_err(|error| {
         tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed");
         error
-    }).unwrap();
+    })?;
 
     // Using `SmolStr` because it's coming from `LibfuncWeights`
     let mut cumulative_libfuncs_weight: ReplayStatistics =

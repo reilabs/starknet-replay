@@ -471,7 +471,7 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.6.0-rc.2"
-source = "git+https://github.com/reilabs/blockifier.git?rev=594a3317ec7b33f44d2b894a161bd62cae9a72d3#594a3317ec7b33f44d2b894a161bd62cae9a72d3"
+source = "git+https://github.com/reilabs/blockifier.git?rev=1ff29cfa0417b5c89ddb95134494d841147508cf#1ff29cfa0417b5c89ddb95134494d841147508cf"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -4086,7 +4086,7 @@ checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
 [[package]]
 name = "pathfinder-common"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -4108,7 +4108,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-compiler"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "cairo-lang-starknet 1.0.0-alpha.6",
@@ -4124,7 +4124,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-crypto"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "ark-ff",
  "bitvec",
@@ -4136,7 +4136,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-ethereum"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4156,7 +4156,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-executor"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "blockifier",
@@ -4170,6 +4170,7 @@ dependencies = [
  "serde_json",
  "starknet-gateway-types",
  "starknet_api",
+ "thiserror",
  "tokio",
  "tracing",
 ]
@@ -4177,7 +4178,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-merkle-tree"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -4193,7 +4194,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-retry"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "tokio",
  "tokio-retry",
@@ -4202,7 +4203,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-rpc"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "axum",
@@ -4241,7 +4242,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-serde"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "num-bigint",
@@ -4256,7 +4257,7 @@ dependencies = [
 [[package]]
 name = "pathfinder-storage"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -5265,7 +5266,7 @@ dependencies = [
 [[package]]
 name = "starknet-gateway-client"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5289,7 +5290,7 @@ dependencies = [
 [[package]]
 name = "starknet-gateway-test-fixtures"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "pathfinder-common",
  "pathfinder-crypto",
@@ -5298,7 +5299,7 @@ dependencies = [
 [[package]]
 name = "starknet-gateway-types"
 version = "0.11.6"
-source = "git+https://github.com/reilabs/pathfinder.git?rev=82a749e6c0c2b88e1242cad202004bea165dcbd6#82a749e6c0c2b88e1242cad202004bea165dcbd6"
+source = "git+https://github.com/reilabs/pathfinder.git?rev=f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4#f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4"
 dependencies = [
  "anyhow",
  "fake",

@@ -4,6 +4,7 @@
 use cairo_lang_runner::RunnerError as CairoError;
 use cairo_lang_sierra::program_registry::ProgramRegistryError;
 use cairo_lang_sierra_to_casm::compiler::CompilationError;
+use pathfinder_executor::TransactionExecutionError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -24,8 +25,10 @@ pub enum Error {
     #[error(transparent)]
     CairoLangSierraToCasm(#[from] Box<CompilationError>),
 
-    // #[error(transparent)]
-    // Pathfinder(#[from] TransactionExecutionError),
+    /// For errors reported by the crate `pathfinder_executor`.
+    #[error(transparent)]
+    PathfinderExecutor(#[from] TransactionExecutionError),
+
     #[error("error during block replay")]
     Unknown(String),
 }
