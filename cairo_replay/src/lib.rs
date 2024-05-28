@@ -47,12 +47,11 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use runner::replay_block::ReplayBlock;
 use runner::replay_statistics::ReplayStatistics;
 
-pub use crate::pathfinder_db::{connect_to_database, get_latest_block_number};
 use crate::runner::analysis::extract_libfuncs_weight;
+pub use crate::runner::pathfinder_db::{connect_to_database, get_latest_block_number};
 pub use crate::runner::replay_range::ReplayRange;
 
 mod error;
-mod pathfinder_db;
 mod runner;
 
 /// Replays all transactions from `start_block` to `end_block` and gathers

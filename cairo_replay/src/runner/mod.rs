@@ -21,6 +21,7 @@ use itertools::chain;
 use crate::error::RunnerError;
 
 pub mod analysis;
+pub mod pathfinder_db;
 pub mod replace_ids;
 pub mod replay_block;
 pub mod replay_range;
