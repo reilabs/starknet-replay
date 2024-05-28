@@ -108,7 +108,7 @@ impl SierraCasmRunnerLight {
     /// - `metadata_config`: Optional. Configuration for the compilation from
     ///   Sierra to CASM.
     /// - `run_profiler`: Optional. It contains configuration parameters for the
-    ///   profiler.
+    ///   profiler. TODO What happens if I don't provide it
     ///
     /// # Errors
     ///

@@ -27,19 +27,16 @@ impl ReplayStatistics {
     /// # Arguments
     ///
     /// - `input`: Input map of libfuncs.
-    // TODO: Change in `OrderedHashMap<impl Into<String>, usize>`
     pub fn add_statistics(
         &mut self,
-        input: &OrderedHashMap<impl Into<String> + Clone, usize>,
+        input: &OrderedHashMap<impl ToString, usize>,
     ) {
-        input.iter().for_each(|(libfunc, weight)| {
-            let libfunc = libfunc.clone();
-            let libfunc: String = libfunc.into();
+        for (func_name, weight) in input.iter() {
             self.concrete_libfunc
-                .entry(libfunc)
+                .entry(func_name.to_string())
                 .and_modify(|e| *e += *weight)
                 .or_insert(*weight);
-        });
+        }
     }
 
     /// Update `self` with data in `from`.
