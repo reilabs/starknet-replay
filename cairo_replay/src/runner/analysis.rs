@@ -7,9 +7,7 @@ use cairo_lang_runner::profiling::{
     ProfilingInfoProcessor,
     ProfilingInfoProcessorParams,
 };
-use cairo_lang_runner::ProfilingInfoCollectionConfig;
 use cairo_lang_sierra::program::Program;
-use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use pathfinder_common::{BlockNumber, ClassHash as PathfinderClassHash};
