@@ -21,7 +21,10 @@ cairo-lang-compiler = "2.6.0"
 cairo-lang-sierra = "2.6.0"
 cairo-lang-utils = "2.6.0"
 cairo-lang-sierra-generator = "2.6.0"
-# Hardcoding the commit hash until the changes to pathfinder are merged in the main branch of `eqlabs/pathfinder`
+# Some changes are required to `eqlabs/pathfinder` and to
+# `starkware-libs/blockifier`. These changes are in the branch `extract_libfunc`
+# of Reilabs fork and need to be merged in main branch.
+# Hardcoding the commit hash for the time being.
 pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
 pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
 pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
