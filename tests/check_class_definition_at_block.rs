@@ -8,7 +8,8 @@
 #[ignore]
 #[test]
 fn class_definition_at_block() {
-    // No trait is available to mock the `Transaction` struct
-    // Need to use a real `pathfinder` db
+    // No trait is available to mock the `Transaction` struct.
+    // May need to use a real `pathfinder` db.
+    // Issue #9.
     todo!()
 }
