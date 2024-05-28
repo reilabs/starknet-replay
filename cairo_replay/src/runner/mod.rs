@@ -28,8 +28,8 @@ pub mod replay_statistics;
 
 /// The default maximum depth for a stack trace.
 ///
-/// This number has been determined to be large enough to handle the contracts on
-/// Starknet via empirical testing.
+/// This number has been determined to be large enough to handle the contracts
+/// on Starknet via empirical testing.
 const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
 /// Creates the metadata required for a lowering a Sierra program to CASM.
@@ -48,6 +48,7 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 ///
 /// - Call to `calc_metadata` fails
 /// - Call to `calc_metadata_ap_change_only` fails
+// TODO: Change `cairo` crate and make `create_metadata` public. Issue #23.
 fn create_metadata(
     sierra_program: &Program,
     metadata_config: Option<MetadataComputationConfig>,
