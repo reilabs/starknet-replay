@@ -256,7 +256,8 @@ fn execute_block(
 /// - The first block doesn't have a hash matching one of
 /// the known hashes
 /// - There is an error querying the database.
-// TODO: Should it return to `DatabaseError`?
+// TODO: Error return type shall be changed from `RunnerError` to
+// `DatabaseError`. Issue #19
 fn get_chain_id(tx: &DatabaseTransaction<'_>) -> Result<ChainId, RunnerError> {
     let (_, genesis_hash) = tx
         .block_id(BlockNumber::GENESIS.into())
