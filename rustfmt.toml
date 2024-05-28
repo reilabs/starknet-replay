@@ -10,5 +10,6 @@ imports_layout = "HorizontalVertical"
 group_imports = "StdExternalCrate"
 imports_granularity = "Module"
 
+# Wrapping
 comment_width = 80
 max_width = 100

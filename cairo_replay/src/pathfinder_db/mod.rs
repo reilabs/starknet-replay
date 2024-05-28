@@ -1,4 +1,4 @@
-//! This module is an interface between Pathfinder database API and
+//! This module is an interface between the Pathfinder database API and
 //! cairo-replay.
 
 use std::num::NonZeroU32;

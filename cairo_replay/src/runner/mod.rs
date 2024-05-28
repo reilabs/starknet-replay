@@ -26,11 +26,10 @@ pub mod replay_block;
 pub mod replay_range;
 pub mod replay_statistics;
 
-/// Big enough number to handle the contracts in Starknet.
-/// Verified with random testing.
+/// The default maximum depth for a stack trace.
 ///
-/// This is used in the function `collect_profiling_info` to limit the max depth
-/// of the stack for nested calls of functions.
+/// This number has been determined to be large enough to handle the contracts on
+/// Starknet via empirical testing.
 const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
 /// Creates the metadata required for a lowering a Sierra program to CASM.

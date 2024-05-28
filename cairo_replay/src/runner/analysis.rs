@@ -25,6 +25,7 @@ use crate::runner::SierraCasmRunnerLight;
 /// The result is a hashmap where the key is the `StarknetClassHash` and the
 /// value is the Vector of visited program counters for each `StarknetClassHash`
 /// execution in `trace`.
+///
 /// If `trace` is not an Invoke transaction, it returns None.
 ///
 /// # Arguments
