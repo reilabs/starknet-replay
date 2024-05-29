@@ -48,7 +48,7 @@ use runner::replay_block::ReplayBlock;
 use runner::replay_statistics::ReplayStatistics;
 
 use crate::runner::analysis::extract_libfuncs_weight;
-pub use crate::runner::histogram::export_histogram;
+pub use crate::runner::histogram::export as export_histogram;
 pub use crate::runner::pathfinder_db::{connect_to_database, get_latest_block_number};
 pub use crate::runner::replay_range::ReplayRange;
 
