@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::path::PathBuf;
 
 use plotters::backend::SVGBackend;
 use plotters::chart::ChartBuilder;
@@ -12,25 +13,19 @@ use plotters::style::{Color, FontTransform, IntoFont, TextStyle};
 use super::replay_statistics::ReplayStatistics;
 
 pub fn export_histogram(
-    filename: &str,
+    filename: &PathBuf,
     title: &str,
     libfunc_stats: ReplayStatistics,
 ) -> anyhow::Result<()> {
     let list_of_libfuncs: Vec<&str> = libfunc_stats
         .concrete_libfunc
         .keys()
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect::<Vec<&str>>();
     let max_label_size = 550; //pixels
     let number_of_libfuncs = list_of_libfuncs.len();
     tracing::info!("Number of libfuncs {number_of_libfuncs}");
-    let max_y_axis = ((libfunc_stats
-        .concrete_libfunc
-        .values()
-        .max()
-        .unwrap()
-        .clone() as f32
-        / 10.0)
+    let max_y_axis = ((*libfunc_stats.concrete_libfunc.values().max().unwrap() as f32 / 10.0)
         .floor()
         + 1.0) as usize
         * 10;
@@ -77,11 +72,10 @@ pub fn export_histogram(
             .data(list_of_libfuncs.iter().map(|x| {
                 (
                     x,
-                    libfunc_stats
+                    *libfunc_stats
                         .concrete_libfunc
                         .get::<str>(x.borrow())
-                        .unwrap()
-                        .clone(),
+                        .unwrap(),
                 )
             })),
     )?;

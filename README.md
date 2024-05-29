@@ -23,7 +23,7 @@ In the future, this tool is likely to evolve to support:
 ## How to Use
 
 ```bash
-cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM> --end-block <BLOCK_NUM>
+cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM> --end-block <BLOCK_NUM> [--svg-out <HISTOGRAM_FILENAME>]
 ```
 
 `PATHFINDER_DB` is the path of the Pathfinder sqlite database. The Pathfinder
@@ -31,17 +31,21 @@ database is generated from running a `pathfinder` node. Further information is
 available
 [here](https://github.com/eqlabs/pathfinder/tree/v0.11.6?tab=readme-ov-file#database-snapshots).
 
+`HISTOGRAM_FILENAME` is the name of the file to output the libfunc histogram.
+The image is saved in SVG format.
+
 This tool makes use of `tracing` library for log purposes. For this reason set
 `RUST_LOG` at least at `info` level to see the raw output of libfunc statistics.
 
 ## Example
 
 ```bash
-cargo run -- --db-path ../pathfinder/mainnet.sqlite --start-block 632917 --end-block 632917
+cargo run -- --db-path ../pathfinder/mainnet.sqlite --start-block 632917 --end-block 632917 --svg-out "histogram.svg"
 ```
 
 The command above replays all transactions of block
-[632917](https://starkscan.co/block/632917#transactions)
+[632917](https://starkscan.co/block/632917#transactions) and saves the libfunc
+histogram in the file named `"histogram.svg"`.
 
 ## Limitations
 

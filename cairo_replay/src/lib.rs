@@ -52,7 +52,7 @@ pub use crate::runner::histogram::export_histogram;
 pub use crate::runner::pathfinder_db::{connect_to_database, get_latest_block_number};
 pub use crate::runner::replay_range::ReplayRange;
 
-mod error;
+pub mod error;
 mod runner;
 
 /// Replays all transactions from `start_block` to `end_block` and gathers

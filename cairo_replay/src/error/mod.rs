@@ -19,9 +19,11 @@ use thiserror::Error;
 // If any error is added in the future, make sure to keep all sub-error enums as
 // `pub` for ease of access.
 pub use self::database::Error as DatabaseError;
+pub use self::histogram::Error as HistogramError;
 pub use self::runner::Error as RunnerError;
 
 pub mod database;
+pub mod histogram;
 pub mod runner;
 
 #[derive(Debug, Error)]
@@ -30,6 +32,11 @@ pub enum Error {
     /// Pathfinder database.
     #[error(transparent)]
     Database(#[from] DatabaseError),
+
+    /// `Error::Histogram` error is caused by issues generating the libfunc
+    /// histogram.
+    #[error(transparent)]
+    Histogram(#[from] HistogramError),
 
     /// `Error::Runner` error is caused by issues with transaction
     /// replay or profiling.
