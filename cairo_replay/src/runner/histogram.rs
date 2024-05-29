@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use plotters::backend::SVGBackend;
 use plotters::chart::ChartBuilder;
 use plotters::coord::ranged1d::IntoSegmentedCoord;
@@ -9,24 +8,32 @@ use plotters::series::Histogram;
 use plotters::style::full_palette::{RED, WHITE};
 use plotters::style::text_anchor::{HPos, Pos, VPos};
 use plotters::style::{Color, FontTransform, IntoFont, TextStyle};
-use smol_str::SmolStr;
+
+use super::replay_statistics::ReplayStatistics;
 
 pub fn export_histogram(
     filename: &str,
     title: &str,
-    libfunc_stats: OrderedHashMap<SmolStr, usize>,
+    libfunc_stats: ReplayStatistics,
 ) -> anyhow::Result<()> {
     let list_of_libfuncs: Vec<&str> = libfunc_stats
+        .concrete_libfunc
         .keys()
         .map(|s| s.as_str())
         .collect::<Vec<&str>>();
     let max_label_size = 550; //pixels
     let number_of_libfuncs = list_of_libfuncs.len();
     tracing::info!("Number of libfuncs {number_of_libfuncs}");
-    let max_y_axis =
-        ((libfunc_stats.values().max().unwrap().clone() as f32 / 10.0).floor()
-            + 1.0) as usize
-            * 10;
+    let max_y_axis = ((libfunc_stats
+        .concrete_libfunc
+        .values()
+        .max()
+        .unwrap()
+        .clone() as f32
+        / 10.0)
+        .floor()
+        + 1.0) as usize
+        * 10;
     tracing::info!("Max y axis {max_y_axis}");
     let width: u32 = (number_of_libfuncs as u32) * 40 + 250; //pixels
     let height: u32 = (max_y_axis as u32) * 2 + max_label_size;
@@ -68,7 +75,14 @@ pub fn export_histogram(
         Histogram::vertical(&chart)
             .style(RED.mix(0.5).filled())
             .data(list_of_libfuncs.iter().map(|x| {
-                (x, libfunc_stats.get::<str>(x.borrow()).unwrap().clone())
+                (
+                    x,
+                    libfunc_stats
+                        .concrete_libfunc
+                        .get::<str>(x.borrow())
+                        .unwrap()
+                        .clone(),
+                )
             })),
     )?;
 

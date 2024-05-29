@@ -2,19 +2,12 @@
 //! from `cairo-vm`. It determines the number of times each libfunc has
 //! been called during an entry point execution.
 
-use cairo_lang_runner::profiling::{
-    user_function_idx_by_sierra_statement_idx,
-    ProfilingInfo,
-};
-use cairo_lang_runner::{ProfilingInfoCollectionConfig, RunnerError};
-use cairo_lang_sierra::extensions::core::{
-    CoreConcreteLibfunc,
-    CoreLibfunc,
-    CoreType,
-};
-use cairo_lang_sierra::program::{GenStatement, StatementIdx};
+use cairo_lang_runner::profiling::{user_function_idx_by_sierra_statement_idx, ProfilingInfo};
+use cairo_lang_runner::{ProfilingInfoCollectionConfig, RunnerError as CairoError};
+use cairo_lang_sierra::extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType};
+use cairo_lang_sierra::program::{GenStatement, Program, StatementIdx};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
-use cairo_lang_sierra_to_casm::compiler::{CairoProgram, SierraToCasmConfig};
+use cairo_lang_sierra_to_casm::compiler::{compile, CairoProgram, SierraToCasmConfig};
 use cairo_lang_sierra_to_casm::metadata::{
     calc_metadata,
     calc_metadata_ap_change_only,
@@ -25,50 +18,67 @@ use cairo_lang_sierra_to_casm::metadata::{
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::chain;
 
+use crate::error::RunnerError;
+
 pub mod analysis;
 pub mod histogram;
+pub mod pathfinder_db;
 pub mod replace_ids;
+pub mod replay_block;
+pub mod replay_range;
+pub mod replay_statistics;
 
-/// Big enough number to handle the contracts in Starknet.
-/// Verified with random testing.
+/// The default maximum depth for a stack trace.
+///
+/// This number has been determined to be large enough to handle the contracts
+/// on Starknet via empirical testing.
 const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
-/// Creates the metadata required for a Sierra program lowering to CASM.
+/// Creates the metadata required for a lowering a Sierra program to CASM.
+///
+/// This function is copied from crate `cairo-lang-runner` because it
+/// isn't public.
 ///
 /// # Arguments
 ///
-/// - `sierra_program`: the sierra program
-/// - `metadata_config`: optional. It contains the configuration options.
+/// - `sierra_program`: The sierra program.
+/// - `metadata_config`: The configuration options. If not provided,
+///   `create_metadata` will skip gas usage calculations.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if:
 ///
-/// - call to `calc_metadata` fails
-/// - call to `calc_metadata_ap_change_only` fails
+/// - Call to `calc_metadata` fails
+/// - Call to `calc_metadata_ap_change_only` fails
+// TODO: Change `cairo` crate and make `create_metadata` public. Issue #23.
 fn create_metadata(
-    sierra_program: &cairo_lang_sierra::program::Program,
+    sierra_program: &Program,
     metadata_config: Option<MetadataComputationConfig>,
 ) -> Result<Metadata, RunnerError> {
-    if let Some(metadata_config) = metadata_config {
+    let metadata = if let Some(metadata_config) = metadata_config {
         calc_metadata(sierra_program, metadata_config)
     } else {
         calc_metadata_ap_change_only(sierra_program)
     }
     .map_err(|err| match err {
-        MetadataError::ApChangeError(err) => RunnerError::ApChangeError(err),
-        MetadataError::CostError(_) => RunnerError::FailedGasCalculation,
-    })
+        MetadataError::ApChangeError(err) => CairoError::ApChangeError(err),
+        MetadataError::CostError(_) => CairoError::FailedGasCalculation,
+    })?;
+    Ok(metadata)
 }
 
-/// This is a slimmed down version of `SierraCasmRunner`
-/// in order to setup the profiler during transaction
+/// Extracts profiling data from the list of visited program counters.
+///
+/// This is a slimmed down version of `SierraCasmRunner` from
+/// `cairo-lang-runner` crate adapted for use in Starknet contracts instead of
+/// Cairo programs. It is needed to setup the profiler during transaction
 /// replay. There is no call to `cairo-vm` because this slimmed down version
 /// takes the list of visited program counters as input in
 /// `collect_profiling_info`.
 pub struct SierraCasmRunnerLight {
     /// The sierra program.
-    sierra_program: cairo_lang_sierra::program::Program,
+    sierra_program: Program,
     /// Program registry for the Sierra program.
     sierra_program_registry: ProgramRegistry<CoreType, CoreLibfunc>,
     /// The casm program matching the Sierra code.
@@ -77,35 +87,30 @@ pub struct SierraCasmRunnerLight {
     pub run_profiler: Option<ProfilingInfoCollectionConfig>,
 }
 impl SierraCasmRunnerLight {
-    /// Generate a new `SierraCasmRunnerLight` object.
-    ///
-    /// Takes a `sierra_program` with an optional `metadata_config` and
-    /// `run_profiler` to generate a `SierraCasmRunnerLight`.
+    /// Generates a new `SierraCasmRunnerLight` object.
     ///
     /// # Arguments
     ///
-    /// - `sierra_program`: the sierra program considered in the runner.
-    /// - `metadata_config`: optional. Configuration for the compilation from
-    ///   Sierra to CASM.
-    /// - `run_profiler`: optional. It contains configuration parameters for the
-    ///   profiler.
+    /// - `sierra_program`: The sierra program considered in the runner.
     ///
     /// # Errors
     ///
     /// Returns [`Err`] if:
     ///
-    /// - there is any error in the call to `create_metadata`
-    /// - there is an error in the generation of the `sierra_program_registry`
-    pub fn new(
-        sierra_program: cairo_lang_sierra::program::Program,
-        metadata_config: Option<MetadataComputationConfig>,
-        run_profiler: Option<ProfilingInfoCollectionConfig>,
-    ) -> Result<Self, RunnerError> {
+    /// - The call to `create_metadata` fails
+    /// - The generation of `sierra_program_registry` fails
+    pub fn new(sierra_program: Program) -> Result<Self, RunnerError> {
+        // `run_profiler` and `metadata_config` are set as per default values
+        // preventing the user from choosing `None` as in the original
+        // `SierraCasmRunner`. This is to ensure the profiler is always run with
+        // the same configuration.
+        let run_profiler = Some(ProfilingInfoCollectionConfig::default());
+        let metadata_config = Some(MetadataComputationConfig::default());
         let gas_usage_check = metadata_config.is_some();
         let metadata = create_metadata(&sierra_program, metadata_config)?;
         let sierra_program_registry =
             ProgramRegistry::<CoreType, CoreLibfunc>::new(&sierra_program)?;
-        let casm_program = cairo_lang_sierra_to_casm::compiler::compile(
+        let casm_program = compile(
             &sierra_program,
             &metadata,
             SierraToCasmConfig {
@@ -122,8 +127,9 @@ impl SierraCasmRunnerLight {
         })
     }
 
+    // TODO: To be refactored. Issue #5.
     fn sierra_statement_index_by_pc(&self, pc: usize) -> StatementIdx {
-        // the `-1` here can't cause an underflow as the first statement is
+        // The `-1` here can't cause an underflow as the first statement is
         // always at offset 0, so it is always on the left side of the
         // partition, and thus the partition index is >0.
         StatementIdx(
@@ -136,10 +142,16 @@ impl SierraCasmRunnerLight {
     }
 
     /// Collects profiling info of the current run using the trace.
-    // TODO: To be refactored!
+    ///
+    /// This function has been copied from `cairo-lang-runner` crate but it was
+    /// written for Cairo programs. It needs to be adapted for use with Starknet
+    /// contracts.
+    ///
+    /// In particular, the variable `end_of_program_reached` doesn't
+    /// seem to be valid for Starknet contracts.
+    // TODO: To be refactored. Issue #5.
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> ProfilingInfo {
-        let sierra_len =
-            self.casm_program.debug_info.sierra_statement_info.len();
+        let sierra_len = self.casm_program.debug_info.sierra_statement_info.len();
         let bytecode_len = self
             .casm_program
             .debug_info
@@ -196,19 +208,11 @@ impl SierraCasmRunnerLight {
                 continue;
             }
 
-            // if _end_of_program_reached {
-            //     unreachable!(
-            //         "End of program reached, but trace continues. Left {}",
-            //         pcs.len() - i
-            //     );
-            // }
-
             cur_weight += 1;
 
             // TODO(yuval): Maintain a map of pc to sierra statement index (only
             // for PCs we saw), to save lookups.
-            let sierra_statement_idx =
-                self.sierra_statement_index_by_pc(real_pc);
+            let sierra_statement_idx = self.sierra_statement_index_by_pc(real_pc);
             let user_function_idx = user_function_idx_by_sierra_statement_idx(
                 &self.sierra_program,
                 sierra_statement_idx,
@@ -218,13 +222,9 @@ impl SierraCasmRunnerLight {
                 .entry(sierra_statement_idx)
                 .or_insert(0) += 1;
 
-            let Some(gen_statement) =
-                self.sierra_program.statements.get(sierra_statement_idx.0)
+            let Some(gen_statement) = self.sierra_program.statements.get(sierra_statement_idx.0)
             else {
-                panic!(
-                    "Failed fetching statement index {}",
-                    sierra_statement_idx.0
-                );
+                panic!("Failed fetching statement index {}", sierra_statement_idx.0);
             };
 
             match gen_statement {
@@ -232,15 +232,10 @@ impl SierraCasmRunnerLight {
                     let libfunc_found = self
                         .sierra_program_registry
                         .get_libfunc(&invocation.libfunc_id);
-                    if matches!(
-                        libfunc_found,
-                        Ok(CoreConcreteLibfunc::FunctionCall(_))
-                    ) {
+                    if matches!(libfunc_found, Ok(CoreConcreteLibfunc::FunctionCall(_))) {
                         // Push to the stack.
-                        if function_stack_depth < MAX_STACK_TRACE_DEPTH_DEFAULT
-                        {
-                            function_stack
-                                .push((user_function_idx, cur_weight));
+                        if function_stack_depth < MAX_STACK_TRACE_DEPTH_DEFAULT {
+                            function_stack.push((user_function_idx, cur_weight));
                             cur_weight = 0;
                         } else {
                             tracing::info!("Exceeding depth");
@@ -253,17 +248,14 @@ impl SierraCasmRunnerLight {
                     if function_stack_depth <= MAX_STACK_TRACE_DEPTH_DEFAULT {
                         // The current stack trace, including the current
                         // function.
-                        let cur_stack: Vec<_> = chain!(
-                            function_stack.iter().map(|f| f.0),
-                            [user_function_idx]
-                        )
-                        .collect();
-                        *stack_trace_weights.entry(cur_stack).or_insert(0) +=
-                            cur_weight;
+                        let cur_stack: Vec<_> =
+                            chain!(function_stack.iter().map(|f| f.0), [user_function_idx])
+                                .collect();
+                        *stack_trace_weights.entry(cur_stack).or_insert(0) += cur_weight;
 
                         let Some(popped) = function_stack.pop() else {
-                            // End of the program.
-                            // _end_of_program_reached = true;
+                            // End of the program. Not valid for Starknet
+                            // contracts.
                             continue;
                         };
                         cur_weight += popped.1;

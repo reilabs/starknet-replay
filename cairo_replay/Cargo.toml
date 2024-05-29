@@ -1,34 +1,41 @@
 [package]
 name = "cairo-replay"
+version = "0.1.0"
 description = "Back end to replay Starknet transactions and print histogram of libfuncs usage."
 categories = ["cryptography::cryptocurrencies"]
-version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
 keywords.workspace = true
 
+# Prevent publishing by accident.
+publish = false
+
 [dependencies]
+# All `cairo-lang-` crates must have the same version
+cairo-lang-starknet-classes = "2.6.0"
+cairo-lang-sierra-to-casm = "2.6.0"
+cairo-lang-runner = "2.6.0"
+cairo-lang-compiler = "2.6.0"
+cairo-lang-sierra = "2.6.0"
+cairo-lang-utils = "2.6.0"
+cairo-lang-sierra-generator = "2.6.0"
+# Some changes are required to `eqlabs/pathfinder` and to
+# `starkware-libs/blockifier`. These changes are in the branch `extract_libfunc`
+# of Reilabs fork and need to be merged in main branch.
+# Hardcoding the commit hash for the time being.
+pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
 plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "9b05119c36d586822e32871436f6c2c5e869d99a" } #"0.3.5"
+rayon = "1.8.0"
+starknet_api = "0.10.0"
+serde = "1.0.192"
+serde_json = "1.0.105"
+smol_str = { version = "0.2.0", features = ["serde"] }
+thiserror = "1.0.61"
 anyhow.workspace = true
-cairo-lang-starknet-classes.workspace = true
-cairo-lang-sierra-to-casm.workspace = true
-cairo-lang-runner.workspace = true
-cairo-lang-compiler.workspace = true
-cairo-lang-sierra.workspace = true
-cairo-lang-utils.workspace = true
-cairo-lang-sierra-generator.workspace = true
-jemallocator.workspace = true
-pathfinder-common.workspace = true
-pathfinder-executor.workspace = true
-pathfinder-rpc.workspace = true
-pathfinder-storage.workspace = true
-rayon.workspace = true
-starknet_api.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
-smol_str.workspace = true
 itertools.workspace = true

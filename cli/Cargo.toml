@@ -1,35 +1,27 @@
 [package]
 name = "cli"
+version = "0.1.0"
 description = "A CLI tool to replay Starknet transactions and print histogram of libfuncs usage"
 categories = ["cryptography::cryptocurrencies"]
-version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
 keywords.workspace = true
 
+# Prevent publishing by accident.
+publish = false
+
 [dependencies]
 cairo-replay = { path = "../cairo_replay" }
 clap = { version = "4.5.3", features = ["derive"] }
+jemallocator = "0.5.4"
+tracing-subscriber = { version = "0.3.17", features = [
+    "env-filter",
+    "time",
+    "ansi",
+] }
+exitcode = "1.1.2"
 anyhow.workspace = true
-cairo-lang-starknet-classes.workspace = true
-cairo-lang-sierra-to-casm.workspace = true
-cairo-lang-runner.workspace = true
-cairo-lang-compiler.workspace = true
-cairo-lang-sierra.workspace = true
-cairo-lang-utils.workspace = true
-cairo-lang-sierra-generator.workspace = true
-jemallocator.workspace = true
-pathfinder-common.workspace = true
-pathfinder-executor.workspace = true
-pathfinder-rpc.workspace = true
-pathfinder-storage.workspace = true
-rayon.workspace = true
-starknet_api.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
-smol_str.workspace = true
 itertools.workspace = true

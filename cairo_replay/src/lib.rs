@@ -1,16 +1,37 @@
+//! The library `cairo-replay` replays transactions from the `pathfinder` sqlite
+//! database and collects statistics on the execution of those transactions.
+//!
+//! At the current time, the library focuses on gathering usage
+//! statistics of the various library functions (libfuncs) in the
+//! blocks being replayed. In the future it may be expanded to
+//! collect more kinds of data during replay.
+//!
+//! The simplest interaction with this library is to call the function
+//! [`run_replay`] which returns the usage statistics of libfuncs.
+//!
+//! The key structs of the library are as follows:
+//!
+//! - [`ReplayBlock`] struct which contains a single block of transactions.
+//! - [`runner::SierraCasmRunnerLight`] struct to extract profiling data from a
+//!   list of visited program counters.
+//! - [`DebugReplacer`] struct replaces the ids of libfuncs and types in a
+//!   Sierra program.
+//!
+//! Beyond [`run_replay`], the other key public functions of the library are as
+//! follows:
+//!
+//! - [`runner::extract_libfuncs_weight`] which updates the cumulative usage of
+//!   libfuncs
+//! - [`runner::replace_sierra_ids_in_program`] which replaces the ids of
+//!   libfuncs and types with their debug name in a Sierra program.
+
 #![warn(clippy::all, clippy::cargo, clippy::pedantic)]
-#![allow(clippy::multiple_crate_versions)]
+#![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
-//! Replays transactions from `pathfinder` sqlite database
-//! and prints the histogram of the usage of `libfuncs`
-//! in the blocks replayed. This is the back end of the package.
-//! The module runner contains the code for the profiler which counts
-//! the number of `libfuncs` called during execution of the transaction.
-//! It also contains the code to replace the ids of the libfuncs with their
-//! respective name.
+use std::sync::mpsc::channel;
 
-use anyhow::{bail, Context};
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+use anyhow::Context;
+use error::RunnerError;
 use pathfinder_common::consts::{
     GOERLI_INTEGRATION_GENESIS_HASH,
     GOERLI_TESTNET_GENESIS_HASH,
@@ -18,106 +39,24 @@ use pathfinder_common::consts::{
     SEPOLIA_INTEGRATION_GENESIS_HASH,
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
-use pathfinder_common::receipt::Receipt;
-use pathfinder_common::transaction::Transaction;
-use pathfinder_common::{BlockHeader, BlockNumber, ChainId};
-use pathfinder_executor::{ExecutionState, TransactionExecutionError};
-use pathfinder_storage::{BlockId, Storage};
+use pathfinder_common::{BlockNumber, ChainId};
+use pathfinder_executor::ExecutionState;
+use pathfinder_rpc::compose_executor_transaction;
+use pathfinder_storage::{BlockId, Storage, Transaction as DatabaseTransaction};
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use smol_str::SmolStr;
+use runner::replay_block::ReplayBlock;
+use runner::replay_statistics::ReplayStatistics;
 
-use crate::runner::analysis::analyse_tx;
+use crate::runner::analysis::extract_libfuncs_weight;
+pub use crate::runner::histogram::export_histogram;
+pub use crate::runner::pathfinder_db::{connect_to_database, get_latest_block_number};
+pub use crate::runner::replay_range::ReplayRange;
 
+mod error;
 mod runner;
 
-pub use crate::runner::histogram::export_histogram;
-
-/// `ReplayWork` contains the data to replay a single block from Starknet
-/// blockchain.
-#[derive(Debug, Clone, Eq, PartialEq, Default)]
-struct ReplayWork {
-    /// The header of the block being replayed.
-    pub header: BlockHeader,
-    /// The list of transactions to be replayed.
-    pub transactions: Vec<Transaction>,
-    /// The list of receipts after a transaction is replayed using
-    /// `pathfinder` node.
-    pub receipts: Vec<Receipt>,
-    /// The key corresponds to the concrete libfunc name and the value
-    /// contains the number of times the libfunc has been called
-    /// during execution of all the transactions in the block
-    pub libfuncs_weight: OrderedHashMap<SmolStr, usize>,
-}
-
-impl ReplayWork {
-    /// Create a new `ReplayWork`
-    ///
-    /// Not checking that `transactions` and `receipts` have the same length.
-    /// The receipt for transaction at index I is found at index I of `receipt`.
-    ///
-    /// # Arguments
-    ///
-    /// - `header`: the header of the block `transactions` belong to.
-    /// - `transactions`: the list of transactions in the block that need to be
-    ///   profiled.
-    /// - `receipts`: the list of receipts for the execution of the
-    ///   transactions. Must be the same length as `transactions`.
-    pub fn new(
-        header: BlockHeader,
-        transactions: Vec<Transaction>,
-        receipts: Vec<Receipt>,
-    ) -> ReplayWork {
-        Self {
-            header,
-            transactions,
-            receipts,
-            libfuncs_weight: OrderedHashMap::default(),
-        }
-    }
-
-    /// Update `libfuncs_weight` from the input `libfuncs_weight`
-    ///
-    /// Updates `self.libfuncs_weight` with the data from `libfuncs_weight`.
-    /// For keys already present in `self.libfuncs_weight`, the value (i.e.
-    /// weight) is added on top.
-    ///
-    /// # Arguments
-    ///
-    /// - `libfuncs_weight`: the input hashmap to update `self.libfuncs_weight`
-    pub fn add_libfuncs(
-        &mut self,
-        libfuncs_weight: &OrderedHashMap<SmolStr, usize>,
-    ) {
-        for (libfunc, weight) in libfuncs_weight.iter() {
-            self.libfuncs_weight
-                .entry(libfunc.clone())
-                .and_modify(|e| *e += *weight)
-                .or_insert(*weight);
-        }
-    }
-
-    /// `libfuncs_weight` is updated with data from `self.libfuncs_weight`.
-    ///
-    /// The reverse of `self.add_libfuncs`.
-    ///
-    /// # Arguments
-    ///
-    /// - `libfuncs_weight`: the output hashmap to update with data in
-    ///   `self.libfuncs_weight`
-    pub fn extend_libfunc_stats(
-        &self,
-        libfuncs_weight: &mut OrderedHashMap<SmolStr, usize>,
-    ) {
-        for (libfunc, weight) in self.libfuncs_weight.iter() {
-            libfuncs_weight
-                .entry(libfunc.clone())
-                .and_modify(|e| *e += *weight)
-                .or_insert(*weight);
-        }
-    }
-}
-
-/// Replays all transactions from `start_block` to `end_block`.
+/// Replays all transactions from `start_block` to `end_block` and gathers
+/// statistics while doing so.
 ///
 /// This function does not check that the `start_block` and `end_block` are
 /// within the database history. It is expected that the user does this of their
@@ -125,140 +64,141 @@ impl ReplayWork {
 ///
 /// # Arguments
 ///
-/// - `start_block`: starting block of the replay
-/// - `end_block`: ending block (included) of the replay.
-/// - `storage`: connection with the Pathfinder database
+/// - `replay_range`: The range of blocks to be replayed.
+/// - `storage`: Connection with the Pathfinder database
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if:
 ///
-/// there is any issue calling `generate_replay_work` or if
-/// `replay_transactions` returns an error.
+/// - A block number doesn't exist in the database history
+/// - `end_block` is less than `start_block`
 pub fn run_replay(
-    start_block: u64,
-    end_block: u64,
+    replay_range: &ReplayRange,
     storage: Storage,
-) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
+) -> Result<ReplayStatistics, RunnerError> {
     // List of blocks to be replayed
-    let mut replay_work: Vec<ReplayWork> =
-        generate_replay_work(start_block, end_block, &storage)?;
+    let replay_work: Vec<ReplayBlock> = generate_replay_work(replay_range, &storage)?;
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
-    replay_transactions(storage, &mut replay_work)
+    replay_blocks(storage, &replay_work)
 }
 
 /// Generates the list of transactions to be replayed.
 ///
 /// This function queries the Pathfinder database to get the list of
 /// transactions that need to be replayed. The list of transactions is taken
-/// from all the transactions from `start_block` to `end_block` (included).
+/// from all the transactions from `start_block` to `end_block` (inclusive).
 ///
 /// # Arguments
 ///
-/// - `start_block`: starting block of the replay
-/// - `end_block`: ending block (included) of the replay.
-/// - `storage`: connection with the Pathfinder database
+/// - `replay_range`: The range of blocks to be replayed.
+/// - `storage`: Connection with the Pathfinder database.
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// there is any issue accessing the Pathfinder database
+/// Returns [`Err`] if there is an issue accessing the Pathfinder database.
 fn generate_replay_work(
-    start_block: u64,
-    end_block: u64,
+    replay_range: &ReplayRange,
     storage: &Storage,
-) -> anyhow::Result<Vec<ReplayWork>> {
+) -> Result<Vec<ReplayBlock>, RunnerError> {
     let mut db = storage
         .connection()
-        .context("Opening sqlite database connection")?;
-    let transaction = db.transaction()?;
+        .context("Opening sqlite database connection")
+        .map_err(RunnerError::GenerateReplayWork)?;
+    let transaction = db.transaction().map_err(RunnerError::GenerateReplayWork)?;
+
+    let start_block = replay_range.get_start_block();
+    let end_block = replay_range.get_end_block();
 
     (start_block..=end_block)
         .map(|block_number| {
-            let block_id =
-                BlockId::Number(BlockNumber::new_or_panic(block_number));
-            let Some(header) = transaction.block_header(block_id)? else {
-                bail!("Missing block: {}", block_number);
+            let block_id = BlockId::Number(BlockNumber::new_or_panic(block_number));
+            let Some(header) = transaction
+                .block_header(block_id)
+                .map_err(RunnerError::GenerateReplayWork)?
+            else {
+                return Err(RunnerError::Unknown(
+                    format!("Missing block: {block_number}",).to_string(),
+                ));
             };
             let transactions_and_receipts = transaction
                 .transaction_data_for_block(block_id)
-                .context("Reading transactions from sqlite database")?
+                .context("Reading transactions from sqlite database")
+                .map_err(RunnerError::GenerateReplayWork)?
                 .context(format!(
-                    "Transaction data missing from sqlite database for block \
-                     {block_number}"
-                ))?;
+                    "Transaction data missing from sqlite database for block {block_number}"
+                ))
+                .map_err(RunnerError::GenerateReplayWork)?;
 
-            let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
-                transactions_and_receipts
-                    .into_iter()
-                    .filter(|(_, r)| !r.is_reverted())
-                    .unzip();
+            let (transactions, receipts): (Vec<_>, Vec<_>) =
+                transactions_and_receipts.into_iter().unzip();
 
-            // transactions.truncate(3);
-            // receipts.truncate(3);
-
-            Ok(ReplayWork::new(header, transactions, receipts))
+            ReplayBlock::new(header, transactions, receipts)
         })
-        .collect::<anyhow::Result<Vec<ReplayWork>>>()
+        .collect::<Result<Vec<ReplayBlock>, RunnerError>>()
 }
 
-/// Re-execute the list of transactions in `replay_work` and return the
+/// Re-executes the list of transactions in `replay_work` and return the
 /// statistics on libfunc usage.
 ///
-/// `replay_work` contains the lists of transactions to replay grouped by block.
-/// Each index in `replay_work` corresponds to a block.
+/// `replay_work` contains the list of transactions to replay grouped by block.
 ///
 /// # Arguments
 ///
-/// - `replay_work`: the list of blocks to be replayed.
-/// - `storage`: connection with the Pathfinder database.
+/// - `replay_work`: The list of blocks to be replayed. Each index in
+///   corresponds to a block.
+/// - `storage`: Connection with the Pathfinder database.
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// the function `execute` fails execution.
-fn replay_transactions(
+/// Returns [`Err`] if the function `execute_block` fails to replay any
+/// transaction.
+fn replay_blocks(
     storage: Storage,
-    replay_work: &mut Vec<ReplayWork>,
-) -> anyhow::Result<OrderedHashMap<SmolStr, usize>> {
-    replay_work.iter_mut().par_bridge().try_for_each_with(
-        storage,
-        |storage, block| -> anyhow::Result<()> {
-            execute(storage, block)?;
-            Ok(())
-        },
-    )?;
+    replay_work: &[ReplayBlock],
+) -> Result<ReplayStatistics, RunnerError> {
+    let (sender, receiver) = channel();
+    replay_work
+        .iter()
+        .par_bridge()
+        .try_for_each_with(
+            (storage, sender),
+            |(storage, sender), block| -> anyhow::Result<()> {
+                let block_libfuncs_weight = execute_block(storage, block)?;
+                sender.send(block_libfuncs_weight)?;
+                Ok(())
+            },
+        )
+        .map_err(RunnerError::ReplayBlocks)?;
 
-    // for block in replay_work.iter_mut() {
-    //     execute(&mut storage.clone(), chain_id, block)?;
-    // }
+    let res: Vec<_> = receiver.iter().collect();
 
-    let mut cumulative_libfunc_stat = OrderedHashMap::default();
-    for block in replay_work {
-        block.extend_libfunc_stats(&mut cumulative_libfunc_stat);
+    let mut cumulative_libfunc_stat = ReplayStatistics::new();
+
+    for block_libfuncs in res {
+        cumulative_libfunc_stat.merge(&block_libfuncs);
     }
     Ok(cumulative_libfunc_stat)
 }
 
-/// Replay the list of transactions in a block.
+/// Replays the list of transactions in a block.
 ///
 /// # Arguments
 ///
-/// - `storage`: connection with the Pathfinder database.
-/// - `work`: the block to be re-executed
+/// - `storage`: Connection with the Pathfinder database.
+/// - `work`: The block to be re-executed
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if:
-///
-/// any transaction fails execution or if there is any error communicating with
-/// the Pathfinder database.
-fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
-    let mut db = storage.connection()?;
+/// Returns [`Err`] if any transaction fails execution or if there is any error
+/// communicating with the Pathfinder database.
+fn execute_block(
+    storage: &mut Storage,
+    work: &ReplayBlock,
+) -> Result<ReplayStatistics, RunnerError> {
+    let mut db = storage.connection().map_err(RunnerError::ExecuteBlock)?;
 
     let db_tx = db
         .transaction()
@@ -266,82 +206,61 @@ fn execute(storage: &mut Storage, work: &mut ReplayWork) -> anyhow::Result<()> {
 
     let chain_id = get_chain_id(&db_tx)?;
 
-    let execution_state =
-        ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
+    let execution_state = ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
 
     let mut transactions = Vec::new();
     for transaction in &work.transactions {
         let transaction =
-            pathfinder_rpc::compose_executor_transaction(transaction, &db_tx)?;
+            compose_executor_transaction(transaction, &db_tx).map_err(RunnerError::ExecuteBlock)?;
         transactions.push(transaction);
     }
 
     let skip_validate = false;
-    let skip_fee_charge = true;
-    let simulations = match pathfinder_executor::simulate(
+    let skip_fee_charge = false;
+    let simulations = pathfinder_executor::simulate(
         execution_state,
         transactions,
         skip_validate,
         skip_fee_charge,
-    ) {
-        Ok(simulation) => simulation,
-        Err(error) => match error {
-            TransactionExecutionError::ExecutionError {
-                transaction_index,
-                error,
-            } => {
-                let receipt_tx = work
-                    .receipts
-                    .iter()
-                    .find(|r| r.transaction_index == transaction_index as u64)
-                    .unwrap();
-                let tx_hash = receipt_tx.transaction_hash;
-                tracing::error!(block_number=%work.header.number, ?transaction_index, ?error, ?tx_hash, "Transaction re-execution failed");
-                bail!("Transaction re-execution failed");
-            }
-            _ => bail!("Transaction simulation failed"),
-        },
-    };
+    ).map_err(|error| {
+        tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed");
+        error
+    })?;
 
-    // else {
-    //     tracing::error!(block_number=%work.header.number, ?error,
-    // "Transaction re-execution failed")).unwrap(); };
     // Using `SmolStr` because it's coming from `LibfuncWeights`
-    let mut cumulative_libfuncs_weight: OrderedHashMap<SmolStr, usize> =
-        OrderedHashMap::default();
+    let mut cumulative_libfuncs_weight: ReplayStatistics = ReplayStatistics::new();
     for simulation in &simulations {
-        analyse_tx(
-            &simulation.trace,
-            work.header.number,
-            &db_tx,
-            &mut cumulative_libfuncs_weight,
-        );
+        let libfunc_transaction =
+            extract_libfuncs_weight(&simulation.trace, work.header.number, &db_tx)?;
+        cumulative_libfuncs_weight.merge(&libfunc_transaction);
     }
-    work.add_libfuncs(&cumulative_libfuncs_weight);
-    Ok(())
+    Ok(cumulative_libfuncs_weight)
 }
 
-/// Get the `chain_id` of the Pathfinder databse.
+/// Get the `chain_id` of the Pathfinder database.
 ///
-/// Detect the chain used by quering the hash of the first block in the
-/// database. It can detect only Mainnet, Goerli, Sepolia networks.
+/// This function detects the chain used by quering the hash of the first block
+/// in the database. It can detect only Mainnet, Goerli, and Sepolia.
 ///
 /// # Arguments
 ///
-/// - `tx` is the open `Transaction` object with the databse.
+/// - `tx`: This is the open `Transaction` object with the databse.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if:
 ///
-/// the first block doesn't have a hash matching one of
-/// the known hashes or there is an error querying the database.
-fn get_chain_id(
-    tx: &pathfinder_storage::Transaction<'_>,
-) -> anyhow::Result<ChainId> {
+/// - The first block doesn't have a hash matching one of
+/// the known hashes
+/// - There is an error querying the database.
+// TODO: Error return type shall be changed from `RunnerError` to
+// `DatabaseError`. Issue #19
+fn get_chain_id(tx: &DatabaseTransaction<'_>) -> Result<ChainId, RunnerError> {
     let (_, genesis_hash) = tx
-        .block_id(BlockNumber::GENESIS.into())?
-        .context("Getting genesis hash")?;
+        .block_id(BlockNumber::GENESIS.into())
+        .map_err(RunnerError::GetChainId)?
+        .context("Getting genesis hash")
+        .map_err(RunnerError::GetChainId)?;
 
     let chain = match genesis_hash {
         MAINNET_GENESIS_HASH => ChainId::MAINNET,
@@ -349,7 +268,7 @@ fn get_chain_id(
         GOERLI_INTEGRATION_GENESIS_HASH => ChainId::GOERLI_INTEGRATION,
         SEPOLIA_TESTNET_GENESIS_HASH => ChainId::SEPOLIA_TESTNET,
         SEPOLIA_INTEGRATION_GENESIS_HASH => ChainId::SEPOLIA_INTEGRATION,
-        _ => anyhow::bail!("Unknown chain"),
+        _ => return Err(RunnerError::Unknown("Unknown chain".to_string())),
     };
 
     Ok(chain)
