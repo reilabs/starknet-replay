@@ -10,7 +10,7 @@ use rayon::current_num_threads;
 
 use crate::error::DatabaseError;
 
-/// Connect to the Pathfinder database
+/// Connects to the Pathfinder database
 ///
 /// The connection to the Pathfinder database is established with the
 /// construction of the Storage object.

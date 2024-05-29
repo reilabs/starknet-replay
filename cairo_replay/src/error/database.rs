@@ -5,19 +5,19 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// This enum variant is used to encapsulate errors of type
+    /// `ConnectToDatabase` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
     /// function `cairo_replay::pathfinder_db::connect_to_database`.
     #[error(transparent)]
     ConnectToDatabase(anyhow::Error),
 
-    /// This enum variant is used to encapsulate errors of type
+    /// `GetLatestBlockNumber` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
     /// function `cairo_replay::pathfinder_db::get_latest_block_number`.
     #[error(transparent)]
     GetLatestBlockNumber(anyhow::Error),
 
-    /// For any other uncategorised error.
+    /// The `Unknown` variant is for any other uncategorised error.
     #[error("error communicating with Pathfinder database")]
     Unknown(String),
 }

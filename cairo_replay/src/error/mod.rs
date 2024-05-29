@@ -16,7 +16,8 @@
 
 use thiserror::Error;
 
-// Keep all sub-error enums as `pub` for ease of access
+// If any error is added in the future, make sure to keep all sub-error enums as
+// `pub` for ease of access.
 pub use self::database::Error as DatabaseError;
 pub use self::runner::Error as RunnerError;
 

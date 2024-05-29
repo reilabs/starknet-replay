@@ -9,14 +9,15 @@ use crate::error::RunnerError;
 /// initialised.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ReplayRange {
-    /// The first block to replay
+    /// The first block to replay.
     start_block: u64,
-    /// The last block to replay (inclusive)
+
+    /// The last block to replay (inclusive).
     end_block: u64,
 }
 
 impl ReplayRange {
-    /// Construct a new `ReplayRange` object.
+    /// Constructs a new `ReplayRange` object.
     ///
     /// The constructor checks that `start_block` is not greater than
     /// `end_block`.
@@ -42,13 +43,13 @@ impl ReplayRange {
         })
     }
 
-    /// Get `start_block` field of `ReplayRange`
+    /// Get `start_block` field of `ReplayRange`.
     #[must_use]
     pub fn get_start_block(&self) -> u64 {
         self.start_block
     }
 
-    /// Get `end_block` field of `ReplayRange`
+    /// Get `end_block` field of `ReplayRange`.
     #[must_use]
     pub fn get_end_block(&self) -> u64 {
         self.end_block

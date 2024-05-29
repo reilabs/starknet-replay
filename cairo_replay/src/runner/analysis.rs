@@ -22,11 +22,12 @@ use crate::runner::SierraCasmRunnerLight;
 
 /// Returns the hashmap of visited program counters for the input `trace`.
 ///
-/// The result is a hashmap where the key is the `StarknetClassHash` and the
-/// value is the Vector of visited program counters for each `StarknetClassHash`
-/// execution in `trace`.
+/// The result of `get_visited_program_counters` is a hashmap where the key is
+/// the `StarknetClassHash` and the value is the Vector of visited program
+/// counters for each `StarknetClassHash` execution in `trace`.
 ///
-/// If `trace` is not an Invoke transaction, it returns None.
+/// If `trace` is not an Invoke transaction, the function returns None because
+/// no libfuncs have been called during the transaction execution.
 ///
 /// # Arguments
 ///
@@ -41,7 +42,7 @@ fn get_visited_program_counters(
     }
 }
 
-/// Return the `ContractClass` object of a `class_hash` at `block_num` from the
+/// Returns the `ContractClass` object of a `class_hash` at `block_num` from the
 /// Pathfinder database `db`.
 ///
 /// # Arguments
@@ -71,7 +72,7 @@ fn get_contract_class_at_block(
     Ok(contract_class)
 }
 
-/// Converts `ctx` from `SierraContractClass` to `Program`.
+/// Converts transforms a `SierraContractClass` in Sierra `Program`.
 ///
 /// # Arguments
 ///
@@ -100,7 +101,7 @@ fn get_sierra_program_from_class_definition(
     Ok(sierra_program)
 }
 
-/// Construct the default configuration for the profiler.
+/// Constructs the default configuration for the profiler.
 ///
 /// To collect the list of libfunc being used during contract invocation, we
 /// only need to know the `concrete_libfunc` or the `generic_libfunc`.
@@ -120,7 +121,7 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
     }
 }
 
-/// Extract the frequency of libfuncs called in transaction `trace`.
+/// Extracts the frequency of libfuncs called in transaction `trace`.
 ///
 /// If the transaction type is not `INVOKE`, the returned `ReplayStatistics`
 /// object is empty because no libfuncs have been called.

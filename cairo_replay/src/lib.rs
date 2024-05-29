@@ -1,5 +1,5 @@
-//! Replays transactions from the `pathfinder` sqlite database and
-//! collects statistics on the execution of those transactions.
+//! The library `cairo-replay` replays transactions from the `pathfinder` sqlite
+//! database and collects statistics on the execution of those transactions.
 //!
 //! At the current time, the library focuses on gathering usage
 //! statistics of the various library functions (libfuncs) in the
@@ -93,7 +93,7 @@ pub fn run_replay(
 /// # Arguments
 ///
 /// - `replay_range`: The range of blocks to be replayed.
-/// - `storage`: Connection with the Pathfinder database
+/// - `storage`: Connection with the Pathfinder database.
 ///
 /// # Errors
 ///
@@ -142,10 +142,10 @@ fn generate_replay_work(
         .collect::<Result<Vec<ReplayBlock>, RunnerError>>()
 }
 
-/// Re-execute the list of transactions in `replay_work` and return the
+/// Re-executes the list of transactions in `replay_work` and return the
 /// statistics on libfunc usage.
 ///
-/// `replay_work` contains the lists of transactions to replay grouped by block.
+/// `replay_work` contains the list of transactions to replay grouped by block.
 ///
 /// # Arguments
 ///
@@ -185,7 +185,7 @@ fn replay_blocks(
     Ok(cumulative_libfunc_stat)
 }
 
-/// Replay the list of transactions in a block.
+/// Replays the list of transactions in a block.
 ///
 /// # Arguments
 ///
@@ -241,8 +241,8 @@ fn execute_block(
 
 /// Get the `chain_id` of the Pathfinder database.
 ///
-/// Detect the chain used by quering the hash of the first block in the
-/// database. It can detect only Mainnet, Goerli, and Sepolia.
+/// This function detects the chain used by quering the hash of the first block
+/// in the database. It can detect only Mainnet, Goerli, and Sepolia.
 ///
 /// # Arguments
 ///

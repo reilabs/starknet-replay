@@ -12,6 +12,7 @@ use crate::error::RunnerError;
 pub struct ReplayBlock {
     /// The header of the block being replayed.
     pub header: BlockHeader,
+
     /// The list of transactions to be replayed.
     ///
     /// There isn't any check that:
@@ -20,6 +21,7 @@ pub struct ReplayBlock {
     // TODO: analyse if there is a workaround to enforce that transactions
     // aren't misplaced in the wrong block. Issue #22
     pub transactions: Vec<StarknetTransaction>,
+
     /// The list of receipts of `transactions`.
     ///
     /// The receipt of each transaction in the `transactions` vector is found

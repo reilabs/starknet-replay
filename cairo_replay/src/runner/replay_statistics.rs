@@ -25,8 +25,8 @@ impl ReplayStatistics {
 
     /// Update `ReplayStatistics` with results from contract replay.
     ///
-    /// Keys are added if new. If keys exist already, the value (count) is
-    /// increased accordingly.
+    /// Keys are added to `self.concrete_libfunc` if not present. If the key
+    /// already exists, the value (count) is increased accordingly.
     ///
     /// # Arguments
     ///
@@ -42,7 +42,7 @@ impl ReplayStatistics {
 
     /// Update `self` with data in `from`.
     ///
-    /// Same logic as for `self.add_statistics`.
+    /// This function adopts the same logic as `self.add_statistics`.
     ///
     /// # Arguments
     ///

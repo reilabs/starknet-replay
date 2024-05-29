@@ -35,12 +35,13 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
 
 /// Creates the metadata required for a lowering a Sierra program to CASM.
 ///
-/// Copied from crate `cairo-lang-runner` because it isn't public.
+/// This function is copied from crate `cairo-lang-runner` because it
+/// isn't public.
 ///
 /// # Arguments
 ///
-/// - `sierra_program`: The sierra program
-/// - `metadata_config`: It contains the configuration options. If not provided,
+/// - `sierra_program`: The sierra program.
+/// - `metadata_config`: The configuration options. If not provided,
 ///   `create_metadata` will skip gas usage calculations.
 ///
 /// # Errors
@@ -66,7 +67,7 @@ fn create_metadata(
     Ok(metadata)
 }
 
-/// Extract profiling data from the list of visited program counters.
+/// Extracts profiling data from the list of visited program counters.
 ///
 /// This is a slimmed down version of `SierraCasmRunner` from
 /// `cairo-lang-runner` crate adapted for use in Starknet contracts instead of
@@ -85,7 +86,7 @@ pub struct SierraCasmRunnerLight {
     pub run_profiler: Option<ProfilingInfoCollectionConfig>,
 }
 impl SierraCasmRunnerLight {
-    /// Generate a new `SierraCasmRunnerLight` object.
+    /// Generates a new `SierraCasmRunnerLight` object.
     ///
     /// # Arguments
     ///
@@ -125,6 +126,7 @@ impl SierraCasmRunnerLight {
         })
     }
 
+    // TODO: To be refactored. Issue #5.
     fn sierra_statement_index_by_pc(&self, pc: usize) -> StatementIdx {
         // The `-1` here can't cause an underflow as the first statement is
         // always at offset 0, so it is always on the left side of the
@@ -146,7 +148,7 @@ impl SierraCasmRunnerLight {
     ///
     /// In particular, the variable `end_of_program_reached` doesn't
     /// seem to be valid for Starknet contracts.
-    // TODO: To be refactored!
+    // TODO: To be refactored. Issue #5.
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> ProfilingInfo {
         let sierra_len = self.casm_program.debug_info.sierra_statement_info.len();
         let bytecode_len = self

@@ -1,5 +1,5 @@
 //! This module contains the implementation of `DebugReplacer` to add debug
-//! information to a `Program` without any. This is because sierra contracts
+//! information to a `Program` without any. This is because Sierra contracts
 //! stored in the Starknet blockchain lack debug data. Without debug
 //! information, the `Program` contains only numeric ids to indicate libfuncs
 //! and types.
@@ -12,13 +12,13 @@ use cairo_lang_sierra_generator::db::SierraGeneratorTypeLongId;
 use cairo_lang_sierra_generator::replace_ids::SierraIdReplacer;
 use cairo_lang_utils::extract_matches;
 
-/// Replace the ids in a Sierra program.
+/// Replaces the ids in a Sierra program.
 ///
 /// `DebugReplacer` is adapted from `DebugReplacer` contained in the crate
 /// `cairo-lang-sierra-generator`. These changes are required because the
 /// `SierraGenGroup` object is not recoverable from Starknet blockchain data.
 ///
-/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId,
+/// This function replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId,
 /// ConcreteTypeId}` with a dummy ids whose debug string is the string
 /// representing the expanded information about the id. For Libfuncs and Types -
 /// that would be recursively opening their generic arguments. Function aren't
@@ -39,7 +39,7 @@ use cairo_lang_utils::extract_matches;
 /// replacement from id to string.
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct DebugReplacer {
-    /// The Sierra program to replace ids from
+    /// The Sierra program to replace ids from.
     program: Program,
 }
 impl DebugReplacer {
@@ -113,12 +113,13 @@ impl SierraIdReplacer for DebugReplacer {
 
 /// Returns a sierra `program` with replaced ids.
 ///
-/// Replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId}` with
-/// a dummy ids whose debug string is the string representing the expanded
-/// information about the id. For Libfuncs and Types - that would be recursively
-/// opening their generic arguments, for functions no changes are done because
-/// of lack of data saved in the blockchain. For example, while the original
-/// debug string may be `[6]`, the resulting debug string may be:
+/// This function replaces `cairo_lang_sierra::ids::{ConcreteLibfuncId,
+/// ConcreteTypeId}` with a dummy ids whose debug string is the string
+/// representing the expanded information about the id. For Libfuncs and Types,
+/// that would be recursively opening their generic arguments. For functions no
+/// changes are done because of lack of data saved in the blockchain. For
+/// example, while the original debug string may be `[6]`, the resulting debug
+/// string may be:
 ///
 ///  - For libfuncs: `felt252_const<2>` or `unbox<Box<Box<felt252>>>`.
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
