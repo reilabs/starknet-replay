@@ -85,6 +85,7 @@ fn main() {
 /// - `start_block`: First block to replay.
 /// - `end_block`: Final block to replay.
 /// - `database_path`: Path of the Pathfinder database.
+/// - `svg_path`: Output path of the libfunc histogram SVG image.
 ///
 /// # Errors
 ///
