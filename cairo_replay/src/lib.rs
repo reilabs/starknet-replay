@@ -131,11 +131,8 @@ fn generate_replay_work(
                 ))
                 .map_err(RunnerError::GenerateReplayWork)?;
 
-            let (mut transactions, mut receipts): (Vec<_>, Vec<_>) =
+            let (transactions, receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
-
-            transactions.truncate(1);
-            receipts.truncate(1);
 
             ReplayBlock::new(header, transactions, receipts)
         })

@@ -64,6 +64,6 @@ pub enum Error {
     GetChainId(anyhow::Error),
 
     /// The `Unknown` variant is for any other uncategorised error.
-    #[error("error during block replay")]
+    #[error("Unknown Error during block replay: {0:?}")]
     Unknown(String),
 }

@@ -18,6 +18,6 @@ pub enum Error {
     GetLatestBlockNumber(anyhow::Error),
 
     /// The `Unknown` variant is for any other uncategorised error.
-    #[error("error communicating with Pathfinder database")]
+    #[error("Unknown Error communicating with Pathfinder database: {0:?}")]
     Unknown(String),
 }
