@@ -335,4 +335,17 @@ mod tests {
         let expected_height = 510;
         assert_eq!(height, expected_height);
     }
+
+    #[ignore]
+    #[test]
+    fn test_generate_histogram() {
+        let string_len = 20;
+        let number_libfuncs = 130;
+        let max_frequency = 1600;
+        let replay_statistics =
+            generate_dummy_replay_statistics(string_len, number_libfuncs, max_frequency);
+        let filename = "test_generate_histogram.svg";
+        let title = "Running test_generate_histogram";
+        export(&filename.into(), title, &replay_statistics).unwrap();
+    }
 }

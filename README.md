@@ -49,8 +49,8 @@ histogram in the file named `"histogram.svg"`.
 
 ## Limitations
 
-- Some transactions trigger `TransactionExecutionError::ExecutionError`
 - Libfunc frequency results haven't been checked yet
+- Whole blocks replay is slow
 
 ## Requirements
 

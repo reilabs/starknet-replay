@@ -4593,8 +4593,9 @@ checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
 name = "plotters"
-version = "0.3.5"
-source = "git+https://github.com/plotters-rs/plotters.git?rev=9b05119c36d586822e32871436f6c2c5e869d99a#9b05119c36d586822e32871436f6c2c5e869d99a"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a15b6eccb8484002195a3e44fe65a4ce8e93a625797a063735536fd59cb01cf3"
 dependencies = [
  "chrono",
  "font-kit",
@@ -4612,13 +4613,15 @@ dependencies = [
 
 [[package]]
 name = "plotters-backend"
-version = "0.3.5"
-source = "git+https://github.com/plotters-rs/plotters.git?rev=9b05119c36d586822e32871436f6c2c5e869d99a#9b05119c36d586822e32871436f6c2c5e869d99a"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "414cec62c6634ae900ea1c56128dfe87cf63e7caece0852ec76aba307cebadb7"
 
 [[package]]
 name = "plotters-bitmap"
-version = "0.3.3"
-source = "git+https://github.com/plotters-rs/plotters.git?rev=9b05119c36d586822e32871436f6c2c5e869d99a#9b05119c36d586822e32871436f6c2c5e869d99a"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7e7f6fb8302456d7c264a94dada86f76d76e1a03e2294ee86ca7da92983b0a6"
 dependencies = [
  "gif",
  "image",
@@ -4627,8 +4630,9 @@ dependencies = [
 
 [[package]]
 name = "plotters-svg"
-version = "0.3.5"
-source = "git+https://github.com/plotters-rs/plotters.git?rev=9b05119c36d586822e32871436f6c2c5e869d99a#9b05119c36d586822e32871436f6c2c5e869d99a"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81b30686a7d9c3e010b84284bdd26a29f2138574f52f5eb6f794fc0ad924e705"
 dependencies = [
  "plotters-backend",
 ]
