@@ -3,7 +3,7 @@ resolver = "2"
 
 members = [
     "cli",
-    "cairo_replay"
+    "starknet-replay"
 ]
 
 [workspace.package]
@@ -12,7 +12,7 @@ edition = "2021"
 # If this version is changed, amend the version set in `build.yml`
 rust-version = "1.78.0"
 license = "Apache-2.0"
-repository = "https://github.com/reilabs/cairo-replay"
+repository = "https://github.com/reilabs/starknet-replay"
 keywords = ["cairo", "starknet"]
 readme = "README.md"
 

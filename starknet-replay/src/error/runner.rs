@@ -35,31 +35,31 @@ pub enum Error {
 
     /// `GetContractClassAtBlock` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `cairo_replay::runner::get_contract_class_at_block`.
+    /// function `starknet_replay::runner::get_contract_class_at_block`.
     #[error(transparent)]
     GetContractClassAtBlock(anyhow::Error),
 
     /// `GenerateReplayWork` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `cairo_replay::generate_replay_work`.
+    /// function `starknet_replay::generate_replay_work`.
     #[error(transparent)]
     GenerateReplayWork(anyhow::Error),
 
     /// `ReplayBlocks` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `cairo_replay::replay_blocks`.
+    /// function `starknet_replay::replay_blocks`.
     #[error(transparent)]
     ReplayBlocks(anyhow::Error),
 
     /// `ExecuteBlock` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `cairo_replay::execute_block`.
+    /// function `starknet_replay::execute_block`.
     #[error(transparent)]
     ExecuteBlock(anyhow::Error),
 
     /// `GetChainId` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `cairo_replay::get_chain_id`.
+    /// function `starknet_replay::get_chain_id`.
     #[error(transparent)]
     GetChainId(anyhow::Error),
 

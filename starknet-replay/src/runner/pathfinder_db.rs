@@ -1,5 +1,5 @@
 //! This module is an interface between the Pathfinder database API and
-//! cairo-replay.
+//! starknet-replay.
 
 use std::num::NonZeroU32;
 use std::path::PathBuf;

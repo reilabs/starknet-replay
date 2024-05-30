@@ -1,6 +1,6 @@
-# Cairo Replay
+# Starknet Replay
 
-`cairo-replay` is a CLI application to replay Starknet transactions locally
+`starknet-replay` is a CLI application to replay Starknet transactions locally
 using data from the Pathfinder database. It reports the frequency with which
 each `libfunc` has been called when replaying the transactions.
 
