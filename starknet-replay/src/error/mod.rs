@@ -1,4 +1,5 @@
-//! This module contains all the errors returned by the `cairo-replay` library.
+//! This module contains all the errors returned by the `starknet-replay`
+//! library.
 //!
 //! I am deriving only `Debug` and `Error` because not all inherited error types
 //! implement `Clone` and `Eq`.

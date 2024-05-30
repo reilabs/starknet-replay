@@ -4,9 +4,9 @@
 
 use crate::error::RunnerError;
 
-/// `ReplayRange` contains the block range that is replayed by `cairo-replay`.
-/// The fields are not public to ensure no tampering after the struct is
-/// initialised.
+/// `ReplayRange` contains the block range that is replayed by
+/// `starknet-replay`. The fields are not public to ensure no tampering after
+/// the struct is initialised.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ReplayRange {
     /// The first block to replay.

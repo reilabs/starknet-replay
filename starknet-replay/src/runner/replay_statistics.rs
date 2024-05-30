@@ -8,7 +8,7 @@ pub struct ReplayStatistics {
     /// number of calls (value).
     ///
     /// It is using `OrderedHashMap` because inherited from Cairo crate.
-    /// However, there is no architectural reason in `cairo-replay` that
+    /// However, there is no architectural reason in `starknet-replay` that
     /// requires it and it can be changed as needed.
     pub concrete_libfunc: OrderedHashMap<String, usize>,
 }
