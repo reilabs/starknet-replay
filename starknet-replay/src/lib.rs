@@ -26,7 +26,12 @@
 //! - [`runner::replace_sierra_ids_in_program`] which replaces the ids of
 //!   libfuncs and types with their debug name in a Sierra program.
 
-#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
+#![warn(
+    clippy::all,
+    clippy::cargo,
+    clippy::pedantic,
+    clippy::missing_docs_in_private_items
+)]
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
 use std::sync::mpsc::channel;

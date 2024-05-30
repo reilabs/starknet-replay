@@ -25,6 +25,11 @@ use crate::error::HistogramError;
 /// This alias improves readability of the histogram parameters.
 type Pixel = u32;
 
+/// This struct contains the variable configuration parameters for rendering the
+/// histogram image.
+///
+/// Configuration parameters that don't depend on `ReplayStatistics` are
+/// hardcoded.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Config {
     /// The width of the SVG image of the histogram in pixels.
@@ -40,6 +45,18 @@ pub struct Config {
     pub x_label_area: Pixel,
 }
 impl Config {
+    /// Construct a new `Config` object.
+    ///
+    /// # Arguments
+    ///
+    /// - `libfunc_stats`: the data to be plotted on the histogram.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if:
+    ///
+    /// - There is a math overflow when computing the `Config` parameters
+    /// - There is a truncation when casting from `usize` to `u32`.
     pub fn new(libfunc_stats: &ReplayStatistics) -> Result<Self, HistogramError> {
         let max_frequency = libfunc_stats
             .get_highest_frequency()
@@ -61,6 +78,20 @@ impl Config {
         })
     }
 
+    /// Calculate the space required required to render the x axis labels.
+    ///
+    /// The space is returned in pixels.
+    ///
+    /// # Arguments
+    ///
+    /// - `libfunc_stats`: data to be plotted on the histogram.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if:
+    ///
+    /// - There is a math overflow when computing the number of pixels.
+    /// - There is a truncation when casting from `usize` to `u32`.
     fn calc_x_label_area(libfunc_stats: &ReplayStatistics) -> Result<Pixel, HistogramError> {
         let chars_longest_name: usize = libfunc_stats
             .get_libfuncs()
@@ -147,6 +178,22 @@ impl Config {
     }
 }
 
+/// Create and export the histogram as SVG file.
+///
+/// # Arguments
+///
+/// - `filename`: The filename of the exported SVG file.
+/// - `title`: The title of the histogram.
+/// - `config`: The configuration object of the histogram.
+/// - `libfunc_stats`: The input data to be plotted.
+///
+/// # Errors
+///
+/// Returns [`Err`] if:
+///
+/// - There is an error computing the histogram `Config` object.
+/// - There is an error rendering the histogram.
+/// - There is an IO error saving the SVG file of the histogram.
 fn render(
     filename: &PathBuf,
     title: &str,

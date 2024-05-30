@@ -2,6 +2,8 @@
 
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 
+/// The struct to hold a list of libfunc names with their related calling
+/// frequency.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ReplayStatistics {
     /// This field contains the association between libfunc name (key) and
@@ -56,14 +58,22 @@ impl ReplayStatistics {
         }
     }
 
+    /// Returns the number of different concrete libfunc names in the
+    /// `ReplayStatistics` object.
     pub fn get_number_of_libfuncs(&self) -> usize {
         self.concrete_libfunc.len()
     }
 
+    /// Returns the number of calls of the most frequently called concrete
+    /// libfunc.
+    ///
+    /// It returns `None` if the map of libfuncs is empty.
     pub fn get_highest_frequency(&self) -> Option<usize> {
         self.concrete_libfunc.values().max().copied()
     }
 
+    /// Returns the vector of the concrete libfunc names without their
+    /// frequency.
     pub fn get_libfuncs(&self) -> Vec<&str> {
         self.concrete_libfunc
             .keys()
@@ -71,6 +81,13 @@ impl ReplayStatistics {
             .collect::<Vec<&str>>()
     }
 
+    /// Queries the frequency of the a given concrete libfunc name.
+    ///
+    /// If the libfunc isn't found, it returns 0.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The libfunc to query.
     pub fn get_libfunc_frequency(&self, name: &str) -> usize {
         self.concrete_libfunc.get(name).copied().unwrap_or(0)
     }
