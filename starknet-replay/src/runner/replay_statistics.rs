@@ -55,4 +55,23 @@ impl ReplayStatistics {
                 .or_insert(*weight);
         }
     }
+
+    pub fn get_number_of_libfuncs(&self) -> usize {
+        self.concrete_libfunc.len()
+    }
+
+    pub fn get_highest_frequency(&self) -> Option<usize> {
+        self.concrete_libfunc.values().max().copied()
+    }
+
+    pub fn get_libfuncs(&self) -> Vec<&str> {
+        self.concrete_libfunc
+            .keys()
+            .map(std::string::String::as_str)
+            .collect::<Vec<&str>>()
+    }
+
+    pub fn get_libfunc_frequency(&self, name: &str) -> usize {
+        self.concrete_libfunc.get(name).copied().unwrap_or(0)
+    }
 }
