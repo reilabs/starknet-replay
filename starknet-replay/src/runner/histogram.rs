@@ -270,3 +270,69 @@ pub fn export(
 
     render(filename, title, &config, libfunc_stats)
 }
+
+#[cfg(test)]
+mod tests {
+    use rand::distributions::{Alphanumeric, DistString};
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha8Rng;
+
+    use super::*;
+
+    fn generate_dummy_replay_statistics(
+        string_len: usize,
+        number_libfuncs: usize,
+        max_frequency: usize,
+    ) -> ReplayStatistics {
+        // Deterministic seed in order to have the same sequence of pseud-random
+        // numbers.
+        let mut replay_statistics = ReplayStatistics::default();
+        let mut rng = ChaCha8Rng::seed_from_u64(7);
+        (0..number_libfuncs).for_each(|_| {
+            let libfunc_name = Alphanumeric.sample_string(&mut rng, string_len);
+            let libfunc_frequency = rng.gen_range(0..max_frequency);
+            replay_statistics
+                .concrete_libfunc
+                .insert(libfunc_name, libfunc_frequency);
+        });
+
+        replay_statistics
+    }
+
+    #[test]
+    fn test_calc_x_label_area() {
+        let string_len = 20;
+        let number_libfuncs = 130;
+        let max_frequency = 1600;
+        let replay_statistics =
+            generate_dummy_replay_statistics(string_len, number_libfuncs, max_frequency);
+        let x_label_area = Config::calc_x_label_area(&replay_statistics).unwrap();
+        let expected_x_label_area = 200;
+        assert_eq!(x_label_area, expected_x_label_area);
+    }
+
+    #[test]
+    fn test_calc_max_y_axis() {
+        let max_frequency = 131;
+        let max_y_axis = Config::calc_max_y_axis(max_frequency).unwrap();
+        let expected_max_y_axis = 200;
+        assert_eq!(max_y_axis, expected_max_y_axis);
+    }
+
+    #[test]
+    fn test_calc_width() {
+        let number_libfuncs = 130;
+        let width = Config::calc_width(number_libfuncs).unwrap();
+        let expected_width = 5450;
+        assert_eq!(width, expected_width);
+    }
+
+    #[test]
+    fn test_calc_height() {
+        let max_y_axis = 130;
+        let x_axis_label_space = 250;
+        let height = Config::calc_height(max_y_axis, x_axis_label_space).unwrap();
+        let expected_height = 510;
+        assert_eq!(height, expected_height);
+    }
+}

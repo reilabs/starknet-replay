@@ -5588,6 +5588,8 @@ dependencies = [
  "pathfinder-rpc",
  "pathfinder-storage",
  "plotters",
+ "rand",
+ "rand_chacha",
  "rayon",
  "serde",
  "serde_json",
