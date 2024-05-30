@@ -18,13 +18,15 @@
 //! - [`DebugReplacer`] struct replaces the ids of libfuncs and types in a
 //!   Sierra program.
 //!
-//! Beyond [`run_replay`], the other key public functions of the library are as
-//! follows:
+//! Beyond [`run_replay`], these are the other key public functions of the
+//! library:
 //!
 //! - [`runner::extract_libfuncs_weight`] which updates the cumulative usage of
 //!   libfuncs
 //! - [`runner::replace_sierra_ids_in_program`] which replaces the ids of
 //!   libfuncs and types with their debug name in a Sierra program.
+//! - [`runner::histogram::export`] which generates the histogram of libfunc
+//!   frequencies and exports it as SVG image.
 
 #![warn(
     clippy::all,
