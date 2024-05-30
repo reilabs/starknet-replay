@@ -7,13 +7,13 @@ use thiserror::Error;
 pub enum Error {
     /// `ConnectToDatabase` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `cairo_replay::pathfinder_db::connect_to_database`.
+    /// function `starknet_replay::pathfinder_db::connect_to_database`.
     #[error(transparent)]
     ConnectToDatabase(anyhow::Error),
 
     /// `GetLatestBlockNumber` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `cairo_replay::pathfinder_db::get_latest_block_number`.
+    /// function `starknet_replay::pathfinder_db::get_latest_block_number`.
     #[error(transparent)]
     GetLatestBlockNumber(anyhow::Error),
 

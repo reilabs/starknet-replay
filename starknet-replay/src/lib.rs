@@ -1,5 +1,6 @@
-//! The library `cairo-replay` replays transactions from the `pathfinder` sqlite
-//! database and collects statistics on the execution of those transactions.
+//! The library `starknet-replay` replays transactions from the `pathfinder`
+//! sqlite database and collects statistics on the execution of those
+//! transactions.
 //!
 //! At the current time, the library focuses on gathering usage
 //! statistics of the various library functions (libfuncs) in the

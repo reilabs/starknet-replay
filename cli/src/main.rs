@@ -2,7 +2,7 @@
 //!
 //! Iterates over specified blocks in the database and re-executes all
 //! transactions within those blocks. This is only the CLI front-end. All the
-//! logic is contained in the library `cairo-replay`.
+//! logic is contained in the library `starknet-replay`.
 
 #![warn(clippy::all, clippy::cargo, clippy::pedantic)]
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
@@ -11,10 +11,10 @@ use std::path::PathBuf;
 use std::process;
 
 use anyhow::bail;
-use cairo_replay::{connect_to_database, get_latest_block_number, run_replay, ReplayRange};
 use clap::Parser;
 use exitcode::{OK, SOFTWARE};
 use itertools::Itertools;
+use starknet_replay::{connect_to_database, get_latest_block_number, run_replay, ReplayRange};
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
@@ -61,7 +61,7 @@ fn main() {
     }
 }
 
-/// Take the command line input arguments and call cairo-replay.
+/// Take the command line input arguments and call starknet-replay.
 ///
 /// Sanitisation of the inputs is done in this function.
 ///
@@ -78,7 +78,7 @@ fn main() {
 /// - `start_block` is greater than `end_block`.
 /// - Not enough blocks in the database to cover the required range of blocks to
 ///   replay.
-/// - Any error during execution of `cairo-replay`.
+/// - Any error during execution of `starknet-replay`.
 fn run(start_block: u64, end_block: u64, database_path: PathBuf) -> anyhow::Result<()> {
     if start_block > end_block {
         bail!("Exiting because end_block must be greater or equal to start_block.")
