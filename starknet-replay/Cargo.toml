@@ -29,7 +29,10 @@ pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = 
 pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
 pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
 pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
-plotters = "0.3.6" #{ git = "https://github.com/plotters-rs/plotters.git", rev = "9b05119c36d586822e32871436f6c2c5e869d99a" }
+# `plotters` is using the latest (as of 30-May-2024) commit on the branch
+# `next-release-devel` because it contains the fix for bug #551 related to
+# anchoring of labels when rotated.
+plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f8989af20931dd9e7e1f204d5254de3a8053" }
 rayon = "1.8.0"
 starknet_api = "0.10.0"
 serde = "1.0.192"

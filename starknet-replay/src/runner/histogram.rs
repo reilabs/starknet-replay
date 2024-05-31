@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use plotters::backend::SVGBackend;
 use plotters::chart::ChartBuilder;
-use plotters::coord::ranged1d::IntoSegmentedCoord;
+use plotters::coord::ranged1d::{IntoSegmentedCoord, SegmentValue};
 use plotters::drawing::IntoDrawingArea;
 use plotters::series::Histogram;
 use plotters::style::full_palette::{RED, WHITE};
@@ -99,7 +99,7 @@ impl Config {
             .max_by_key(|p| p.len())
             .unwrap_or(&"")
             .len();
-        let pixels_per_char: usize = 10;
+        let pixels_per_char: usize = 20;
         let x_label_area_size: usize =
             chars_longest_name
                 .checked_mul(pixels_per_char)
@@ -209,29 +209,51 @@ fn render(
     // https://github.com/plotters-rs/plotters/issues/573#issuecomment-2096057443
     let mut chart = ChartBuilder::on(&root)
         .x_label_area_size(config.x_label_area)
-        .y_label_area_size(40)
-        .margin(5)
+        .y_label_area_size(150)
+        .margin(30)
         .caption(title, ("sans-serif", 50.0))
         .build_cartesian_2d(
             list_of_libfuncs.as_slice().into_segmented(),
             0..config.max_y_axis,
         )?;
 
+    let values: [(&str, f64); 3] = [
+        ("channel395_0", 7.94),
+        ("meshBlockPipe_0", 0.19),
+        ("3DValve_0", 73.99),
+    ];
+
     chart
         .configure_mesh()
         .x_labels(libfunc_stats.get_number_of_libfuncs())
+        // .x_label_formatter(&|pos| {
+        //     let pos = SegmentValue::CenterOf(("channel395_0", 7.94));
+        //     let pos: usize = match pos {
+        //         SegmentValue::CenterOf(t) => *t,
+        //         SegmentValue::Exact(t) => *t,
+        //         SegmentValue::Last => libfunc_stats.get_number_of_libfuncs() - 1,
+        //     };
+        //     let label = if pos > libfunc_stats.get_number_of_libfuncs() - 1 {
+        //         String::from("")
+        //     } else {
+        //         let record = values[pos];
+        //         record.0.to_string()
+        //     };
+        //     println!("Label for {pos:?} is {label}");
+        //     label
+        // })
         .y_labels(config.max_y_axis / 100)
         .max_light_lines(1)
         .disable_x_mesh()
         .bold_line_style(WHITE.mix(0.3))
         .y_desc("Frequency")
-        .x_desc("Libfunc")
+        .x_desc("Libfunc name")
         .x_label_style(
             TextStyle::from(("sans-serif", 20).into_font())
                 .transform(FontTransform::Rotate90)
-                .pos(Pos::new(HPos::Center, VPos::Top)),
+                .pos(Pos::new(HPos::Left, VPos::Bottom)),
         )
-        .axis_desc_style(("sans-serif", 15))
+        .axis_desc_style(("sans-serif", 35))
         .draw()?;
 
     chart.draw_series(
@@ -286,14 +308,15 @@ mod tests {
     ) -> ReplayStatistics {
         // Deterministic seed in order to have the same sequence of pseud-random
         // numbers.
+        let digits = number_libfuncs.to_string().len();
         let mut replay_statistics = ReplayStatistics::default();
         let mut rng = ChaCha8Rng::seed_from_u64(7);
-        (0..number_libfuncs).for_each(|_| {
-            let libfunc_name = Alphanumeric.sample_string(&mut rng, string_len);
+        (0..number_libfuncs).for_each(|i| {
+            let libfunc_name = Alphanumeric.sample_string(&mut rng, string_len - digits - 1);
             let libfunc_frequency = rng.gen_range(0..max_frequency);
             replay_statistics
                 .concrete_libfunc
-                .insert(libfunc_name, libfunc_frequency);
+                .insert([i.to_string(), libfunc_name].join("_"), libfunc_frequency);
         });
 
         replay_statistics
@@ -307,7 +330,7 @@ mod tests {
         let replay_statistics =
             generate_dummy_replay_statistics(string_len, number_libfuncs, max_frequency);
         let x_label_area = Config::calc_x_label_area(&replay_statistics).unwrap();
-        let expected_x_label_area = 200;
+        let expected_x_label_area = 400;
         assert_eq!(x_label_area, expected_x_label_area);
     }
 
