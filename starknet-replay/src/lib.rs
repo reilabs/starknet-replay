@@ -25,8 +25,8 @@
 //!   libfuncs
 //! - [`runner::replace_sierra_ids_in_program`] which replaces the ids of
 //!   libfuncs and types with their debug name in a Sierra program.
-//! - [`runner::histogram::export`] which generates the histogram of libfunc
-//!   frequencies and exports it as SVG image.
+//! - [`histogram::export`] which generates the histogram of libfunc frequencies
+//!   and exports it as SVG image.
 
 #![warn(
     clippy::all,
@@ -55,12 +55,13 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use runner::replay_block::ReplayBlock;
 use runner::replay_statistics::ReplayStatistics;
 
+pub use crate::histogram::export as export_histogram;
 use crate::runner::analysis::extract_libfuncs_weight;
-pub use crate::runner::histogram::export as export_histogram;
 pub use crate::runner::pathfinder_db::{connect_to_database, get_latest_block_number};
 pub use crate::runner::replay_range::ReplayRange;
 
 pub mod error;
+pub mod histogram;
 mod runner;
 
 /// Replays all transactions from `start_block` to `end_block` and gathers
@@ -142,6 +143,11 @@ fn generate_replay_work(
 
             let (transactions, receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
+
+            let transactions_to_process = transactions.len();
+            tracing::info!(
+                "{transactions_to_process} transactions to process in block {block_number}"
+            );
 
             ReplayBlock::new(header, transactions, receipts)
         })

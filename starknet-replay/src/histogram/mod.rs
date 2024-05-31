@@ -6,21 +6,19 @@
 //!
 //! SVG has been chosen because, as a vector graphics format, it makes reading
 //! text easy and zooming doesn't degrade the quality.
+//!
+//! The file `mod.rs` contains the public interface. The main way to use this
+//! module is by calling the function `export` to render and save the SVG image.
+//! The file `plot.rs` contains the call to the `plotters` library.
 
 use std::ops::{Add, Div};
 use std::path::PathBuf;
 
-use plotters::backend::SVGBackend;
-use plotters::chart::ChartBuilder;
-use plotters::coord::ranged1d::{IntoSegmentedCoord, SegmentValue};
-use plotters::drawing::IntoDrawingArea;
-use plotters::series::Histogram;
-use plotters::style::full_palette::{RED, WHITE};
-use plotters::style::text_anchor::{HPos, Pos, VPos};
-use plotters::style::{Color, FontTransform, IntoFont, TextStyle};
-
-use super::replay_statistics::ReplayStatistics;
+use super::runner::replay_statistics::ReplayStatistics;
 use crate::error::HistogramError;
+use crate::histogram::plot::render;
+
+mod plot;
 
 /// This alias improves readability of the histogram parameters.
 type Pixel = u32;
@@ -99,7 +97,7 @@ impl Config {
             .max_by_key(|p| p.len())
             .unwrap_or(&"")
             .len();
-        let pixels_per_char: usize = 20;
+        let pixels_per_char: usize = 15;
         let x_label_area_size: usize =
             chars_longest_name
                 .checked_mul(pixels_per_char)
@@ -178,99 +176,6 @@ impl Config {
     }
 }
 
-/// Create and export the histogram as SVG file.
-///
-/// # Arguments
-///
-/// - `filename`: The filename of the exported SVG file.
-/// - `title`: The title of the histogram.
-/// - `config`: The configuration object of the histogram.
-/// - `libfunc_stats`: The input data to be plotted.
-///
-/// # Errors
-///
-/// Returns [`Err`] if:
-///
-/// - There is an error computing the histogram `Config` object.
-/// - There is an error rendering the histogram.
-/// - There is an IO error saving the SVG file of the histogram.
-fn render(
-    filename: &PathBuf,
-    title: &str,
-    config: &Config,
-    libfunc_stats: &ReplayStatistics,
-) -> Result<(), HistogramError> {
-    let list_of_libfuncs = libfunc_stats.get_libfuncs();
-    let root = SVGBackend::new(filename, (config.width, config.height)).into_drawing_area();
-
-    root.fill(&WHITE)?;
-
-    // Putting spaces in the caption creates panic
-    // https://github.com/plotters-rs/plotters/issues/573#issuecomment-2096057443
-    let mut chart = ChartBuilder::on(&root)
-        .x_label_area_size(config.x_label_area)
-        .y_label_area_size(150)
-        .margin(30)
-        .caption(title, ("sans-serif", 50.0))
-        .build_cartesian_2d(
-            list_of_libfuncs.as_slice().into_segmented(),
-            0..config.max_y_axis,
-        )?;
-
-    let values: [(&str, f64); 3] = [
-        ("channel395_0", 7.94),
-        ("meshBlockPipe_0", 0.19),
-        ("3DValve_0", 73.99),
-    ];
-
-    chart
-        .configure_mesh()
-        .x_labels(libfunc_stats.get_number_of_libfuncs())
-        // .x_label_formatter(&|pos| {
-        //     let pos = SegmentValue::CenterOf(("channel395_0", 7.94));
-        //     let pos: usize = match pos {
-        //         SegmentValue::CenterOf(t) => *t,
-        //         SegmentValue::Exact(t) => *t,
-        //         SegmentValue::Last => libfunc_stats.get_number_of_libfuncs() - 1,
-        //     };
-        //     let label = if pos > libfunc_stats.get_number_of_libfuncs() - 1 {
-        //         String::from("")
-        //     } else {
-        //         let record = values[pos];
-        //         record.0.to_string()
-        //     };
-        //     println!("Label for {pos:?} is {label}");
-        //     label
-        // })
-        .y_labels(config.max_y_axis / 100)
-        .max_light_lines(1)
-        .disable_x_mesh()
-        .bold_line_style(WHITE.mix(0.3))
-        .y_desc("Frequency")
-        .x_desc("Libfunc name")
-        .x_label_style(
-            TextStyle::from(("sans-serif", 20).into_font())
-                .transform(FontTransform::Rotate90)
-                .pos(Pos::new(HPos::Left, VPos::Bottom)),
-        )
-        .axis_desc_style(("sans-serif", 35))
-        .draw()?;
-
-    chart.draw_series(
-        Histogram::vertical(&chart)
-            .style(RED.mix(0.5).filled())
-            .data(list_of_libfuncs.iter().map(|libfunc_name| {
-                let frequency = libfunc_stats.get_libfunc_frequency(libfunc_name);
-                (libfunc_name, frequency)
-            })),
-    )?;
-
-    // To avoid the IO failure being ignored silently, we manually call the
-    // present function
-    root.present()?;
-    Ok(())
-}
-
 /// This function generates and saves the libfunc frequency histogram.
 ///
 /// # Arguments
@@ -314,6 +219,8 @@ mod tests {
         (0..number_libfuncs).for_each(|i| {
             let libfunc_name = Alphanumeric.sample_string(&mut rng, string_len - digits - 1);
             let libfunc_frequency = rng.gen_range(0..max_frequency);
+            // Adding the index as prefix of the random string to easily verify all data has
+            // been plotted correctly.
             replay_statistics
                 .concrete_libfunc
                 .insert([i.to_string(), libfunc_name].join("_"), libfunc_frequency);
@@ -330,7 +237,7 @@ mod tests {
         let replay_statistics =
             generate_dummy_replay_statistics(string_len, number_libfuncs, max_frequency);
         let x_label_area = Config::calc_x_label_area(&replay_statistics).unwrap();
-        let expected_x_label_area = 400;
+        let expected_x_label_area = 300;
         assert_eq!(x_label_area, expected_x_label_area);
     }
 

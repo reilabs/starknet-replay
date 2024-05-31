@@ -1,6 +1,9 @@
 //! The module which provides an interface to libfunc usage statistics.
 
+use std::ops::{Div, Mul};
+
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+use itertools::Itertools;
 
 /// The struct to hold a list of libfunc names with their related calling
 /// frequency.
@@ -33,13 +36,14 @@ impl ReplayStatistics {
     /// # Arguments
     ///
     /// - `input`: Input map of libfuncs.
-    pub fn add_statistics(&mut self, input: &OrderedHashMap<impl ToString, usize>) {
+    pub fn add_statistics(mut self, input: &OrderedHashMap<impl ToString, usize>) -> Self {
         for (func_name, weight) in input.iter() {
             self.concrete_libfunc
                 .entry(func_name.to_string())
                 .and_modify(|e| *e += *weight)
                 .or_insert(*weight);
         }
+        self
     }
 
     /// Update `self` with data in `from`.
@@ -90,5 +94,46 @@ impl ReplayStatistics {
     /// - `name`: The libfunc to query.
     pub fn get_libfunc_frequency(&self, name: &str) -> usize {
         self.concrete_libfunc.get(name).copied().unwrap_or(0)
+    }
+
+    pub fn filter_most_frequent(&self) -> ReplayStatistics {
+        tracing::info!(
+            "Number of libfunc before filtering: {}",
+            self.get_number_of_libfuncs()
+        );
+        let total_libfunc_calls: usize = self.concrete_libfunc.values().sum();
+        // Ignoring overflows because the resulting number is less than
+        // `total_libfunc_calls`.
+        let percentage_of_total: usize = total_libfunc_calls.div(100).mul(80);
+
+        let mut cumulative_frequency: usize = 0;
+        let mut truncation_index = self.concrete_libfunc.len();
+        for (idx, (_, frequency)) in self
+            .concrete_libfunc
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+            .rev()
+            .enumerate()
+        {
+            cumulative_frequency = cumulative_frequency.checked_add(*frequency).unwrap();
+            if cumulative_frequency > percentage_of_total {
+                truncation_index = idx;
+                break;
+            }
+        }
+        let ordered_libfuncs: OrderedHashMap<String, usize> = self
+            .concrete_libfunc
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+            .rev()
+            .take(truncation_index)
+            .map(|(name, freq)| (name.clone(), freq.clone()))
+            .collect();
+        let filtered_libfuncs = ReplayStatistics::default().add_statistics(&ordered_libfuncs);
+        tracing::info!(
+            "Number of libfunc before filtering: {}",
+            filtered_libfuncs.get_number_of_libfuncs()
+        );
+        filtered_libfuncs
     }
 }
