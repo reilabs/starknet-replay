@@ -4,6 +4,11 @@
 using data from the Pathfinder database. It reports the frequency with which
 each `libfunc` has been called when replaying the transactions.
 
+It's also possible to export the histogram of the most frequently used libfuncs
+by number of calls. The data plotted in the histogram is filtered to only
+include the libfuncs that amount to 80% of the total calls in the replay. This
+helps readability and visual analysis.
+
 Only `INVOKE` transactions of Sierra contracts are used for this report because
 only Sierra contracts use libfuncs and only `INVOKE` transactions execute Sierra
 code. Rejected transactions are included because they are still useful to
