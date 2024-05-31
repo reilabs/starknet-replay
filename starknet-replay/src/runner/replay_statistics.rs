@@ -96,6 +96,10 @@ impl ReplayStatistics {
         self.concrete_libfunc.get(name).copied().unwrap_or(0)
     }
 
+    /// Filter the most called libfuncs from the set.
+    ///
+    /// It returns the set of the 80% most called libfuncs ordered from the most
+    /// frequent libfunc.
     pub fn filter_most_frequent(&self) -> ReplayStatistics {
         tracing::info!(
             "Number of libfunc before filtering: {}",
@@ -127,7 +131,7 @@ impl ReplayStatistics {
             .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
             .rev()
             .take(truncation_index)
-            .map(|(name, freq)| (name.clone(), freq.clone()))
+            .map(|(name, freq)| (name.clone(), *freq))
             .collect();
         let filtered_libfuncs = ReplayStatistics::default().add_statistics(&ordered_libfuncs);
         tracing::info!(

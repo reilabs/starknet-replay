@@ -1,3 +1,13 @@
+//! This module uses the library `plotter` to render and export the histogram.
+//!
+//! Some settings are hardcoded like:
+//!  - Size and font of labels
+//!  - Colours
+//!  - Export format
+//!
+//! To use another plotting library, it's sufficient to rewrite the function
+//! `render`.
+
 use std::path::PathBuf;
 
 use plotters::backend::SVGBackend;
@@ -57,9 +67,8 @@ pub fn render(
         .configure_mesh()
         .x_labels(libfunc_stats.get_number_of_libfuncs())
         .x_label_formatter(&|pos| match pos {
-            SegmentValue::CenterOf(t) => t.to_string(),
-            SegmentValue::Exact(t) => t.to_string(),
-            SegmentValue::Last => String::from(""),
+            SegmentValue::Exact(t) | SegmentValue::CenterOf(t) => (**t).to_string(),
+            SegmentValue::Last => String::new(),
         })
         .y_labels(config.max_y_axis / 100)
         .max_light_lines(1)
