@@ -53,12 +53,12 @@ use pathfinder_rpc::compose_executor_transaction;
 use pathfinder_storage::{BlockId, Storage, Transaction as DatabaseTransaction};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use runner::replay_block::ReplayBlock;
-use runner::replay_statistics::ReplayStatistics;
 
 pub use crate::histogram::export as export_histogram;
 use crate::runner::analysis::extract_libfuncs_weight;
 pub use crate::runner::pathfinder_db::{connect_to_database, get_latest_block_number};
 pub use crate::runner::replay_range::ReplayRange;
+pub use crate::runner::replay_statistics::ReplayStatistics;
 
 pub mod error;
 pub mod histogram;

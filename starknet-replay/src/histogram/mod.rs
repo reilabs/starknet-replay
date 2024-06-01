@@ -1,12 +1,9 @@
 //! This module is responsible for rendering and saving the SVG image of the
 //! libfunc histogram.
 //!
-//! SVG has been chosen because, as a vector graphics format, it makes reading
-//! text easy and zooming doesn't degrade the quality.
-//!
-//! The file `mod.rs` contains the public interface. The main way to use this
-//! module is by calling the function `export` to render and save the SVG image.
-//! The file `plot.rs` contains the call to the `plotters` library.
+//! The file `mod.rs` contains the public interface. The main entry function to
+//! use this module is by calling the function `export` to render and save the
+//! SVG image. The file `plot.rs` contains the call to the `plotters` library.
 
 use std::ops::{Add, Div};
 use std::path::PathBuf;
@@ -190,6 +187,21 @@ impl Config {
 /// - The `filename` can't be written to.
 /// - There is any error rendering the data.
 /// - The file already exists and `overwrite` is `False`.
+///
+/// # Examples
+///
+/// ```
+/// # use starknet_replay::histogram::export;
+/// # use starknet_replay::ReplayStatistics;
+/// let mut replay_statistics = ReplayStatistics::default();
+/// replay_statistics.update("store_temp".into(), 367);
+/// replay_statistics.update("enum_match".into(), 895);
+/// replay_statistics.update("u32_to_felt252".into(), 759);
+/// replay_statistics.update("const_as_immediate".into(), 264);
+/// let filename = "doctest.svg";
+/// let title = "Doctest histogram";
+/// export(&filename.into(), title, &replay_statistics, true).unwrap();
+/// ```
 pub fn export(
     filename: &PathBuf,
     title: &str,

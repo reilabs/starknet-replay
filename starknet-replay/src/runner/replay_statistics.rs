@@ -28,6 +28,22 @@ impl ReplayStatistics {
         }
     }
 
+    /// Add libfunc with frequency to `ReplayStatistics`.
+    ///
+    /// `name` is added to `self.concrete_libfunc` if not present. If the `name`
+    /// already exists, the `frequency` is increased accordingly.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: Name of libfunc.
+    /// - `frequency`: Number of calls to `name`.
+    pub fn update(&mut self, name: String, frequency: usize) {
+        self.concrete_libfunc
+            .entry(name.to_string())
+            .and_modify(|e| *e += frequency)
+            .or_insert(frequency);
+    }
+
     /// Update `ReplayStatistics` with results from contract replay.
     ///
     /// Keys are added to `self.concrete_libfunc` if not present. If the key
@@ -37,11 +53,8 @@ impl ReplayStatistics {
     ///
     /// - `input`: Input map of libfuncs.
     pub fn add_statistics(mut self, input: &OrderedHashMap<impl ToString, usize>) -> Self {
-        for (func_name, weight) in input.iter() {
-            self.concrete_libfunc
-                .entry(func_name.to_string())
-                .and_modify(|e| *e += *weight)
-                .or_insert(*weight);
+        for (name, frequency) in input.iter() {
+            self.update(name.to_string(), frequency.clone());
         }
         self
     }
