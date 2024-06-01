@@ -65,13 +65,7 @@ fn main() {
 
     let args = Args::parse();
 
-    let database_path = args.db_path;
-    let start_block = args.start_block;
-    let end_block = args.end_block;
-    let svg_path = args.svg_out;
-    let overwrite = args.overwrite;
-
-    match run(start_block, end_block, database_path, svg_path, overwrite) {
+    match run(args) {
         Ok(()) => process::exit(OK),
         Err(e) => {
             eprintln!("Internal software error: {e}");
@@ -86,12 +80,7 @@ fn main() {
 ///
 /// # Arguments
 ///
-/// - `start_block`: First block to replay.
-/// - `end_block`: Final block to replay.
-/// - `database_path`: Path of the Pathfinder database.
-/// - `svg_path`: Output path of the libfunc histogram SVG image.
-/// - `overwrite`: If `True` and `svg_path` already exists, the file will be
-///   overwritten.
+/// - `args`: The list of command line input arguments.
 ///
 /// # Errors
 ///
@@ -101,13 +90,13 @@ fn main() {
 /// - Not enough blocks in the database to cover the required range of blocks to
 ///   replay.
 /// - Any error during execution of `cairo-replay`.
-fn run(
-    start_block: u64,
-    end_block: u64,
-    database_path: PathBuf,
-    svg_path: Option<PathBuf>,
-    overwrite: bool,
-) -> anyhow::Result<()> {
+fn run(args: Args) -> anyhow::Result<()> {
+    let database_path = args.db_path;
+    let start_block = args.start_block;
+    let end_block = args.end_block;
+    let svg_path = args.svg_out;
+    let overwrite = args.overwrite;
+
     if start_block > end_block {
         bail!("Exiting because end_block must be greater or equal to start_block.")
     }

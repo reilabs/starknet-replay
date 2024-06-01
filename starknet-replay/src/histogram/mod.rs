@@ -287,6 +287,6 @@ mod tests {
             generate_dummy_replay_statistics(string_len, number_libfuncs, max_frequency);
         let filename = "test_generate_histogram.svg";
         let title = "Running test_generate_histogram";
-        export(&filename.into(), title, &replay_statistics).unwrap();
+        export(&filename.into(), title, &replay_statistics, true).unwrap();
     }
 }
