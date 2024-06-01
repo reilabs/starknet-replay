@@ -69,8 +69,6 @@ impl Config {
 
     /// Calculate the space required required to render the x axis labels.
     ///
-    /// The space is returned in pixels.
-    ///
     /// # Arguments
     ///
     /// - `libfunc_stats`: data to be plotted on the histogram.
