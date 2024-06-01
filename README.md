@@ -52,7 +52,8 @@ histogram in the file named `"histogram.svg"`.
 ## Limitations
 
 - Libfunc frequency results haven't been checked yet
-- Whole blocks replay is slow
+- Replay time and analysis takes about 60s per transaction. It still needs to be
+  optimised.
 
 ## Requirements
 
