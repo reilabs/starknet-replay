@@ -141,7 +141,8 @@ fn run(
 
     match svg_path {
         Some(filename) => {
-            let title = format!("Libfuncs usage from block {first_block} to block {last_block}");
+            let title =
+                format!("Filtered libfuncs usage from block {first_block} to block {last_block}");
             let libfunc_stats = libfunc_stats.filter_most_frequent();
             export_histogram(&filename, title.as_str(), &libfunc_stats)?;
             Ok(())
