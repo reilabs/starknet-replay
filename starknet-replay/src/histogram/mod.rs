@@ -14,8 +14,8 @@ use crate::histogram::plot::render;
 
 mod plot;
 
-/// This alias improves readability of the histogram parameters.
-type Pixel = u32;
+/// Histogram dimensions are set in pixels using a `u32` type.
+type PixelCount = u32;
 
 /// This struct contains the variable configuration parameters for rendering the
 /// histogram image.
@@ -25,16 +25,16 @@ type Pixel = u32;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Config {
     /// The width of the SVG image of the histogram in pixels.
-    pub width: Pixel,
+    pub width: PixelCount,
 
     /// The height of the SVG image of the histogram in pixels.
-    pub height: Pixel,
+    pub height: PixelCount,
 
     /// The max number shown on the y axis of the histogram.
     pub max_y_axis: usize,
 
     /// Number of pixels used below the x-axis for the labels.
-    pub x_label_area: Pixel,
+    pub x_label_area: PixelCount,
 }
 impl Config {
     /// Construct a new `Config` object.
@@ -84,7 +84,7 @@ impl Config {
     ///
     /// - There is a math overflow when computing the number of pixels.
     /// - There is a truncation when casting from `usize` to `u32`.
-    fn calc_x_label_area(libfunc_stats: &ReplayStatistics) -> Result<Pixel, HistogramError> {
+    fn calc_x_label_area(libfunc_stats: &ReplayStatistics) -> Result<PixelCount, HistogramError> {
         let chars_longest_name: usize = libfunc_stats
             .get_libfuncs()
             .iter()
@@ -135,10 +135,10 @@ impl Config {
     /// # Errors
     ///
     /// Returns [`Err`] if there is an overflow in the calculation of the width.
-    fn calc_width(number_of_buckets: usize) -> Result<Pixel, HistogramError> {
-        let number_of_buckets: Pixel = u32::try_from(number_of_buckets)?;
-        let pixels_per_bucket: Pixel = 40;
-        let extra_margins: Pixel = 250;
+    fn calc_width(number_of_buckets: usize) -> Result<PixelCount, HistogramError> {
+        let number_of_buckets: PixelCount = u32::try_from(number_of_buckets)?;
+        let pixels_per_bucket: PixelCount = 40;
+        let extra_margins: PixelCount = 250;
         number_of_buckets
             .checked_mul(pixels_per_bucket)
             .and_then(|n| n.checked_add(extra_margins))
@@ -160,9 +160,12 @@ impl Config {
     ///
     /// Returns [`Err`] if there is an overflow in the calculation of the
     /// height.
-    fn calc_height(max_y_axis: usize, x_axis_label_space: Pixel) -> Result<Pixel, HistogramError> {
-        let max_y_axis: Pixel = u32::try_from(max_y_axis)?;
-        let pixels_for_each_call: Pixel = 2;
+    fn calc_height(
+        max_y_axis: usize,
+        x_axis_label_space: PixelCount,
+    ) -> Result<PixelCount, HistogramError> {
+        let max_y_axis: PixelCount = u32::try_from(max_y_axis)?;
+        let pixels_for_each_call: PixelCount = 2;
         max_y_axis
             .checked_mul(pixels_for_each_call)
             .and_then(|n| n.checked_add(x_axis_label_space))
