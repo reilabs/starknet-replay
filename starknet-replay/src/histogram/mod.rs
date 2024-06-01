@@ -1,9 +1,6 @@
 //! This module is responsible for rendering and saving the SVG image of the
 //! libfunc histogram.
 //!
-//! It uses the `plotter` library to generate the histogram
-//! and rendering.
-//!
 //! SVG has been chosen because, as a vector graphics format, it makes reading
 //! text easy and zooming doesn't degrade the quality.
 //!
