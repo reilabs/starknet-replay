@@ -21,6 +21,9 @@ pub enum Error {
     #[error("Overflow during computation of {0}")]
     MathOverflow(String),
 
+    #[error("The file {0} exists already. To ignore it, pass the flag --overwrite.")]
+    FileExists(String),
+
     #[error("The list of `libfuncs` called is empty. Can't create histogram.")]
     Empty,
 

@@ -183,16 +183,27 @@ impl Config {
 /// - `filename`: The filename to output the SVG.
 /// - `title`: The title of the histogram.
 /// - `libfunc_stats`: The object containing libfunc statistics.
+/// - `overwrite`: If `True` and `filename` already exists, the file will be
+///   overwritten.
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if `filename` can't be written to or if there is any error
-/// rendering the data.
+/// Returns [`Err`] if:
+///
+/// - The `filename` can't be written to.
+/// - There is any error rendering the data.
+/// - The file already exists and `overwrite` is `False`.
 pub fn export(
     filename: &PathBuf,
     title: &str,
     libfunc_stats: &ReplayStatistics,
+    overwrite: bool,
 ) -> Result<(), HistogramError> {
+    if filename.exists() && !overwrite {
+        return Err(HistogramError::FileExists(
+            filename.as_path().display().to_string(),
+        ));
+    }
     let config = Config::new(libfunc_stats)?;
 
     render(filename, title, &config, libfunc_stats)

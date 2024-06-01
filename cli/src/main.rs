@@ -48,9 +48,12 @@ struct Args {
     /// The filename of the histogram SVG image.
     ///
     /// If `None`, histogram generation is skipped.
-    /// If the file exists already, it tries overwriting.
     #[arg(long)]
     svg_out: Option<PathBuf>,
+
+    /// Set to overwrite `svg_out` if it already exists.
+    #[arg(long)]
+    overwrite: bool,
 }
 
 fn main() {
@@ -66,8 +69,9 @@ fn main() {
     let start_block = args.start_block;
     let end_block = args.end_block;
     let svg_path = args.svg_out;
+    let overwrite = args.overwrite;
 
-    match run(start_block, end_block, database_path, svg_path) {
+    match run(start_block, end_block, database_path, svg_path, overwrite) {
         Ok(()) => process::exit(OK),
         Err(e) => {
             eprintln!("Internal software error: {e}");
@@ -86,6 +90,8 @@ fn main() {
 /// - `end_block`: Final block to replay.
 /// - `database_path`: Path of the Pathfinder database.
 /// - `svg_path`: Output path of the libfunc histogram SVG image.
+/// - `overwrite`: If `True` and `svg_path` already exists, the file will be
+///   overwritten.
 ///
 /// # Errors
 ///
@@ -100,6 +106,7 @@ fn run(
     end_block: u64,
     database_path: PathBuf,
     svg_path: Option<PathBuf>,
+    overwrite: bool,
 ) -> anyhow::Result<()> {
     if start_block > end_block {
         bail!("Exiting because end_block must be greater or equal to start_block.")
@@ -144,7 +151,7 @@ fn run(
             let title =
                 format!("Filtered libfuncs usage from block {first_block} to block {last_block}");
             let libfunc_stats = libfunc_stats.filter_most_frequent();
-            export_histogram(&filename, title.as_str(), &libfunc_stats)?;
+            export_histogram(&filename, title.as_str(), &libfunc_stats, overwrite)?;
             Ok(())
         }
         None => Ok(()),
