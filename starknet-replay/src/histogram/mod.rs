@@ -19,9 +19,6 @@ type PixelCount = u32;
 
 /// This struct contains the variable configuration parameters for rendering the
 /// histogram image.
-///
-/// Configuration parameters that don't depend on `ReplayStatistics` are
-/// hardcoded.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Config {
     /// The width of the SVG image of the histogram in pixels.
