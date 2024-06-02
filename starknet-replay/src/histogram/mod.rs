@@ -187,7 +187,7 @@ fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramErro
             _ => Err(e),
         },
     }?;
-    fs::write(filename, &content)?;
+    fs::write(filename, content)?;
     Ok(())
 }
 /// This function generates and saves the libfunc frequency histogram.

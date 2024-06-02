@@ -34,7 +34,7 @@ pub fn render(
     config: &Config,
     libfunc_stats: &ReplayStatistics,
 ) -> Result<String, HistogramError> {
-    let mut buffer: String = Default::default();
+    let mut buffer: String = String::default();
     render_with_plotter(title, config, libfunc_stats, &mut buffer)?;
     Ok(buffer.clone())
 }
