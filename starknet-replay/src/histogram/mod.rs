@@ -119,8 +119,11 @@ impl Config {
 
     /// Calculate the width in pixels of the SVG image containing the histogram.
     ///
-    /// The idea is to resize the width depending on the number of buckets to be
-    /// plotted plus some margin.
+    /// The width depends on the number of buckets to be plotted plus some
+    /// margin.
+    ///
+    /// Despite SVG format having arbitrary resolution, the reason for
+    /// setting width and height is to set the ratio of the image.
     ///
     /// # Arguments
     ///
@@ -142,8 +145,11 @@ impl Config {
     /// Calculate the height in pixels of the SVG image containing the
     /// histogram.
     ///
-    /// The idea is to provide 2 pixels of height for buckets with frequency of
-    /// 1 plus some margin at the bottom for the labels of the x-axis.
+    /// Set 2 pixels in height for each unit plus some margin at the bottom for
+    /// the labels of the x-axis.
+    ///
+    /// Despite SVG format having arbitrary resolution, the reason for
+    /// setting width and height is to set the ratio of the image.
     ///
     /// # Arguments
     ///
