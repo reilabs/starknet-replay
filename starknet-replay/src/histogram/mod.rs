@@ -3,7 +3,7 @@
 //!
 //! The file `mod.rs` contains the public interface. The main entry function to
 //! use this module is by calling the function `export` to render and save the
-//! SVG image. The file `plot.rs` contains the call to the `plotters` library.
+//! SVG image.
 
 use std::ops::{Add, Div};
 use std::path::PathBuf;
