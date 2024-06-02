@@ -5,7 +5,7 @@ use std::ops::{Div, Mul};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 
-/// The struct to hold a list of libfunc names with their related calling
+/// The struct to hold a list of libfunc names with their related call
 /// frequency.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ReplayStatistics {
