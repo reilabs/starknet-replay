@@ -22,6 +22,7 @@ impl ReplayStatistics {
     /// Initialisation of `ReplayStatistics`.
     ///
     /// The struct is initialised with field `concrete_libfunc` empty.
+    #[must_use]
     pub fn new() -> Self {
         ReplayStatistics {
             concrete_libfunc: OrderedHashMap::default(),
@@ -37,7 +38,7 @@ impl ReplayStatistics {
     ///
     /// - `name`: Name of libfunc.
     /// - `frequency`: Number of calls to `name`.
-    pub fn update(&mut self, name: String, frequency: usize) {
+    pub fn update(&mut self, name: &impl ToString, frequency: usize) {
         self.concrete_libfunc
             .entry(name.to_string())
             .and_modify(|e| *e += frequency)
@@ -52,9 +53,10 @@ impl ReplayStatistics {
     /// # Arguments
     ///
     /// - `input`: Input map of libfuncs.
+    #[must_use]
     pub fn add_statistics(mut self, input: &OrderedHashMap<impl ToString, usize>) -> Self {
         for (name, frequency) in input.iter() {
-            self.update(name.to_string(), frequency.clone());
+            self.update(&name.to_string(), *frequency);
         }
         self
     }
@@ -77,6 +79,7 @@ impl ReplayStatistics {
 
     /// Returns the number of different concrete libfunc names in the
     /// `ReplayStatistics` object.
+    #[must_use]
     pub fn get_number_of_libfuncs(&self) -> usize {
         self.concrete_libfunc.len()
     }
@@ -85,6 +88,7 @@ impl ReplayStatistics {
     /// libfunc.
     ///
     /// It returns `None` if the map of libfuncs is empty.
+    #[must_use]
     pub fn get_highest_frequency(&self) -> Option<usize> {
         self.concrete_libfunc.values().max().copied()
     }
@@ -105,6 +109,7 @@ impl ReplayStatistics {
     /// # Arguments
     ///
     /// - `name`: The libfunc to query.
+    #[must_use]
     pub fn get_libfunc_frequency(&self, name: &str) -> usize {
         self.concrete_libfunc.get(name).copied().unwrap_or(0)
     }
@@ -113,6 +118,11 @@ impl ReplayStatistics {
     ///
     /// It returns the set of the 80% most called libfuncs ordered from the most
     /// frequent libfunc.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the total sum of frequencies doesn't fit in a `usize` number.
+    #[must_use]
     pub fn filter_most_frequent(&self) -> ReplayStatistics {
         tracing::info!(
             "Number of libfunc before filtering: {}",
