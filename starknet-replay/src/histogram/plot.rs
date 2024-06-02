@@ -58,8 +58,6 @@ fn render_with_plotter(
 
     root.fill(&WHITE)?;
 
-    // Putting spaces in the caption creates panic
-    // https://github.com/plotters-rs/plotters/issues/573#issuecomment-2096057443
     let mut chart = ChartBuilder::on(&root)
         .x_label_area_size(config.x_label_area)
         .y_label_area_size(150)
