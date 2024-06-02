@@ -41,6 +41,10 @@ impl Config {
     ///
     /// - `libfunc_stats`: the data to be plotted on the histogram.
     ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if there are no libfuncs to plot on the histogram.
+    ///
     /// # Panics
     ///
     /// - There is a math overflow when computing the `Config` parameters

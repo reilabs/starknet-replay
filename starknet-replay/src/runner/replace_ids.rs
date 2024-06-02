@@ -156,10 +156,7 @@ mod tests {
 
     // This is because the built-in equality doesn't check for matching `debug_name`
     // string.
-    fn compare_libfunc_declaration(
-        a: &Vec<LibfuncDeclaration>,
-        b: &Vec<LibfuncDeclaration>,
-    ) -> bool {
+    fn compare_libfunc_declaration(a: &[LibfuncDeclaration], b: &[LibfuncDeclaration]) -> bool {
         if a.len() != b.len() {
             return false;
         }
@@ -180,12 +177,12 @@ mod tests {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     // This is because the built-in equality doesn't check for matching `debug_name`
     // string.
-    fn compare_type_declaration(a: &Vec<TypeDeclaration>, b: &Vec<TypeDeclaration>) -> bool {
+    fn compare_type_declaration(a: &[TypeDeclaration], b: &[TypeDeclaration]) -> bool {
         if a.len() != b.len() {
             return false;
         }
@@ -203,7 +200,7 @@ mod tests {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     #[test]
