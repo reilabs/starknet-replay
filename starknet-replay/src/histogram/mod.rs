@@ -99,8 +99,7 @@ impl Config {
     /// Calculate the maximum number shown on the y-axis of the histogram.
     ///
     /// The principle is to automatically resize the axis depending on the
-    /// number of times the most frequently called `libfunc` is called. This
-    /// number is rounded to the next hundreds.
+    /// number of times the most frequently called `libfunc` is called.
     ///
     /// # Arguments
     ///
