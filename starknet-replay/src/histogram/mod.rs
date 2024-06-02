@@ -186,6 +186,7 @@ fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramErro
     let content = content.to_string();
     // Calling `create_dir_all` because in some OS `write` fails if all directories
     // aren't present.
+    println!("Filename {:?}", filename.display());
     match fs::create_dir_all(filename) {
         Ok(()) => Ok(()),
         Err(e) => match e.kind() {
