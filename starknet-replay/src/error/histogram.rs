@@ -24,6 +24,10 @@ pub enum Error {
     #[error("The file {0} exists already. To ignore it, pass the flag --overwrite.")]
     FileExists(String),
 
+    /// `Save` variant is for errors reported when saving the SVG image to file.
+    #[error(transparent)]
+    Save(#[from] std::io::Error),
+
     #[error("The list of `libfuncs` called is empty. Can't create histogram.")]
     Empty,
 

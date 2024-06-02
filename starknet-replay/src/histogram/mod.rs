@@ -5,6 +5,8 @@
 //! use this module is by calling the function `export` to render and save the
 //! SVG image.
 
+use std::fs;
+use std::io::ErrorKind;
 use std::ops::{Add, Div};
 use std::path::PathBuf;
 
@@ -173,6 +175,21 @@ impl Config {
     }
 }
 
+/// This function saves the SVG image to file
+fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramError> {
+    let content = content.to_string();
+    // Calling `create_dir_all` because in some OS `write` fails if all directories
+    // aren't present.
+    match fs::create_dir_all(filename) {
+        Ok(()) => Ok(()),
+        Err(e) => match e.kind() {
+            ErrorKind::AlreadyExists => Ok(()),
+            _ => Err(e),
+        },
+    }?;
+    fs::write(filename, &content)?;
+    Ok(())
+}
 /// This function generates and saves the libfunc frequency histogram.
 ///
 /// # Arguments
@@ -197,10 +214,10 @@ impl Config {
 /// # use starknet_replay::histogram::export;
 /// # use starknet_replay::ReplayStatistics;
 /// let mut replay_statistics = ReplayStatistics::default();
-/// replay_statistics.update("store_temp".into(), 367);
-/// replay_statistics.update("enum_match".into(), 895);
-/// replay_statistics.update("u32_to_felt252".into(), 759);
-/// replay_statistics.update("const_as_immediate".into(), 264);
+/// replay_statistics.update(&"store_temp".to_string(), 367);
+/// replay_statistics.update(&"enum_match".to_string(), 895);
+/// replay_statistics.update(&"u32_to_felt252".to_string(), 759);
+/// replay_statistics.update(&"const_as_immediate".to_string(), 264);
 /// let filename = "doctest.svg";
 /// let title = "Doctest histogram";
 /// export(&filename.into(), title, &replay_statistics, true).unwrap();
@@ -218,7 +235,9 @@ pub fn export(
     }
     let config = Config::new(libfunc_stats)?;
 
-    render(filename, title, &config, libfunc_stats)
+    let content = render(title, &config, libfunc_stats)?;
+
+    save(filename, &content)
 }
 
 #[cfg(test)]

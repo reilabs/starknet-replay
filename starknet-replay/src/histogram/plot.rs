@@ -3,8 +3,6 @@
 //! To use another plotting library, it's sufficient to rewrite the function
 //! `render`.
 
-use std::path::PathBuf;
-
 use plotters::backend::SVGBackend;
 use plotters::chart::ChartBuilder;
 use plotters::coord::ranged1d::{IntoSegmentedCoord, SegmentValue};
@@ -21,7 +19,6 @@ use crate::ReplayStatistics;
 ///
 /// # Arguments
 ///
-/// - `filename`: The filename of the exported SVG file.
 /// - `title`: The title of the histogram.
 /// - `config`: The configuration object of the histogram.
 /// - `libfunc_stats`: The input data to be plotted.
@@ -32,15 +29,32 @@ use crate::ReplayStatistics;
 ///
 /// - There is an error computing the histogram `Config` object.
 /// - There is an error rendering the histogram.
-/// - There is an IO error saving the SVG file of the histogram.
 pub fn render(
-    filename: &PathBuf,
     title: &str,
     config: &Config,
     libfunc_stats: &ReplayStatistics,
+) -> Result<String, HistogramError> {
+    let mut buffer: String = Default::default();
+    render_with_plotter(title, config, libfunc_stats, &mut buffer)?;
+    Ok(buffer.clone())
+}
+
+/// Internal function to call `plotter` rendering backend.
+///
+/// # Arguments
+///
+/// - `title`: The title of the histogram.
+/// - `config`: The configuration object of the histogram.
+/// - `libfunc_stats`: The input data to be plotted.
+/// - `buffer`: The buffer that contains the SVG image.
+fn render_with_plotter(
+    title: &str,
+    config: &Config,
+    libfunc_stats: &ReplayStatistics,
+    buffer: &mut String,
 ) -> Result<(), HistogramError> {
     let list_of_libfuncs = libfunc_stats.get_libfuncs();
-    let root = SVGBackend::new(filename, (config.width, config.height)).into_drawing_area();
+    let root = SVGBackend::with_string(buffer, (config.width, config.height)).into_drawing_area();
 
     root.fill(&WHITE)?;
 
@@ -90,8 +104,5 @@ pub fn render(
             })),
     )?;
 
-    // To avoid the IO failure being ignored silently, we manually call the
-    // present function
-    root.present()?;
     Ok(())
 }
