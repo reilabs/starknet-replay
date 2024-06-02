@@ -52,10 +52,10 @@ impl Config {
             .get_highest_frequency()
             .ok_or(HistogramError::Empty)?;
         let number_of_buckets = libfunc_stats.get_number_of_libfuncs();
-        let x_label_area = Self::calc_x_label_area(libfunc_stats)?;
-        let width = Self::calc_width(number_of_buckets)?;
-        let max_y_axis = Self::calc_max_y_axis(max_frequency)?;
-        let height = Self::calc_height(max_y_axis, x_label_area)?;
+        let x_label_area = Self::calc_x_label_area(libfunc_stats);
+        let width = Self::calc_width(number_of_buckets);
+        let max_y_axis = Self::calc_max_y_axis(max_frequency);
+        let height = Self::calc_height(max_y_axis, x_label_area);
 
         tracing::info!("Number of buckets {number_of_buckets}");
         tracing::info!("Max y axis {max_y_axis}");
@@ -80,7 +80,7 @@ impl Config {
     ///
     /// - There is a math overflow when computing the number of pixels.
     /// - There is a truncation when casting from `usize` to `u32`.
-    fn calc_x_label_area(libfunc_stats: &ReplayStatistics) -> Result<PixelCount, HistogramError> {
+    fn calc_x_label_area(libfunc_stats: &ReplayStatistics) -> PixelCount {
         let chars_longest_name: usize = libfunc_stats
             .get_libfuncs()
             .iter()
@@ -88,13 +88,12 @@ impl Config {
             .unwrap_or(&"")
             .len();
         let pixels_per_char: usize = 15;
-        let x_label_area_size: usize =
-            chars_longest_name
-                .checked_mul(pixels_per_char)
-                .ok_or(HistogramError::MathOverflow(
-                    "calc_x_label_area".to_string(),
-                ))?;
-        Ok(u32::try_from(x_label_area_size)?)
+        let x_label_area_size: usize = chars_longest_name
+            .checked_mul(pixels_per_char)
+            .expect("Overflow in calc_x_label_area");
+        let x_label_area_size: PixelCount =
+            u32::try_from(x_label_area_size).expect("Conversion error in calc_x_label_area");
+        x_label_area_size
     }
 
     /// Calculate the maximum number shown on the y-axis of the histogram.
@@ -111,11 +110,11 @@ impl Config {
     ///
     /// Returns [`Err`] if there is an overflow in the calculation of the y-axis
     /// extension.
-    fn calc_max_y_axis(max_frequency: usize) -> Result<usize, HistogramError> {
+    fn calc_max_y_axis(max_frequency: usize) -> usize {
         // `div` and `add` don't need to be checked because they will always return a
         // number less than `max_frequency`, therefore fitting in the size of `usize`.
         let max_y_axis = max_frequency.div(100).add(1).checked_mul(100);
-        max_y_axis.ok_or(HistogramError::MathOverflow("calc_max_y_axis".to_string()))
+        max_y_axis.expect("Overflow in calc_max_y_axis")
     }
 
     /// Calculate the width in pixels of the SVG image containing the histogram.
@@ -133,14 +132,16 @@ impl Config {
     /// # Errors
     ///
     /// Returns [`Err`] if there is an overflow in the calculation of the width.
-    fn calc_width(number_of_buckets: usize) -> Result<PixelCount, HistogramError> {
-        let number_of_buckets: PixelCount = u32::try_from(number_of_buckets)?;
+    fn calc_width(number_of_buckets: usize) -> PixelCount {
+        let number_of_buckets: PixelCount =
+            u32::try_from(number_of_buckets).expect("Conversion error in calc_width");
         let pixels_per_bucket: PixelCount = 40;
         let extra_margins: PixelCount = 250;
-        number_of_buckets
+        let width: PixelCount = number_of_buckets
             .checked_mul(pixels_per_bucket)
             .and_then(|n| n.checked_add(extra_margins))
-            .ok_or(HistogramError::MathOverflow("calc_width".to_string()))
+            .expect("Overflow in calc_width");
+        width
     }
 
     /// Calculate the height in pixels of the SVG image containing the
@@ -161,16 +162,15 @@ impl Config {
     ///
     /// Returns [`Err`] if there is an overflow in the calculation of the
     /// height.
-    fn calc_height(
-        max_y_axis: usize,
-        x_axis_label_space: PixelCount,
-    ) -> Result<PixelCount, HistogramError> {
-        let max_y_axis: PixelCount = u32::try_from(max_y_axis)?;
+    fn calc_height(max_y_axis: usize, x_axis_label_space: PixelCount) -> PixelCount {
+        let max_y_axis: PixelCount =
+            u32::try_from(max_y_axis).expect("Conversion error in calc_height");
         let pixels_for_each_call: PixelCount = 2;
+        
         max_y_axis
             .checked_mul(pixels_for_each_call)
             .and_then(|n| n.checked_add(x_axis_label_space))
-            .ok_or(HistogramError::MathOverflow("calc_height".to_string()))
+            .expect("Overflow in calc_height")
     }
 }
 
@@ -278,7 +278,7 @@ mod tests {
         let max_frequency = 1600;
         let replay_statistics =
             generate_dummy_replay_statistics(string_len, number_libfuncs, max_frequency);
-        let x_label_area = Config::calc_x_label_area(&replay_statistics).unwrap();
+        let x_label_area = Config::calc_x_label_area(&replay_statistics);
         let expected_x_label_area = 300;
         assert_eq!(x_label_area, expected_x_label_area);
     }
@@ -286,7 +286,7 @@ mod tests {
     #[test]
     fn test_calc_max_y_axis() {
         let max_frequency = 131;
-        let max_y_axis = Config::calc_max_y_axis(max_frequency).unwrap();
+        let max_y_axis = Config::calc_max_y_axis(max_frequency);
         let expected_max_y_axis = 200;
         assert_eq!(max_y_axis, expected_max_y_axis);
     }
@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn test_calc_width() {
         let number_libfuncs = 130;
-        let width = Config::calc_width(number_libfuncs).unwrap();
+        let width = Config::calc_width(number_libfuncs);
         let expected_width = 5450;
         assert_eq!(width, expected_width);
     }
@@ -303,7 +303,7 @@ mod tests {
     fn test_calc_height() {
         let max_y_axis = 130;
         let x_axis_label_space = 250;
-        let height = Config::calc_height(max_y_axis, x_axis_label_space).unwrap();
+        let height = Config::calc_height(max_y_axis, x_axis_label_space);
         let expected_height = 510;
         assert_eq!(height, expected_height);
     }
