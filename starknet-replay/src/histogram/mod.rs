@@ -41,9 +41,7 @@ impl Config {
     ///
     /// - `libfunc_stats`: the data to be plotted on the histogram.
     ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if:
+    /// # Panics
     ///
     /// - There is a math overflow when computing the `Config` parameters
     /// - There is a truncation when casting from `usize` to `u32`.
@@ -74,10 +72,9 @@ impl Config {
     ///
     /// - `libfunc_stats`: data to be plotted on the histogram.
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// Returns [`Err`] if:
-    ///
+    /// Panics if:
     /// - There is a math overflow when computing the number of pixels.
     /// - There is a truncation when casting from `usize` to `u32`.
     fn calc_x_label_area(libfunc_stats: &ReplayStatistics) -> PixelCount {
@@ -106,9 +103,9 @@ impl Config {
     /// - `max_frequency`: The highest frequency to be represented in the
     ///   histogram.
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// Returns [`Err`] if there is an overflow in the calculation of the y-axis
+    /// Panics if there is an overflow in the calculation of the y-axis
     /// extension.
     fn calc_max_y_axis(max_frequency: usize) -> usize {
         // `div` and `add` don't need to be checked because they will always return a
@@ -129,9 +126,9 @@ impl Config {
     ///
     /// - `number_of_buckets`: The number of buckets in the histogram.
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// Returns [`Err`] if there is an overflow in the calculation of the width.
+    /// Panics if there is an overflow in the calculation of the width.
     fn calc_width(number_of_buckets: usize) -> PixelCount {
         let number_of_buckets: PixelCount =
             u32::try_from(number_of_buckets).expect("Conversion error in calc_width");
@@ -158,15 +155,15 @@ impl Config {
     /// - `max_y_axis`: The max extension of the y-axis.
     /// - `x_axis_label_space`: The amount of margin for x-axis labels.
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// Returns [`Err`] if there is an overflow in the calculation of the
+    /// Panics if there is an overflow in the calculation of the
     /// height.
     fn calc_height(max_y_axis: usize, x_axis_label_space: PixelCount) -> PixelCount {
         let max_y_axis: PixelCount =
             u32::try_from(max_y_axis).expect("Conversion error in calc_height");
         let pixels_for_each_call: PixelCount = 2;
-        
+
         max_y_axis
             .checked_mul(pixels_for_each_call)
             .and_then(|n| n.checked_add(x_axis_label_space))
@@ -207,6 +204,10 @@ fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramErro
 /// - The `filename` can't be written to.
 /// - There is any error rendering the data.
 /// - The file already exists and `overwrite` is `False`.
+///
+/// # Panics
+///
+/// Panics if there is an error generating the `Config` object of the histogram.
 ///
 /// # Examples
 ///
