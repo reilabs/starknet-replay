@@ -1,10 +1,5 @@
 //! This module uses the library `plotter` to render and export the histogram.
 //!
-//! Some settings are hardcoded like:
-//!  - Size and font of labels
-//!  - Colours
-//!  - Export format
-//!
 //! To use another plotting library, it's sufficient to rewrite the function
 //! `render`.
 
