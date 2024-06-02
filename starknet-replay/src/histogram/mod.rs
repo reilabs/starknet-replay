@@ -175,7 +175,13 @@ impl Config {
     }
 }
 
-/// This function saves the SVG image to file
+/// This function saves the SVG image to file.
+/// # Arguments
+///
+/// - `filename`: The filename to output the SVG.
+/// - `content`: The string containing the histogram to save to a file.
+///
+/// Returns [`Err`] if the `filename` can't be written to.
 fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramError> {
     let content = content.to_string();
     // Calling `create_dir_all` because in some OS `write` fails if all directories
