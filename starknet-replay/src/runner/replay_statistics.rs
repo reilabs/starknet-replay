@@ -39,15 +39,10 @@ impl ReplayStatistics {
     /// - `name`: Name of libfunc.
     /// - `frequency`: Number of calls to `name`.
     pub fn update(&mut self, name: &impl ToString, frequency: usize) {
-        let name = self.filter_name(name);
         self.concrete_libfunc
             .entry(name.to_string())
             .and_modify(|e| *e += frequency)
             .or_insert(frequency);
-    }
-
-    fn filter_name(&self, name: &impl ToString) -> String {
-        name.to_string()
     }
 
     /// Update `ReplayStatistics` with results from contract replay.
