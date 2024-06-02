@@ -181,22 +181,16 @@ impl Config {
 /// - `filename`: The filename to output the SVG.
 /// - `content`: The string containing the histogram to save to a file.
 ///
-/// Returns [`Err`] if the `filename` can't be written to.
+/// Returns [`Err`] if:
+///
+/// - `filename` can't be written to.
+/// - The list of parent directories in `filename` don't exist.
 fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramError> {
     let content = content.to_string();
-    // Calling `create_dir_all` because in some OS `write` fails if all directories
-    // aren't present.
-    println!("Filename {:?}", filename.display());
-    match fs::create_dir_all(filename) {
-        Ok(()) => Ok(()),
-        Err(e) => match e.kind() {
-            ErrorKind::AlreadyExists => Ok(()),
-            _ => Err(e),
-        },
-    }?;
     fs::write(filename, content)?;
     Ok(())
 }
+
 /// This function generates and saves the libfunc frequency histogram.
 ///
 /// # Arguments
