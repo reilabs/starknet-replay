@@ -6,7 +6,6 @@
 //! SVG image.
 
 use std::fs;
-use std::io::ErrorKind;
 use std::ops::{Add, Div};
 use std::path::PathBuf;
 
