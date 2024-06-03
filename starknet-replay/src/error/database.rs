@@ -7,15 +7,27 @@ use thiserror::Error;
 pub enum Error {
     /// `ConnectToDatabase` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::pathfinder_db::connect_to_database`.
+    /// function `starknet_replay::runner::pathfinder_db::connect_to_database`.
     #[error(transparent)]
     ConnectToDatabase(anyhow::Error),
 
     /// `GetLatestBlockNumber` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::pathfinder_db::get_latest_block_number`.
+    /// function `starknet_replay::runner::pathfinder_db::get_latest_block_number`.
     #[error(transparent)]
     GetLatestBlockNumber(anyhow::Error),
+
+    /// `GetContractClassAtBlock` is used to encapsulate errors of type
+    /// `anyhow::Error` which are originating from the
+    /// function `starknet_replay::runner::pathfinder_id::get_contract_class_at_block`.
+    #[error(transparent)]
+    GetContractClassAtBlock(anyhow::Error),
+
+    /// `GetChainId` is used to encapsulate errors of type
+    /// `anyhow::Error` which are originating from the
+    /// function `starknet_replay::runner::pathfinder_db::get_chain_id`.
+    #[error(transparent)]
+    GetChainId(anyhow::Error),
 
     /// `InsufficientBlocks` is triggered when the most recent block in the
     /// database is less than the starting block of the replay. For obvious

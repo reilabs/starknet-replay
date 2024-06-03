@@ -13,13 +13,14 @@ use std::process;
 use anyhow::bail;
 use clap::Parser;
 use exitcode::{OK, SOFTWARE};
-use itertools::Itertools;
 use starknet_replay::error::DatabaseError;
+use starknet_replay::profiler::analysis::extract_libfuncs_weight;
 use starknet_replay::{
     connect_to_database,
     export_histogram,
     get_latest_block_number,
     run_replay,
+    write_to_file,
     ReplayRange,
 };
 
@@ -51,7 +52,13 @@ struct Args {
     #[arg(long)]
     svg_out: Option<PathBuf>,
 
-    /// Set to overwrite `svg_out` if it already exists.
+    /// The filename to output the raw libfunc usage statistics.
+    ///
+    /// If `None`, output file is skipped.
+    #[arg(long)]
+    txt_out: Option<PathBuf>,
+
+    /// Set to overwrite `svg_out` and/or `txt_out` if it already exists.
     #[arg(long)]
     overwrite: bool,
 }
@@ -95,6 +102,7 @@ fn run(args: Args) -> anyhow::Result<()> {
     let start_block = args.start_block;
     let end_block = args.end_block;
     let svg_path = args.svg_out;
+    let txt_out = args.txt_out;
     let overwrite = args.overwrite;
 
     if start_block > end_block {
@@ -122,18 +130,17 @@ fn run(args: Args) -> anyhow::Result<()> {
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let libfunc_stats = run_replay(&replay_range, storage)?;
+    let visited_pcs = run_replay(&replay_range, storage.clone())?;
+
+    let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
 
     let elapsed = start_time.elapsed();
     tracing::info!(?elapsed, "Finished");
 
-    for (concrete_name, weight) in libfunc_stats
-        .concrete_libfunc
-        .iter()
-        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
-    {
-        tracing::info!("  libfunc {concrete_name}: {weight}");
-    }
+    match txt_out {
+        Some(filename) => write_to_file(&filename, &libfunc_stats),
+        None => (),
+    };
 
     match svg_path {
         Some(filename) => {

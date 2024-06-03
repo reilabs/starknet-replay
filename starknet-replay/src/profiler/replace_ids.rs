@@ -131,6 +131,7 @@ impl SierraIdReplacer for DebugReplacer {
 ///
 /// Similar to [`replace_sierra_ids`] except that it acts on
 /// [`cairo_lang_sierra::program::Program`].
+#[must_use]
 pub fn replace_sierra_ids_in_program(program: &Program) -> Program {
     DebugReplacer {
         program: program.clone(),
@@ -156,7 +157,7 @@ mod tests {
 
     // This is because the built-in equality doesn't check for matching `debug_name`
     // string.
-    fn libfunc_declaration_eq(a: &[LibfuncDeclaration], b: &[LibfuncDeclaration]) -> bool {
+    fn compare_libfunc_declaration(a: &[LibfuncDeclaration], b: &[LibfuncDeclaration]) -> bool {
         if a.len() != b.len() {
             return false;
         }
@@ -182,7 +183,7 @@ mod tests {
 
     // This is because the built-in equality doesn't check for matching `debug_name`
     // string.
-    fn type_declaration_eq(a: &[TypeDeclaration], b: &[TypeDeclaration]) -> bool {
+    fn compare_type_declaration(a: &[TypeDeclaration], b: &[TypeDeclaration]) -> bool {
         if a.len() != b.len() {
             return false;
         }
@@ -225,12 +226,12 @@ mod tests {
                 panic!("Unable to parse {sierra_program_test_file} to Program")
             });
 
-        assert!(libfunc_declaration_eq(
+        assert!(compare_libfunc_declaration(
             &sierra_program_test.libfunc_declarations,
             &sierra_program.libfunc_declarations
         ));
 
-        assert!(type_declaration_eq(
+        assert!(compare_type_declaration(
             &sierra_program_test.type_declarations,
             &sierra_program.type_declarations
         ));

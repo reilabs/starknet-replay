@@ -7,6 +7,8 @@ use cairo_lang_sierra_to_casm::compiler::CompilationError;
 use pathfinder_executor::TransactionExecutionError;
 use thiserror::Error;
 
+use crate::error::DatabaseError;
+
 #[derive(Debug, Error)]
 pub enum Error {
     /// `Serde` variant is for errors reported by the crate `serde_json`.
@@ -33,12 +35,6 @@ pub enum Error {
     #[error(transparent)]
     PathfinderExecutor(#[from] TransactionExecutionError),
 
-    /// `GetContractClassAtBlock` is used to encapsulate errors of type
-    /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::runner::get_contract_class_at_block`.
-    #[error(transparent)]
-    GetContractClassAtBlock(anyhow::Error),
-
     /// `GenerateReplayWork` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
     /// function `starknet_replay::generate_replay_work`.
@@ -57,11 +53,10 @@ pub enum Error {
     #[error(transparent)]
     ExecuteBlock(anyhow::Error),
 
-    /// `GetChainId` is used to encapsulate errors of type
-    /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::get_chain_id`.
+    /// `DatabaseAccess` is used to convert from `DatabaseError` into
+    /// `RunnerError` when database functions are called in the module `runner.
     #[error(transparent)]
-    GetChainId(anyhow::Error),
+    DatabaseAccess(#[from] DatabaseError),
 
     /// The `Unknown` variant is for any other uncategorised error.
     #[error("Unknown Error during block replay: {0:?}")]

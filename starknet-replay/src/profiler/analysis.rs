@@ -1,76 +1,19 @@
 //! This file contains the code to process a transaction trace and update the
 //! hashmap which keeps the statistics of the number of calls for each libfunc.
 
-use std::collections::HashMap;
-
 use cairo_lang_runner::profiling::{ProfilingInfoProcessor, ProfilingInfoProcessorParams};
 use cairo_lang_sierra::program::Program;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
-use pathfinder_common::{BlockNumber, ClassHash as PathfinderClassHash};
-use pathfinder_executor::types::TransactionTrace;
-use pathfinder_executor::IntoFelt;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
-use pathfinder_storage::{BlockId, Transaction};
-use starknet_api::core::ClassHash as StarknetClassHash;
-use starknet_api::hash::StarkFelt;
+use pathfinder_storage::Storage;
 
-use super::replay_statistics::ReplayStatistics;
 use crate::error::RunnerError;
-use crate::runner::replace_ids::replace_sierra_ids_in_program;
-use crate::runner::SierraCasmRunnerLight;
-
-/// Returns the hashmap of visited program counters for the input `trace`.
-///
-/// The result of `get_visited_program_counters` is a hashmap where the key is
-/// the `StarknetClassHash` and the value is the Vector of visited program
-/// counters for each `StarknetClassHash` execution in `trace`.
-///
-/// If `trace` is not an Invoke transaction, the function returns None because
-/// no libfuncs have been called during the transaction execution.
-///
-/// # Arguments
-///
-/// - `trace`: the `TransactionTrace` to extract the visited program counters
-///   from.
-fn get_visited_program_counters(
-    trace: &TransactionTrace,
-) -> Option<&HashMap<StarknetClassHash, Vec<Vec<usize>>>> {
-    match trace {
-        TransactionTrace::Invoke(tx) => Some(&tx.visited_pcs),
-        _ => None,
-    }
-}
-
-/// Returns the `ContractClass` object of a `class_hash` at `block_num` from the
-/// Pathfinder database `db`.
-///
-/// # Arguments
-///
-/// - `block_num`: The block number at which to retrieve the `ContractClass`.
-/// - `db`: The object to query the Pathfinder database.
-/// - `class_hash`: The class hash of the `ContractClass` to return
-///
-/// # Errors
-///
-/// Returns [`Err`] if `class_hash` doesn't exist at block `block_num` in `db`.
-fn get_contract_class_at_block(
-    block_num: BlockNumber,
-    db: &Transaction,
-    class_hash: &StarknetClassHash,
-) -> Result<ContractClass, RunnerError> {
-    let block_id = BlockId::Number(block_num);
-    let class_hash: StarkFelt = class_hash.0;
-    let class_definition =
-        db.class_definition_at(block_id, PathfinderClassHash(class_hash.into_felt()));
-    let class_definition = class_definition
-        .map_err(RunnerError::GetContractClassAtBlock)?
-        .unwrap();
-
-    let contract_class = ContractClass::from_definition_bytes(&class_definition)
-        .map_err(RunnerError::GetContractClassAtBlock)?;
-    Ok(contract_class)
-}
+use crate::profiler::replace_ids::replace_sierra_ids_in_program;
+use crate::profiler::SierraProfiler;
+use crate::runner::pathfinder_db::get_contract_class_at_block;
+use crate::runner::VisitedPcs;
+use crate::ReplayStatistics;
 
 /// Converts transforms a `SierraContractClass` in Sierra `Program`.
 ///
@@ -143,17 +86,14 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
 ///
 /// Returns [`Err`] if the constructor of `SierraCasmRunnerLight` fails.
 pub fn extract_libfuncs_weight(
-    trace: &TransactionTrace,
-    block_num: BlockNumber,
-    db: &Transaction,
+    visited_pcs: &VisitedPcs,
+    storage: &Storage,
 ) -> Result<ReplayStatistics, RunnerError> {
     let mut local_cumulative_libfuncs_weight: ReplayStatistics = ReplayStatistics::new();
-    let Some(visited_pcs) = get_visited_program_counters(trace) else {
-        return Ok(local_cumulative_libfuncs_weight);
-    };
 
-    for (class_hash, all_pcs) in visited_pcs {
-        let Ok(ContractClass::Sierra(ctx)) = get_contract_class_at_block(block_num, db, class_hash)
+    for (replay_class_hash, all_pcs) in visited_pcs {
+        let Ok(ContractClass::Sierra(ctx)) =
+            get_contract_class_at_block(replay_class_hash, storage)
         else {
             continue;
         };
@@ -162,7 +102,7 @@ pub fn extract_libfuncs_weight(
             continue;
         };
 
-        let runner = SierraCasmRunnerLight::new(sierra_program.clone())?;
+        let runner = SierraProfiler::new(sierra_program.clone())?;
 
         for pcs in all_pcs {
             let raw_profiling_info = runner

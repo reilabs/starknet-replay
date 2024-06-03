@@ -9,7 +9,7 @@ use std::fs;
 use std::ops::{Add, Div};
 use std::path::PathBuf;
 
-use super::runner::replay_statistics::ReplayStatistics;
+use super::profiler::replay_statistics::ReplayStatistics;
 use crate::error::HistogramError;
 use crate::histogram::plot::render;
 
