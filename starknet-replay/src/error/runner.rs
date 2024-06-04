@@ -32,7 +32,7 @@ pub enum Error {
     ExecuteBlock(anyhow::Error),
 
     /// `DatabaseAccess` is used to convert from `DatabaseError` into
-    /// `RunnerError` when database functions are called in the module `runner.
+    /// `RunnerError` when database functions are called in the module `runner`.
     #[error(transparent)]
     DatabaseAccess(#[from] DatabaseError),
 
