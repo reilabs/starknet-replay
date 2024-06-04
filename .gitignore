@@ -13,3 +13,5 @@ rust-toolchain.toml
 
 # Avoid pushing histogram file from CLI output
 *.svg
+
+*.log
