@@ -137,10 +137,9 @@ fn run(args: Args) -> anyhow::Result<()> {
     let elapsed = start_time.elapsed();
     tracing::info!(?elapsed, "Finished");
 
-    match txt_out {
-        Some(filename) => write_to_file(&filename, &libfunc_stats),
-        None => (),
-    };
+    if let Some(filename) = txt_out {
+        write_to_file(&filename, &libfunc_stats);
+    }
 
     match svg_path {
         Some(filename) => {

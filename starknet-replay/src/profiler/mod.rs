@@ -1,3 +1,8 @@
+//! The module `profiler` contains the code to process a sequence of program
+//! counters and return the object `ReplayStatistics`.
+
+#![allow(clippy::module_name_repetitions)] // Added because of `SierraProfiler`
+
 use cairo_lang_runner::profiling::{user_function_idx_by_sierra_statement_idx, ProfilingInfo};
 use cairo_lang_runner::{ProfilingInfoCollectionConfig, RunnerError as CairoError};
 use cairo_lang_sierra::extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType};
@@ -14,7 +19,7 @@ use cairo_lang_sierra_to_casm::metadata::{
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::chain;
 
-use crate::error::RunnerError;
+use crate::error::ProfilerError;
 
 pub mod analysis;
 pub mod replace_ids;
@@ -48,7 +53,7 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 10000;
 fn create_metadata(
     sierra_program: &Program,
     metadata_config: Option<MetadataComputationConfig>,
-) -> Result<Metadata, RunnerError> {
+) -> Result<Metadata, ProfilerError> {
     let metadata = if let Some(metadata_config) = metadata_config {
         calc_metadata(sierra_program, metadata_config)
     } else {
@@ -92,7 +97,7 @@ impl SierraProfiler {
     ///
     /// - The call to `create_metadata` fails
     /// - The generation of `sierra_program_registry` fails
-    pub fn new(sierra_program: Program) -> Result<Self, RunnerError> {
+    pub fn new(sierra_program: Program) -> Result<Self, ProfilerError> {
         // `run_profiler` and `metadata_config` are set as per default values
         // preventing the user from choosing `None` as in the original
         // `SierraCasmRunner`. This is to ensure the profiler is always run with
@@ -143,15 +148,23 @@ impl SierraProfiler {
     ///
     /// In particular, the variable `end_of_program_reached` doesn't
     /// seem to be valid for Starknet contracts.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if:
+    ///
+    /// - `pcs` is empty.
+    /// - The CASM program has no Sierra statements.
+    /// - Sierra statement not found.
     // TODO: To be refactored. Issue #5.
-    pub fn collect_profiling_info(&self, pcs: &[usize]) -> ProfilingInfo {
+    pub fn collect_profiling_info(&self, pcs: &[usize]) -> Result<ProfilingInfo, ProfilerError> {
         let sierra_len = self.casm_program.debug_info.sierra_statement_info.len();
         let bytecode_len = self
             .casm_program
             .debug_info
             .sierra_statement_info
             .last()
-            .unwrap()
+            .ok_or(ProfilerError::EmptyStatementList)?
             .code_offset;
         // The CASM program starts with a header of instructions to wrap the
         // real program. `real_pc_0` is the PC in the trace that points
@@ -164,7 +177,7 @@ impl SierraProfiler {
         // be the last in the trace of any execution. The first
         // instruction after that is the first instruction in the
         // original CASM program.
-        let real_pc_0 = pcs.last().unwrap() + 1;
+        let real_pc_0 = pcs.last().ok_or(ProfilerError::EmptyProgramCounterList)? + 1;
 
         // The function stack trace of the current function, excluding the
         // current function (that is, the stack of the caller).
@@ -218,7 +231,9 @@ impl SierraProfiler {
 
             let Some(gen_statement) = self.sierra_program.statements.get(sierra_statement_idx.0)
             else {
-                panic!("Failed fetching statement index {}", sierra_statement_idx.0);
+                return Err(ProfilerError::SierraStatementNotFound(
+                    sierra_statement_idx.0,
+                ));
             };
 
             match gen_statement {
@@ -264,9 +279,9 @@ impl SierraProfiler {
         // Remove the footer.
         sierra_statement_weights.remove(&StatementIdx(sierra_len));
 
-        ProfilingInfo {
+        Ok(ProfilingInfo {
             sierra_statement_weights,
             stack_trace_weights,
-        }
+        })
     }
 }

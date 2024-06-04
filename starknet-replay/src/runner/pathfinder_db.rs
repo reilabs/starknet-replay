@@ -1,5 +1,5 @@
 //! This module is an interface between the Pathfinder database API and
-//! starknet-replay.
+//! `starknet-replay`.
 
 use std::num::NonZeroU32;
 use std::path::PathBuf;
@@ -156,7 +156,10 @@ pub fn get_contract_class_at_block(
     let class_definition = tx_db.class_definition_at(block_id, ClassHash(class_hash.into_felt()));
     let class_definition = class_definition
         .map_err(DatabaseError::GetContractClassAtBlock)?
-        .unwrap();
+        .ok_or(DatabaseError::ContractClassNotFound {
+            block_id,
+            class_hash,
+        })?;
 
     let contract_class = ContractClass::from_definition_bytes(&class_definition)
         .map_err(DatabaseError::GetContractClassAtBlock)?;

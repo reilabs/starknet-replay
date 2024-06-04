@@ -1,6 +1,8 @@
 //! This file contains the enum `Error` for all the errors returned by the
 //! module `pathfinder_db`.
 
+use pathfinder_storage::BlockId;
+use starknet_api::hash::StarkFelt;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -22,6 +24,15 @@ pub enum Error {
     /// function `starknet_replay::runner::pathfinder_id::get_contract_class_at_block`.
     #[error(transparent)]
     GetContractClassAtBlock(anyhow::Error),
+
+    /// `ContractClassNotFound` is used for `None` results from the database in
+    /// the function
+    /// `starknet_replay::runner::pathfinder_id::get_contract_class_at_block`.
+    #[error("Contract Class {class_hash:?} not found in Database at block {block_id:?}.")]
+    ContractClassNotFound {
+        block_id: BlockId,
+        class_hash: StarkFelt,
+    },
 
     /// `GetChainId` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the

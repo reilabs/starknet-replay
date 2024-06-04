@@ -8,9 +8,8 @@ use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
 use pathfinder_storage::Storage;
 
-use crate::error::RunnerError;
 use crate::profiler::replace_ids::replace_sierra_ids_in_program;
-use crate::profiler::SierraProfiler;
+use crate::profiler::{ProfilerError, SierraProfiler};
 use crate::runner::pathfinder_db::get_contract_class_at_block;
 use crate::runner::VisitedPcs;
 use crate::ReplayStatistics;
@@ -26,7 +25,7 @@ use crate::ReplayStatistics;
 /// Returns [`Err`] if there is a serde deserialisation issue.
 fn get_sierra_program_from_class_definition(
     ctx: &SierraContractClass,
-) -> Result<Program, RunnerError> {
+) -> Result<Program, ProfilerError> {
     let json = serde_json::json!({
         "abi": [],
         "sierra_program": ctx.sierra_program,
@@ -38,7 +37,7 @@ fn get_sierra_program_from_class_definition(
     // which is private. For ease of integration with `thiserror`, it needs to be
     // made public. Issue #20
     let sierra_program = contract_class.extract_sierra_program().map_err(|_| {
-        RunnerError::Unknown("Error extracting sierra program".to_string().to_string())
+        ProfilerError::Unknown("Error extracting sierra program".to_string().to_string())
     })?;
     let sierra_program = replace_sierra_ids_in_program(&sierra_program);
     Ok(sierra_program)
@@ -64,23 +63,20 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
     }
 }
 
-/// Extracts the frequency of libfuncs called in transaction `trace`.
-///
-/// If the transaction type is not `INVOKE`, the returned `ReplayStatistics`
-/// object is empty because no libfuncs have been called.
+/// Extracts the frequency of libfuncs from visited program counters.
 ///
 /// The process to extract the frequency of libfuncs called is:
 /// 1- Get the vector of visited program counters
 /// 2- Query the pathfinder database to extract the Starknet contract from the
-/// class hash.
+/// class hash and block number.
 /// 3- Run the profiler over the list of visited program counters to determine
 /// which lines of the Sierra code have been executed and collect the results.
 ///
 /// # Arguments
 ///
-/// - `trace`: The transaction analysed.
-/// - `block_num`: The block where `trace` is inserted in.
-/// - `db`: This is the open `Transaction` with the `pathfinder` database.
+/// - `visited_pcs`: The object that contains the list of visited program
+///   counters for each transaction replayed.
+/// - `storage`: Connection with the Pathfinder database.
 ///
 /// # Errors
 ///
@@ -88,7 +84,7 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
 pub fn extract_libfuncs_weight(
     visited_pcs: &VisitedPcs,
     storage: &Storage,
-) -> Result<ReplayStatistics, RunnerError> {
+) -> Result<ReplayStatistics, ProfilerError> {
     let mut local_cumulative_libfuncs_weight: ReplayStatistics = ReplayStatistics::new();
 
     for (replay_class_hash, all_pcs) in visited_pcs {
@@ -105,19 +101,13 @@ pub fn extract_libfuncs_weight(
         let runner = SierraProfiler::new(sierra_program.clone())?;
 
         for pcs in all_pcs {
-            let raw_profiling_info = runner
-                .run_profiler
-                .as_ref()
-                .map(|_| runner.collect_profiling_info(pcs.as_slice()));
+            let raw_profiling_info = runner.collect_profiling_info(pcs.as_slice())?;
 
             let profiling_info_processor = ProfilingInfoProcessor::new(
                 None,
                 sierra_program.clone(),
                 UnorderedHashMap::default(),
             );
-            let Some(raw_profiling_info) = raw_profiling_info else {
-                continue;
-            };
 
             let profiling_info_processor_params = get_profiling_info_processor_params();
             let profiling_info = profiling_info_processor

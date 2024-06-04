@@ -10,9 +10,9 @@
 //! In other cases, the error enum variant matches the library name from which
 //! the error originates.
 
-// Allowing `module_name_repetitions` helps to keep `DatabaseError` and
-// `RunnerError`. Alternatively, shortening the name would limit expressiveness
-// of the type in this case.
+// Allowing `module_name_repetitions` is needed to make `clippy` happy and keep the suffix `Error`
+// for all the error categories. Alternatively, shortening the name would limit expressiveness of
+// the type in this case.
 #![allow(clippy::module_name_repetitions)]
 
 use thiserror::Error;
@@ -21,16 +21,18 @@ use thiserror::Error;
 // `pub` for ease of access.
 pub use self::database::Error as DatabaseError;
 pub use self::histogram::Error as HistogramError;
+pub use self::profiler::Error as ProfilerError;
 pub use self::runner::Error as RunnerError;
 
 pub mod database;
 pub mod histogram;
+pub mod profiler;
 pub mod runner;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `Error::Database` error is caused by issues quering the
-    /// Pathfinder database.
+    /// `Error::Database` error is caused by issues quering the Pathfinder
+    /// database.
     #[error(transparent)]
     Database(#[from] DatabaseError),
 
@@ -39,8 +41,11 @@ pub enum Error {
     #[error(transparent)]
     Histogram(#[from] HistogramError),
 
-    /// `Error::Runner` error is caused by issues with transaction
-    /// replay or profiling.
+    /// `Error::Profiler` error is caused by issues with transaction profiling.
+    #[error(transparent)]
+    Profiler(#[from] ProfilerError),
+
+    /// `Error::Runner` error is caused by issues with transaction replay.
     #[error(transparent)]
     Runner(#[from] RunnerError),
 }

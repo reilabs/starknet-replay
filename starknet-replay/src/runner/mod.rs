@@ -1,6 +1,5 @@
-//! The module runner contains the code to process the metadata generated
-//! from `cairo-vm`. It determines the number of times each libfunc has
-//! been called during an entry point execution.
+//! The module runner contains the code to replay transactions and extract the
+//! sequence of visited program counters from each transaction replayed.
 
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
@@ -34,14 +33,14 @@ pub mod visited_pcs;
 /// # Arguments
 ///
 /// - `replay_range`: The range of blocks to be replayed.
-/// - `storage`: Connection with the Pathfinder database
+/// - `storage`: Connection with the Pathfinder database.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if:
 ///
-/// - A block number doesn't exist in the database history
-/// - `end_block` is less than `start_block`
+/// - A block number doesn't exist in the database history.
+/// - `end_block` is less than `start_block`.
 pub fn run_replay(replay_range: &ReplayRange, storage: Storage) -> Result<VisitedPcs, RunnerError> {
     // List of blocks to be replayed
     let replay_work: Vec<ReplayBlock> = generate_replay_work(replay_range, &storage)?;

@@ -10,6 +10,8 @@ pub enum Error {
     #[error(transparent)]
     Drawing(#[from] DrawingAreaErrorKind<std::io::Error>),
 
+    /// `FileExists` variant is returned when `overwrite` flag is not passed and
+    /// the output SVG file exists already.
     #[error("The file {0} exists already. To ignore it, pass the flag --overwrite.")]
     FileExists(String),
 
@@ -17,6 +19,8 @@ pub enum Error {
     #[error(transparent)]
     Save(#[from] std::io::Error),
 
+    /// `Empty` variant is returned when the list of libfuncs is empty because
+    /// it means there is no bar to plot on the histogram.
     #[error("The list of `libfuncs` called is empty. Can't create histogram.")]
     Empty,
 

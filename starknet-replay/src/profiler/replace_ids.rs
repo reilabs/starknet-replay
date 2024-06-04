@@ -35,6 +35,11 @@ use cairo_lang_utils::extract_matches;
 ///
 /// User functions are kept in numeric id form because the names aren't
 /// recoverable after the contract is compiled and deployed in the blockchain.
+///
+/// Libfunc `function_call<[id]>` is transformed to `function_call` only because
+/// IDs repeat across different contracts and it would have no meaning keeping
+/// it.
+///
 /// `DebugReplacer` implements `SierraIdReplacer` to be able to perform the
 /// replacement from id to string.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -71,7 +76,6 @@ impl SierraIdReplacer for DebugReplacer {
         let mut long_id = self.lookup_intern_concrete_lib_func(id);
         self.replace_generic_args(&mut long_id.generic_args);
         if long_id.generic_id.to_string().starts_with("function_call") {
-            //long_id.generic_id = "function_call".into();
             long_id.generic_args.clear();
         }
         ConcreteLibfuncId {

@@ -42,6 +42,11 @@ impl ReplayBlock {
     ///   profiled.
     /// - `receipts`: The list of receipts for the execution of the
     ///   transactions. Must be the same length as `transactions`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if the vector `transactions` and the vector `receipts`
+    /// have different length.
     pub fn new(
         header: BlockHeader,
         transactions: Vec<StarknetTransaction>,
