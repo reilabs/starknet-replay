@@ -5,6 +5,7 @@ use cairo_lang_runner::profiling::{ProfilingInfoProcessor, ProfilingInfoProcesso
 use cairo_lang_sierra::program::Program;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
+use itertools::Itertools;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
 use pathfinder_storage::Storage;
 
@@ -121,6 +122,15 @@ pub fn extract_libfuncs_weight(
                 local_cumulative_libfuncs_weight.add_statistics(&concrete_libfunc_weights);
         }
     }
+
+    for (concrete_name, weight) in local_cumulative_libfuncs_weight
+        .concrete_libfunc
+        .iter()
+        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+    {
+        tracing::info!("  libfunc {concrete_name}: {weight}");
+    }
+
     Ok(local_cumulative_libfuncs_weight)
 }
 

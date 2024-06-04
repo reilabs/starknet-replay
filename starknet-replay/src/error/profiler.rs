@@ -41,6 +41,11 @@ pub enum Error {
     #[error("The list of visited program counters is empty. Can't continue profiling.")]
     EmptyProgramCounterList,
 
+    /// `Save` variant is for errors reported when saving the result of libfuncs
+    /// statistics to file.
+    #[error(transparent)]
+    Save(#[from] std::io::Error),
+
     /// `Serde` variant is for errors reported by the crate `serde_json`.
     #[error(transparent)]
     Serde(#[from] serde_json::Error),

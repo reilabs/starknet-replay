@@ -181,6 +181,8 @@ impl Config {
 /// - `filename`: The filename to output the SVG.
 /// - `content`: The string containing the histogram to save to a file.
 ///
+/// # Errors
+///
 /// Returns [`Err`] if:
 ///
 /// - `filename` can't be written to.

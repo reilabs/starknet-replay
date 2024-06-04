@@ -1,5 +1,6 @@
 //! The module which provides an interface to libfunc usage statistics.
 
+use std::fmt;
 use std::ops::{Div, Mul};
 
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
@@ -162,5 +163,17 @@ impl ReplayStatistics {
             filtered_libfuncs.get_number_of_libfuncs()
         );
         filtered_libfuncs
+    }
+}
+impl fmt::Display for ReplayStatistics {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (concrete_name, weight) in self
+            .concrete_libfunc
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+        {
+            writeln!(f, "{concrete_name}: {weight}")?;
+        }
+        Ok(())
     }
 }
