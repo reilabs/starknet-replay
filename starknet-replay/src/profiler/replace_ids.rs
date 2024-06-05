@@ -161,7 +161,7 @@ mod tests {
 
     // This is because the built-in equality doesn't check for matching `debug_name`
     // string.
-    fn compare_libfunc_declaration(a: &[LibfuncDeclaration], b: &[LibfuncDeclaration]) -> bool {
+    fn libfunc_declaration_eq(a: &[LibfuncDeclaration], b: &[LibfuncDeclaration]) -> bool {
         if a.len() != b.len() {
             return false;
         }
@@ -187,7 +187,7 @@ mod tests {
 
     // This is because the built-in equality doesn't check for matching `debug_name`
     // string.
-    fn compare_type_declaration(a: &[TypeDeclaration], b: &[TypeDeclaration]) -> bool {
+    fn type_declaration_eq(a: &[TypeDeclaration], b: &[TypeDeclaration]) -> bool {
         if a.len() != b.len() {
             return false;
         }
@@ -230,12 +230,12 @@ mod tests {
                 panic!("Unable to parse {sierra_program_test_file} to Program")
             });
 
-        assert!(compare_libfunc_declaration(
+        assert!(libfunc_declaration_eq(
             &sierra_program_test.libfunc_declarations,
             &sierra_program.libfunc_declarations
         ));
 
-        assert!(compare_type_declaration(
+        assert!(type_declaration_eq(
             &sierra_program_test.type_declarations,
             &sierra_program.type_declarations
         ));
