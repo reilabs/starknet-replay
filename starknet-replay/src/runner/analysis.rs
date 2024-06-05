@@ -187,7 +187,8 @@ pub fn extract_libfuncs_weight(
             else {
                 continue;
             };
-            local_cumulative_libfuncs_weight.add_statistics(&concrete_libfunc_weights);
+            local_cumulative_libfuncs_weight =
+                local_cumulative_libfuncs_weight.add_statistics(&concrete_libfunc_weights);
         }
     }
     Ok(local_cumulative_libfuncs_weight)

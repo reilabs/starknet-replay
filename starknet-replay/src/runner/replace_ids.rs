@@ -70,6 +70,10 @@ impl SierraIdReplacer for DebugReplacer {
     fn replace_libfunc_id(&self, id: &ConcreteLibfuncId) -> ConcreteLibfuncId {
         let mut long_id = self.lookup_intern_concrete_lib_func(id);
         self.replace_generic_args(&mut long_id.generic_args);
+        if long_id.generic_id.to_string().starts_with("function_call") {
+            //long_id.generic_id = "function_call".into();
+            long_id.generic_args.clear();
+        }
         ConcreteLibfuncId {
             id: id.id,
             debug_name: Some(long_id.to_string().into()),
@@ -138,7 +142,7 @@ pub fn replace_sierra_ids_in_program(program: &Program) -> Program {
 mod tests {
     use std::{env, fs, io};
 
-    use cairo_lang_sierra::program::Program;
+    use cairo_lang_sierra::program::{LibfuncDeclaration, Program, TypeDeclaration};
     use itertools::Itertools;
 
     use super::*;
@@ -148,6 +152,55 @@ mod tests {
         let sierra_program_json_file = [out_dir.as_str(), filename].iter().join("");
         let sierra_program_json_file = sierra_program_json_file.as_str();
         fs::read_to_string(sierra_program_json_file)
+    }
+
+    // This is because the built-in equality doesn't check for matching `debug_name`
+    // string.
+    fn libfunc_declaration_eq(a: &[LibfuncDeclaration], b: &[LibfuncDeclaration]) -> bool {
+        if a.len() != b.len() {
+            return false;
+        }
+        for (a, b) in a
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.id.id, &b.id.id))
+            .zip(b.iter().sorted_by(|a, b| Ord::cmp(&a.id.id, &b.id.id)))
+        {
+            if a.id.id != b.id.id {
+                println!("Different ids. Expected {:?} | Actual {:?}", a.id, b.id);
+                return false;
+            }
+            if a.id.debug_name != b.id.debug_name {
+                println!(
+                    "Different debug_name. Expected {:?} | actual {:?}",
+                    a.id, b.id
+                );
+                return false;
+            }
+        }
+        true
+    }
+
+    // This is because the built-in equality doesn't check for matching `debug_name`
+    // string.
+    fn type_declaration_eq(a: &[TypeDeclaration], b: &[TypeDeclaration]) -> bool {
+        if a.len() != b.len() {
+            return false;
+        }
+        for (a, b) in a
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.id.id, &b.id.id))
+            .zip(b.iter().sorted_by(|a, b| Ord::cmp(&a.id.id, &b.id.id)))
+        {
+            if a.id.id != b.id.id {
+                println!("Different ids {:?} {:?}", a.id, b.id);
+                return false;
+            }
+            if a.id.debug_name != b.id.debug_name {
+                println!("Different ids {:?} {:?}", a.id, b.id);
+                return false;
+            }
+        }
+        true
     }
 
     #[test]
@@ -172,13 +225,14 @@ mod tests {
                 panic!("Unable to parse {sierra_program_test_file} to Program")
             });
 
-        assert_eq!(
-            sierra_program_test.libfunc_declarations,
-            sierra_program.libfunc_declarations
-        );
-        assert_eq!(
-            sierra_program_test.type_declarations,
-            sierra_program.type_declarations
-        );
+        assert!(libfunc_declaration_eq(
+            &sierra_program_test.libfunc_declarations,
+            &sierra_program.libfunc_declarations
+        ));
+
+        assert!(type_declaration_eq(
+            &sierra_program_test.type_declarations,
+            &sierra_program.type_declarations
+        ));
     }
 }

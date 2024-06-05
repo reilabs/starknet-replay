@@ -126,6 +126,7 @@ impl SierraCasmRunnerLight {
         })
     }
 
+    /// Returns the index of the Sierra statement at `pc`.
     // TODO: To be refactored. Issue #5.
     fn sierra_statement_index_by_pc(&self, pc: usize) -> StatementIdx {
         // The `-1` here can't cause an underflow as the first statement is

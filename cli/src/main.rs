@@ -14,7 +14,14 @@ use anyhow::bail;
 use clap::Parser;
 use exitcode::{OK, SOFTWARE};
 use itertools::Itertools;
-use starknet_replay::{connect_to_database, get_latest_block_number, run_replay, ReplayRange};
+use starknet_replay::error::DatabaseError;
+use starknet_replay::{
+    connect_to_database,
+    export_histogram,
+    get_latest_block_number,
+    run_replay,
+    ReplayRange,
+};
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
@@ -37,6 +44,16 @@ struct Args {
     /// reduced if bigger than the biggest block in the database.
     #[arg(long)]
     end_block: u64,
+
+    /// The filename of the histogram SVG image.
+    ///
+    /// If `None`, histogram generation is skipped.
+    #[arg(long)]
+    svg_out: Option<PathBuf>,
+
+    /// Set to overwrite `svg_out` if it already exists.
+    #[arg(long)]
+    overwrite: bool,
 }
 
 fn main() {
@@ -48,11 +65,7 @@ fn main() {
 
     let args = Args::parse();
 
-    let database_path = args.db_path;
-    let start_block = args.start_block;
-    let end_block = args.end_block;
-
-    match run(start_block, end_block, database_path) {
+    match run(args) {
         Ok(()) => process::exit(OK),
         Err(e) => {
             eprintln!("Internal software error: {e}");
@@ -67,9 +80,7 @@ fn main() {
 ///
 /// # Arguments
 ///
-/// - `start_block`: First block to replay.
-/// - `end_block`: Final block to replay.
-/// - `database_path`: Path of the Pathfinder database.
+/// - `args`: The list of command line input arguments.
 ///
 /// # Errors
 ///
@@ -79,7 +90,13 @@ fn main() {
 /// - Not enough blocks in the database to cover the required range of blocks to
 ///   replay.
 /// - Any error during execution of `starknet-replay`.
-fn run(start_block: u64, end_block: u64, database_path: PathBuf) -> anyhow::Result<()> {
+fn run(args: Args) -> anyhow::Result<()> {
+    let database_path = args.db_path;
+    let start_block = args.start_block;
+    let end_block = args.end_block;
+    let svg_path = args.svg_out;
+    let overwrite = args.overwrite;
+
     if start_block > end_block {
         bail!("Exiting because end_block must be greater or equal to start_block.")
     }
@@ -93,20 +110,22 @@ fn run(start_block: u64, end_block: u64, database_path: PathBuf) -> anyhow::Resu
     let last_block: u64 = end_block.min(latest_block);
 
     if start_block > last_block {
-        bail!(
-            "Most recent block found in the databse is {}. Exiting because less than start_block \
-             {}",
+        return Err(DatabaseError::InsufficientBlocks {
             last_block,
-            start_block
-        )
+            start_block,
+        }
+        .into());
     }
 
     let replay_range = ReplayRange::new(first_block, last_block)?;
 
     tracing::info!(%first_block, %last_block, "Re-executing blocks");
-
     let start_time = std::time::Instant::now();
+
     let libfunc_stats = run_replay(&replay_range, storage)?;
+
+    let elapsed = start_time.elapsed();
+    tracing::info!(?elapsed, "Finished");
 
     for (concrete_name, weight) in libfunc_stats
         .concrete_libfunc
@@ -116,9 +135,14 @@ fn run(start_block: u64, end_block: u64, database_path: PathBuf) -> anyhow::Resu
         tracing::info!("  libfunc {concrete_name}: {weight}");
     }
 
-    let elapsed = start_time.elapsed();
-
-    tracing::info!(?elapsed, "Finished");
-
-    Ok(())
+    match svg_path {
+        Some(filename) => {
+            let title =
+                format!("Filtered libfuncs usage from block {first_block} to block {last_block}");
+            let libfunc_stats = libfunc_stats.filter_most_frequent();
+            export_histogram(&filename, title.as_str(), &libfunc_stats, overwrite)?;
+            Ok(())
+        }
+        None => Ok(()),
+    }
 }

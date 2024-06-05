@@ -4,6 +4,11 @@
 using data from the Pathfinder database. It reports the frequency with which
 each `libfunc` has been called when replaying the transactions.
 
+It's also possible to export the histogram of the most frequently used libfuncs
+by number of calls. The data plotted in the histogram is filtered to only
+include the libfuncs that amount to 80% of the total calls in the replay. This
+helps readability and visual analysis.
+
 Only `INVOKE` transactions of Sierra contracts are used for this report because
 only Sierra contracts use libfuncs and only `INVOKE` transactions execute Sierra
 code. Rejected transactions are included because they are still useful to
@@ -37,16 +42,18 @@ This tool makes use of `tracing` library for log purposes. For this reason set
 ## Example
 
 ```bash
-cargo run -- --db-path ../pathfinder/mainnet.sqlite --start-block 632917 --end-block 632917
+cargo run -- --db-path ../pathfinder/mainnet.sqlite --start-block 632917 --end-block 632917 --svg-out "histogram.svg"
 ```
 
 The command above replays all transactions of block
-[632917](https://starkscan.co/block/632917#transactions)
+[632917](https://starkscan.co/block/632917#transactions) and saves the libfunc
+histogram in the file named `"histogram.svg"`.
 
 ## Limitations
 
-- Some transactions trigger `TransactionExecutionError::ExecutionError`
 - Libfunc frequency results haven't been checked yet
+- Replay time and analysis takes about 60s per transaction. It still needs to be
+  optimised.
 
 ## Requirements
 

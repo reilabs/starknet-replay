@@ -18,15 +18,22 @@
 //! - [`DebugReplacer`] struct replaces the ids of libfuncs and types in a
 //!   Sierra program.
 //!
-//! Beyond [`run_replay`], the other key public functions of the library are as
-//! follows:
+//! Beyond [`run_replay`], these are the other key public functions of the
+//! library:
 //!
 //! - [`runner::extract_libfuncs_weight`] which updates the cumulative usage of
 //!   libfuncs
 //! - [`runner::replace_sierra_ids_in_program`] which replaces the ids of
 //!   libfuncs and types with their debug name in a Sierra program.
+//! - [`histogram::export`] which generates the histogram of libfunc frequencies
+//!   and exports it as SVG image.
 
-#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
+#![warn(
+    clippy::all,
+    clippy::cargo,
+    clippy::pedantic,
+    clippy::missing_docs_in_private_items
+)]
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
 use std::sync::mpsc::channel;
@@ -46,13 +53,15 @@ use pathfinder_rpc::compose_executor_transaction;
 use pathfinder_storage::{BlockId, Storage, Transaction as DatabaseTransaction};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use runner::replay_block::ReplayBlock;
-use runner::replay_statistics::ReplayStatistics;
 
+pub use crate::histogram::export as export_histogram;
 use crate::runner::analysis::extract_libfuncs_weight;
 pub use crate::runner::pathfinder_db::{connect_to_database, get_latest_block_number};
 pub use crate::runner::replay_range::ReplayRange;
+pub use crate::runner::replay_statistics::ReplayStatistics;
 
-mod error;
+pub mod error;
+pub mod histogram;
 mod runner;
 
 /// Replays all transactions from `start_block` to `end_block` and gathers
@@ -134,6 +143,11 @@ fn generate_replay_work(
 
             let (transactions, receipts): (Vec<_>, Vec<_>) =
                 transactions_and_receipts.into_iter().unzip();
+
+            let transactions_to_process = transactions.len();
+            tracing::info!(
+                "{transactions_to_process} transactions to process in block {block_number}"
+            );
 
             ReplayBlock::new(header, transactions, receipts)
         })

@@ -34,6 +34,8 @@ pub fn connect_to_database(database_path: PathBuf) -> Result<Storage, DatabaseEr
         unreachable!("n_parallel_connections should never be less than 1.")
     };
 
+    tracing::info!("Pathfinder db capacity {capacity}");
+
     let store_manager = Storage::migrate(database_path, JournalMode::WAL, 1)
         .map_err(DatabaseError::ConnectToDatabase)?;
     let pool = store_manager
