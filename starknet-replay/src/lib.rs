@@ -13,18 +13,18 @@
 //! The key structs of the library are as follows:
 //!
 //! - [`ReplayBlock`] struct which contains a single block of transactions.
-//! - [`runner::SierraCasmRunnerLight`] struct to extract profiling data from a
-//!   list of visited program counters.
-//! - [`DebugReplacer`] struct replaces the ids of libfuncs and types in a
-//!   Sierra program.
+//! - [`profiler::SierraProfiler`] struct to extract profiling data from a list
+//!   of visited program counters.
+//! - [`profiler::replace_ids::DebugReplacer`] struct replaces the ids of
+//!   libfuncs and types in a Sierra program.
 //!
 //! Beyond [`run_replay`], these are the other key public functions of the
 //! library:
 //!
-//! - [`runner::extract_libfuncs_weight`] which updates the cumulative usage of
-//!   libfuncs
-//! - [`runner::replace_sierra_ids_in_program`] which replaces the ids of
-//!   libfuncs and types with their debug name in a Sierra program.
+//! - [`profiler::analysis::extract_libfuncs_weight`] which updates the
+//!   cumulative usage of libfuncs
+//! - [`profiler::replace_ids::replace_sierra_ids_in_program`] which replaces
+//!   the ids of libfuncs and types with their debug name in a Sierra program.
 //! - [`histogram::export`] which generates the histogram of libfunc frequencies
 //!   and exports it as SVG image.
 
