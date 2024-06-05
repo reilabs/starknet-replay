@@ -89,7 +89,7 @@ fn main() {
 /// - `start_block` is greater than `end_block`.
 /// - Not enough blocks in the database to cover the required range of blocks to
 ///   replay.
-/// - Any error during execution of `cairo-replay`.
+/// - Any error during execution of `starknet-replay`.
 fn run(args: Args) -> anyhow::Result<()> {
     let database_path = args.db_path;
     let start_block = args.start_block;
