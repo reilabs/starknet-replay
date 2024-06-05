@@ -1,6 +1,6 @@
 //! The module which provides an interface to libfunc usage statistics.
 
-use std::fmt;
+use std::io::Write;
 use std::ops::{Div, Mul};
 
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
@@ -164,9 +164,37 @@ impl ReplayStatistics {
         );
         filtered_libfuncs
     }
-}
-impl fmt::Display for ReplayStatistics {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+
+    /// Serialises `ReplayStatistics` to CSV format.
+    ///
+    /// Libfuncs are reported in ascending order of weight.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if there is an IO error writing to the buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::str;
+    /// # use indoc::indoc;
+    /// # use starknet_replay::ReplayStatistics;
+    /// let mut replay_statistics = ReplayStatistics::default();
+    /// replay_statistics.update(&"u32_to_felt252".to_string(), 759);
+    /// replay_statistics.update(&"const_as_immediate".to_string(), 264);
+    /// let expected_string = indoc! {r#"
+    ///     Function Name,Weight
+    ///     const_as_immediate,264
+    ///     u32_to_felt252,759
+    /// "#};
+    /// let csv_output = replay_statistics.to_csv().unwrap();
+    /// assert_eq!(
+    ///     str::from_utf8(csv_output.as_slice()).unwrap(),
+    ///     expected_string
+    /// );
+    /// ```
+    pub fn to_csv(&self) -> Result<Vec<u8>, std::io::Error> {
+        let mut f = Vec::new();
         writeln!(f, "Function Name,Weight")?;
         for (concrete_name, weight) in self
             .concrete_libfunc
@@ -175,6 +203,6 @@ impl fmt::Display for ReplayStatistics {
         {
             writeln!(f, "{concrete_name},{weight}")?;
         }
-        Ok(())
+        Ok(f)
     }
 }

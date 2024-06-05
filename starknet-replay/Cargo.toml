@@ -44,5 +44,6 @@ tracing.workspace = true
 itertools.workspace = true
 
 [dev-dependencies]
+indoc = "2.0.5"
 rand = "0.8.4"
 rand_chacha = "0.3.1"
