@@ -10,6 +10,8 @@ target/
 # information
 *.pdb
 
+# Avoid forcing users on a specific Rust toolchain. There is no hard version
+# requirement.
 rust-toolchain.toml
 
 # Avoid pushing histogram file from CLI output
