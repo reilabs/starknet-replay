@@ -40,15 +40,6 @@ pub enum Error {
     #[error(transparent)]
     GetChainId(anyhow::Error),
 
-    /// `InsufficientBlocks` is triggered when the most recent block in the
-    /// database is less than the starting block of the replay. For obvious
-    /// reasons the tool can't continue.
-    #[error(
-        "Most recent block found in the databse is {last_block}. Exiting because less than \
-         start_block {start_block}"
-    )]
-    InsufficientBlocks { last_block: u64, start_block: u64 },
-
     /// The `Unknown` variant is for any other uncategorised error.
     #[error("Unknown Error communicating with Pathfinder database: {0:?}")]
     Unknown(String),

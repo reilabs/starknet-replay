@@ -16,19 +16,15 @@ use starknet_api::core::ClassHash as StarknetClassHash;
 use self::visited_pcs::ReplayClassHash;
 use crate::runner::pathfinder_db::get_chain_id;
 pub use crate::runner::visited_pcs::VisitedPcs;
-use crate::{ReplayBlock, ReplayRange, RunnerError};
+use crate::{get_latest_block_number, ReplayBlock, ReplayRange, RunnerError};
 
 pub mod pathfinder_db;
 pub mod replay_block;
 pub mod replay_range;
 pub mod visited_pcs;
 
-/// Replays all transactions from `start_block` to `end_block` and gathers
-/// statistics while doing so.
-///
-/// This function does not check that the `start_block` and `end_block` are
-/// within the database history. It is expected that the user does this of their
-/// own accord.
+/// Replays transactions as indicated by `replay_range` and extracts the list of
+/// visited program counters.
 ///
 /// # Arguments
 ///
@@ -39,8 +35,9 @@ pub mod visited_pcs;
 ///
 /// Returns [`Err`] if:
 ///
-/// - A block number doesn't exist in the database history.
-/// - `end_block` is less than `start_block`.
+/// - The most recent block available in the database is less than the block to
+///   start the replay.
+/// - There is any error during transaction replay.
 pub fn run_replay(replay_range: &ReplayRange, storage: Storage) -> Result<VisitedPcs, RunnerError> {
     // List of blocks to be replayed
     let replay_work: Vec<ReplayBlock> = generate_replay_work(replay_range, &storage)?;
@@ -53,8 +50,7 @@ pub fn run_replay(replay_range: &ReplayRange, storage: Storage) -> Result<Visite
 /// Generates the list of transactions to be replayed.
 ///
 /// This function queries the Pathfinder database to get the list of
-/// transactions that need to be replayed. The list of transactions is taken
-/// from all the transactions from `start_block` to `end_block` (inclusive).
+/// transactions that need to be replayed.
 ///
 /// # Arguments
 ///
@@ -63,51 +59,69 @@ pub fn run_replay(replay_range: &ReplayRange, storage: Storage) -> Result<Visite
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if there is an issue accessing the Pathfinder database.
+/// Returns [`Err`] if:
+///
+/// - There is an issue accessing the Pathfinder database.
+/// - The most recent block available in the database is less than the block to
+///   start the replay.
 fn generate_replay_work(
     replay_range: &ReplayRange,
     storage: &Storage,
 ) -> Result<Vec<ReplayBlock>, RunnerError> {
+    let start_block = replay_range.get_start_block();
+    let end_block = replay_range.get_end_block();
+
+    let latest_block: u64 = get_latest_block_number(storage)?;
+
+    let last_block: u64 = end_block.min(latest_block);
+
+    if start_block > last_block {
+        return Err(RunnerError::InsufficientBlocks {
+            last_block,
+            start_block,
+        });
+    }
+
     let mut db = storage
         .connection()
         .context("Opening sqlite database connection")
         .map_err(RunnerError::GenerateReplayWork)?;
     let transaction = db.transaction().map_err(RunnerError::GenerateReplayWork)?;
 
-    let start_block = replay_range.get_start_block();
-    let end_block = replay_range.get_end_block();
+    let number_of_blocks = (last_block - start_block + 1).try_into()?;
+    let mut replay_blocks: Vec<ReplayBlock> = Vec::with_capacity(number_of_blocks);
 
-    (start_block..=end_block)
-        .map(|block_number| {
-            let block_id = BlockId::Number(BlockNumber::new_or_panic(block_number));
-            let Some(header) = transaction
-                .block_header(block_id)
-                .map_err(RunnerError::GenerateReplayWork)?
-            else {
-                return Err(RunnerError::Unknown(
-                    format!("Missing block: {block_number}",).to_string(),
-                ));
-            };
-            let transactions_and_receipts = transaction
-                .transaction_data_for_block(block_id)
-                .context("Reading transactions from sqlite database")
-                .map_err(RunnerError::GenerateReplayWork)?
-                .context(format!(
-                    "Transaction data missing from sqlite database for block {block_number}"
-                ))
-                .map_err(RunnerError::GenerateReplayWork)?;
+    for block_number in start_block..=last_block {
+        let block_id = BlockId::Number(
+            BlockNumber::new(block_number)
+                .ok_or(RunnerError::BlockNumberNotValid { block_number })?,
+        );
+        let Some(header) = transaction
+            .block_header(block_id)
+            .map_err(RunnerError::GenerateReplayWork)?
+        else {
+            return Err(RunnerError::BlockNotFound { block_number });
+        };
+        let transactions_and_receipts = transaction
+            .transaction_data_for_block(block_id)
+            .context("Reading transactions from sqlite database")
+            .map_err(RunnerError::GenerateReplayWork)?
+            .context(format!(
+                "Transaction data missing from sqlite database for block {block_number}"
+            ))
+            .map_err(RunnerError::GenerateReplayWork)?;
 
-            let (transactions, receipts): (Vec<_>, Vec<_>) =
-                transactions_and_receipts.into_iter().unzip();
+        let (transactions, receipts): (Vec<_>, Vec<_>) =
+            transactions_and_receipts.into_iter().unzip();
 
-            let transactions_to_process = transactions.len();
-            tracing::info!(
-                "{transactions_to_process} transactions to process in block {block_number}"
-            );
+        let transactions_to_process = transactions.len();
+        tracing::info!("{transactions_to_process} transactions to process in block {block_number}");
 
-            ReplayBlock::new(header, transactions, receipts)
-        })
-        .collect::<Result<Vec<ReplayBlock>, RunnerError>>()
+        let replay_block = ReplayBlock::new(header, transactions, receipts)?;
+        replay_blocks.push(replay_block);
+    }
+
+    Ok(replay_blocks)
 }
 
 /// Re-executes the list of transactions in `replay_work` and return the
@@ -117,9 +131,8 @@ fn generate_replay_work(
 ///
 /// # Arguments
 ///
-/// - `replay_work`: The list of blocks to be replayed. Each index in
-///   corresponds to a block.
-/// - `storage`: Connection with the Pathfinder database.
+/// - `replay_work`: The list of blocks to be replayed.
+/// - `storage`: The connection with the Pathfinder database.
 ///
 /// # Errors
 ///

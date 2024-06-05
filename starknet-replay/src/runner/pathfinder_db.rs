@@ -79,12 +79,8 @@ pub fn get_latest_block_number(storage: &Storage) -> Result<u64, DatabaseError> 
         .block_id(BlockId::Latest)
         .map_err(DatabaseError::GetLatestBlockNumber)?
     else {
-        drop(tx_db);
-        drop(db);
         return Ok(0);
     };
-    drop(tx_db);
-    drop(db);
     Ok(latest_block.get())
 }
 
@@ -104,8 +100,6 @@ pub fn get_latest_block_number(storage: &Storage) -> Result<u64, DatabaseError> 
 /// - The first block doesn't have a hash matching one of
 /// the known hashes
 /// - There is an error querying the database.
-// TODO: Error return type shall be changed from `RunnerError` to
-// `DatabaseError`. Issue #19
 pub fn get_chain_id(tx: &Transaction<'_>) -> Result<ChainId, DatabaseError> {
     let (_, genesis_hash) = tx
         .block_id(BlockNumber::GENESIS.into())

@@ -167,12 +167,13 @@ impl ReplayStatistics {
 }
 impl fmt::Display for ReplayStatistics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "Function Name,Weight")?;
         for (concrete_name, weight) in self
             .concrete_libfunc
             .iter()
             .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
         {
-            writeln!(f, "{concrete_name}: {weight}")?;
+            writeln!(f, "{concrete_name},{weight}")?;
         }
         Ok(())
     }
