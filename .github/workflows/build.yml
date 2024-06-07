@@ -2,8 +2,9 @@ name: Push Checks
 on: push
 
 env:
-  RUST_VERSION: 1.78.0
+  RUST_VERSION: 1.78.0 # If this is updated, update `Cargo.toml`.
   CARGO_TERM_COLOR: always
+  RUSTDOCFLAGS: "-D warnings" # Fail on `cargo doc` warnings.
 
 jobs:
   build:
@@ -71,3 +72,22 @@ jobs:
         components: rustfmt
     - name: Cargo fmt
       run: cargo +nightly fmt --all -- --check
+
+  doc:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "doc-cache"
+        cache-all-crates: "true"
+        cache-directories: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+    - name: Cargo doc
+      run: cargo doc --no-deps --document-private-items --locked
