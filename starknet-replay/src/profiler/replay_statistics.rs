@@ -187,13 +187,13 @@ impl ReplayStatistics {
     ///     const_as_immediate,264
     ///     u32_to_felt252,759
     /// "#};
-    /// let csv_output = replay_statistics.to_csv().unwrap();
+    /// let csv_output = replay_statistics.to_csv_bytes().unwrap();
     /// assert_eq!(
     ///     str::from_utf8(csv_output.as_slice()).unwrap(),
     ///     expected_string
     /// );
     /// ```
-    pub fn to_csv(&self) -> Result<Vec<u8>, std::io::Error> {
+    pub fn to_csv_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
         let mut f = Vec::new();
         writeln!(f, "Function Name,Weight")?;
         for (concrete_name, weight) in self

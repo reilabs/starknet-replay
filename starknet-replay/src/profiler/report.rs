@@ -25,7 +25,7 @@ pub fn write_to_file(
     filename: &PathBuf,
     replay_statistics: &ReplayStatistics,
 ) -> Result<(), ProfilerError> {
-    let output = replay_statistics.to_csv()?;
+    let output = replay_statistics.to_csv_bytes()?;
     fs::write(filename, output)?;
     Ok(())
 }
