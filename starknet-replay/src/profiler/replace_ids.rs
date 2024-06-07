@@ -35,10 +35,15 @@ use cairo_lang_utils::extract_matches;
 ///
 /// User functions are kept in numeric id form because the names aren't
 /// recoverable after the contract is compiled and deployed in the blockchain.
+///
+/// Libfunc `function_call<[id]>` is transformed to `function_call` only because
+/// IDs repeat across different contracts and it would have no meaning keeping
+/// it.
+///
 /// `DebugReplacer` implements `SierraIdReplacer` to be able to perform the
 /// replacement from id to string.
 #[derive(Debug, Clone, Eq, PartialEq)]
-struct DebugReplacer {
+pub struct DebugReplacer {
     /// The Sierra program to replace ids from.
     program: Program,
 }
@@ -71,7 +76,6 @@ impl SierraIdReplacer for DebugReplacer {
         let mut long_id = self.lookup_intern_concrete_lib_func(id);
         self.replace_generic_args(&mut long_id.generic_args);
         if long_id.generic_id.to_string().starts_with("function_call") {
-            //long_id.generic_id = "function_call".into();
             long_id.generic_args.clear();
         }
         ConcreteLibfuncId {
@@ -108,8 +112,11 @@ impl SierraIdReplacer for DebugReplacer {
         }
     }
 
-    /// Helper for [`replace_sierra_ids`] and [`replace_sierra_ids_in_program`]
-    /// replacing function ids.
+    /// Helper for
+    /// [`crate::profiler::replace_ids::replace_sierra_ids_in_program`].
+    ///
+    /// There isn't any replacement of function ids because debug info aren't
+    /// recorded in the Starknet blockchain.
     fn replace_function_id(&self, sierra_id: &FunctionId) -> FunctionId {
         sierra_id.clone()
     }
@@ -129,8 +136,11 @@ impl SierraIdReplacer for DebugReplacer {
 ///  - For types: `felt252` or `Box<Box<felt252>>`.
 ///  - For user functions: `[6]`.
 ///
-/// Similar to [`replace_sierra_ids`] except that it acts on
-/// [`cairo_lang_sierra::program::Program`].
+/// Similar to
+/// [`cairo_lang_sierra_generator::replace_ids::replace_sierra_ids_in_program`]
+/// except that it doesn't rely on a
+/// [`cairo_lang_sierra_generator::db::SierraGenGroup`] trait object.
+#[must_use]
 pub fn replace_sierra_ids_in_program(program: &Program) -> Program {
     DebugReplacer {
         program: program.clone(),

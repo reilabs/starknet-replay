@@ -1,278 +1,244 @@
-//! The module runner contains the code to process the metadata generated
-//! from `cairo-vm`. It determines the number of times each libfunc has
-//! been called during an entry point execution.
+//! The module runner contains the code to replay transactions and extract the
+//! sequence of visited program counters from each transaction replayed.
 
-use cairo_lang_runner::profiling::{user_function_idx_by_sierra_statement_idx, ProfilingInfo};
-use cairo_lang_runner::{ProfilingInfoCollectionConfig, RunnerError as CairoError};
-use cairo_lang_sierra::extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType};
-use cairo_lang_sierra::program::{GenStatement, Program, StatementIdx};
-use cairo_lang_sierra::program_registry::ProgramRegistry;
-use cairo_lang_sierra_to_casm::compiler::{compile, CairoProgram, SierraToCasmConfig};
-use cairo_lang_sierra_to_casm::metadata::{
-    calc_metadata,
-    calc_metadata_ap_change_only,
-    Metadata,
-    MetadataComputationConfig,
-    MetadataError,
-};
-use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
-use itertools::chain;
+use std::collections::HashMap;
+use std::sync::mpsc::channel;
 
-use crate::error::RunnerError;
+use anyhow::Context;
+use pathfinder_common::BlockNumber;
+use pathfinder_executor::types::TransactionTrace;
+use pathfinder_executor::ExecutionState;
+use pathfinder_rpc::compose_executor_transaction;
+use pathfinder_storage::{BlockId, Storage};
+use rayon::iter::{ParallelBridge, ParallelIterator};
+use starknet_api::core::ClassHash as StarknetClassHash;
 
-pub mod analysis;
+use self::visited_pcs::ReplayClassHash;
+use crate::runner::pathfinder_db::get_chain_id;
+pub use crate::runner::visited_pcs::VisitedPcs;
+use crate::{get_latest_block_number, ReplayBlock, ReplayRange, RunnerError};
+
 pub mod pathfinder_db;
-pub mod replace_ids;
 pub mod replay_block;
 pub mod replay_range;
-pub mod replay_statistics;
+pub mod visited_pcs;
 
-/// The default maximum depth for a stack trace.
-///
-/// This number has been determined to be large enough to handle the contracts
-/// on Starknet via empirical testing.
-const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 1000;
-
-/// Creates the metadata required for a lowering a Sierra program to CASM.
-///
-/// This function is copied from crate `cairo-lang-runner` because it
-/// isn't public.
+/// Replays transactions as indicated by `replay_range` and extracts the list of
+/// visited program counters.
 ///
 /// # Arguments
 ///
-/// - `sierra_program`: The sierra program.
-/// - `metadata_config`: The configuration options. If not provided,
-///   `create_metadata` will skip gas usage calculations.
+/// - `replay_range`: The range of blocks to be replayed.
+/// - `storage`: Connection with the Pathfinder database.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if:
 ///
-/// - Call to `calc_metadata` fails
-/// - Call to `calc_metadata_ap_change_only` fails
-// TODO: Change `cairo` crate and make `create_metadata` public. Issue #23.
-fn create_metadata(
-    sierra_program: &Program,
-    metadata_config: Option<MetadataComputationConfig>,
-) -> Result<Metadata, RunnerError> {
-    let metadata = if let Some(metadata_config) = metadata_config {
-        calc_metadata(sierra_program, metadata_config)
-    } else {
-        calc_metadata_ap_change_only(sierra_program)
-    }
-    .map_err(|err| match err {
-        MetadataError::ApChangeError(err) => CairoError::ApChangeError(err),
-        MetadataError::CostError(_) => CairoError::FailedGasCalculation,
-    })?;
-    Ok(metadata)
+/// - The most recent block available in the database is less than the block to
+///   start the replay.
+/// - There is any error during transaction replay.
+pub fn run_replay(replay_range: &ReplayRange, storage: Storage) -> Result<VisitedPcs, RunnerError> {
+    // List of blocks to be replayed
+    let replay_work: Vec<ReplayBlock> = generate_replay_work(replay_range, &storage)?;
+
+    // Iterate through each block in `replay_work` and replay all the
+    // transactions
+    replay_blocks(storage, &replay_work)
 }
 
-/// Extracts profiling data from the list of visited program counters.
+/// Generates the list of transactions to be replayed.
 ///
-/// This is a slimmed down version of `SierraCasmRunner` from
-/// `cairo-lang-runner` crate adapted for use in Starknet contracts instead of
-/// Cairo programs. It is needed to setup the profiler during transaction
-/// replay. There is no call to `cairo-vm` because this slimmed down version
-/// takes the list of visited program counters as input in
-/// `collect_profiling_info`.
-pub struct SierraCasmRunnerLight {
-    /// The sierra program.
-    sierra_program: Program,
-    /// Program registry for the Sierra program.
-    sierra_program_registry: ProgramRegistry<CoreType, CoreLibfunc>,
-    /// The casm program matching the Sierra code.
-    casm_program: CairoProgram,
-    /// Whether to run the profiler when running using this runner.
-    pub run_profiler: Option<ProfilingInfoCollectionConfig>,
+/// This function queries the Pathfinder database to get the list of
+/// transactions that need to be replayed.
+///
+/// # Arguments
+///
+/// - `replay_range`: The range of blocks to be replayed.
+/// - `storage`: Connection with the Pathfinder database.
+///
+/// # Errors
+///
+/// Returns [`Err`] if:
+///
+/// - There is an issue accessing the Pathfinder database.
+/// - The most recent block available in the database is less than the block to
+///   start the replay.
+fn generate_replay_work(
+    replay_range: &ReplayRange,
+    storage: &Storage,
+) -> Result<Vec<ReplayBlock>, RunnerError> {
+    let start_block = replay_range.get_start_block();
+    let end_block = replay_range.get_end_block();
+
+    let latest_block: u64 = get_latest_block_number(storage)?;
+
+    let last_block: u64 = end_block.min(latest_block);
+
+    if start_block > last_block {
+        return Err(RunnerError::InsufficientBlocks {
+            last_block,
+            start_block,
+        });
+    }
+
+    let mut db = storage
+        .connection()
+        .context("Opening sqlite database connection")
+        .map_err(RunnerError::GenerateReplayWork)?;
+    let transaction = db.transaction().map_err(RunnerError::GenerateReplayWork)?;
+
+    let number_of_blocks = (last_block - start_block + 1).try_into()?;
+    let mut replay_blocks: Vec<ReplayBlock> = Vec::with_capacity(number_of_blocks);
+
+    for block_number in start_block..=last_block {
+        let block_id = BlockId::Number(
+            BlockNumber::new(block_number)
+                .ok_or(RunnerError::BlockNumberNotValid { block_number })?,
+        );
+        let Some(header) = transaction
+            .block_header(block_id)
+            .map_err(RunnerError::GenerateReplayWork)?
+        else {
+            return Err(RunnerError::BlockNotFound { block_number });
+        };
+        let transactions_and_receipts = transaction
+            .transaction_data_for_block(block_id)
+            .context("Reading transactions from sqlite database")
+            .map_err(RunnerError::GenerateReplayWork)?
+            .context(format!(
+                "Transaction data missing from sqlite database for block {block_number}"
+            ))
+            .map_err(RunnerError::GenerateReplayWork)?;
+
+        let (transactions, receipts): (Vec<_>, Vec<_>) =
+            transactions_and_receipts.into_iter().unzip();
+
+        let transactions_to_process = transactions.len();
+        tracing::info!("{transactions_to_process} transactions to process in block {block_number}");
+
+        let replay_block = ReplayBlock::new(header, transactions, receipts)?;
+        replay_blocks.push(replay_block);
+    }
+
+    Ok(replay_blocks)
 }
-impl SierraCasmRunnerLight {
-    /// Generates a new `SierraCasmRunnerLight` object.
-    ///
-    /// # Arguments
-    ///
-    /// - `sierra_program`: The sierra program considered in the runner.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if:
-    ///
-    /// - The call to `create_metadata` fails
-    /// - The generation of `sierra_program_registry` fails
-    pub fn new(sierra_program: Program) -> Result<Self, RunnerError> {
-        // `run_profiler` and `metadata_config` are set as per default values
-        // preventing the user from choosing `None` as in the original
-        // `SierraCasmRunner`. This is to ensure the profiler is always run with
-        // the same configuration.
-        let run_profiler = Some(ProfilingInfoCollectionConfig::default());
-        let metadata_config = Some(MetadataComputationConfig::default());
-        let gas_usage_check = metadata_config.is_some();
-        let metadata = create_metadata(&sierra_program, metadata_config)?;
-        let sierra_program_registry =
-            ProgramRegistry::<CoreType, CoreLibfunc>::new(&sierra_program)?;
-        let casm_program = compile(
-            &sierra_program,
-            &metadata,
-            SierraToCasmConfig {
-                gas_usage_check,
-                max_bytecode_size: usize::MAX,
+
+/// Re-executes the list of transactions in `replay_work` and return the
+/// statistics on libfunc usage.
+///
+/// `replay_work` contains the list of transactions to replay grouped by block.
+///
+/// # Arguments
+///
+/// - `replay_work`: The list of blocks to be replayed.
+/// - `storage`: The connection with the Pathfinder database.
+///
+/// # Errors
+///
+/// Returns [`Err`] if the function `execute_block` fails to replay any
+/// transaction.
+fn replay_blocks(storage: Storage, replay_work: &[ReplayBlock]) -> Result<VisitedPcs, RunnerError> {
+    let (sender, receiver) = channel();
+    replay_work
+        .iter()
+        .par_bridge()
+        .try_for_each_with(
+            (storage, sender),
+            |(storage, sender), block| -> anyhow::Result<()> {
+                let block_visited_pcs = execute_block(storage, block)?;
+                sender.send(block_visited_pcs)?;
+                Ok(())
             },
-        )?;
-
-        Ok(Self {
-            sierra_program,
-            sierra_program_registry,
-            casm_program,
-            run_profiler,
-        })
-    }
-
-    /// Returns the index of the Sierra statement at `pc`.
-    // TODO: To be refactored. Issue #5.
-    fn sierra_statement_index_by_pc(&self, pc: usize) -> StatementIdx {
-        // The `-1` here can't cause an underflow as the first statement is
-        // always at offset 0, so it is always on the left side of the
-        // partition, and thus the partition index is >0.
-        StatementIdx(
-            self.casm_program
-                .debug_info
-                .sierra_statement_info
-                .partition_point(|x| x.code_offset <= pc)
-                - 1,
         )
+        .map_err(RunnerError::ReplayBlocks)?;
+
+    let res: Vec<_> = receiver.iter().collect();
+
+    let mut cumulative_visited_pcs = VisitedPcs::default();
+
+    for visited_pcs in res {
+        cumulative_visited_pcs.extend(visited_pcs.iter().map(|(k, v)| (*k, v.clone())));
+    }
+    Ok(cumulative_visited_pcs)
+}
+
+/// Returns the hashmap of visited program counters for the input `trace`.
+///
+/// The result of `get_visited_program_counters` is a hashmap where the key is
+/// the `StarknetClassHash` and the value is the Vector of visited program
+/// counters for each `StarknetClassHash` execution in `trace`.
+///
+/// If `trace` is not an Invoke transaction, the function returns None because
+/// no libfuncs have been called during the transaction execution.
+///
+/// # Arguments
+///
+/// - `trace`: the `TransactionTrace` to extract the visited program counters
+///   from.
+fn get_visited_program_counters(
+    trace: &TransactionTrace,
+) -> Option<&HashMap<StarknetClassHash, Vec<Vec<usize>>>> {
+    match trace {
+        TransactionTrace::Invoke(tx) => Some(&tx.visited_pcs),
+        _ => None,
+    }
+}
+
+/// Replays the list of transactions in a block.
+///
+/// # Arguments
+///
+/// - `storage`: Connection with the Pathfinder database.
+/// - `work`: The block to be re-executed
+///
+/// # Errors
+///
+/// Returns [`Err`] if any transaction fails execution or if there is any error
+/// communicating with the Pathfinder database.
+fn execute_block(storage: &mut Storage, work: &ReplayBlock) -> Result<VisitedPcs, RunnerError> {
+    let mut db = storage.connection().map_err(RunnerError::ExecuteBlock)?;
+
+    let db_tx = db
+        .transaction()
+        .expect("Create transaction with sqlite database");
+
+    let chain_id = get_chain_id(&db_tx)?;
+
+    let execution_state = ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
+
+    let mut transactions = Vec::new();
+    for transaction in &work.transactions {
+        let transaction =
+            compose_executor_transaction(transaction, &db_tx).map_err(RunnerError::ExecuteBlock)?;
+        transactions.push(transaction);
     }
 
-    /// Collects profiling info of the current run using the trace.
-    ///
-    /// This function has been copied from `cairo-lang-runner` crate but it was
-    /// written for Cairo programs. It needs to be adapted for use with Starknet
-    /// contracts.
-    ///
-    /// In particular, the variable `end_of_program_reached` doesn't
-    /// seem to be valid for Starknet contracts.
-    // TODO: To be refactored. Issue #5.
-    pub fn collect_profiling_info(&self, pcs: &[usize]) -> ProfilingInfo {
-        let sierra_len = self.casm_program.debug_info.sierra_statement_info.len();
-        let bytecode_len = self
-            .casm_program
-            .debug_info
-            .sierra_statement_info
-            .last()
-            .unwrap()
-            .code_offset;
-        // The CASM program starts with a header of instructions to wrap the
-        // real program. `real_pc_0` is the PC in the trace that points
-        // to the same CASM instruction which is in the real PC=0 in the
-        // original CASM program. That is, all trace's PCs need to be
-        // subtracted by `real_pc_0` to get the real PC they point to in
-        // the original CASM program.
-        // This is the same as the PC of the last trace entry plus 1, as the
-        // header is built to have a `ret` last instruction, which must
-        // be the last in the trace of any execution. The first
-        // instruction after that is the first instruction in the
-        // original CASM program.
-        let real_pc_0 = pcs.last().unwrap() + 1;
+    let skip_validate = false;
+    let skip_fee_charge = false;
+    let simulations = pathfinder_executor::simulate(
+        execution_state,
+        transactions,
+        skip_validate,
+        skip_fee_charge,
+    ).map_err(|error| {
+        tracing::error!(block_number=%work.header.number, ?error, "Transaction re-execution failed");
+        error
+    })?;
 
-        // The function stack trace of the current function, excluding the
-        // current function (that is, the stack of the caller).
-        // Represented as a vector of indices of the functions in the
-        // stack (indices of the functions according to the list in the
-        // sierra program). Limited to depth `max_stack_trace_depth`.
-        // Note `function_stack_depth` tracks the real depth, even if >=
-        // `max_stack_trace_depth`.
-        let mut function_stack = Vec::new();
-        // Tracks the depth of the function stack, without limit. This is
-        // usually equal to `function_stack.len()`, but if the actual
-        // stack is deeper than `max_stack_trace_depth`, this remains
-        // reliable while `function_stack` does not.
-        let mut function_stack_depth = 0;
-        let mut cur_weight = 0;
-        // The key is a function stack trace (see `function_stack`, but
-        // including the current function).
-        // The value is the weight of the stack trace so far, not including the
-        // pending weight being tracked at the time.
-        let mut stack_trace_weights = UnorderedHashMap::default();
-        // let mut _end_of_program_reached = false;
-        // The total weight of each Sierra statement.
-        // Note the header and footer (CASM instructions added for running the
-        // program by the runner). The header is not counted, and the
-        // footer is, but then the relevant entry is removed.
-        let mut sierra_statement_weights = UnorderedHashMap::default();
-        for step in pcs {
-            // Skip the header.
-            if *step < real_pc_0 {
-                continue;
-            }
-            let real_pc = step - real_pc_0;
-            // Skip the footer.
-            if real_pc == bytecode_len {
-                continue;
-            }
-
-            cur_weight += 1;
-
-            // TODO(yuval): Maintain a map of pc to sierra statement index (only
-            // for PCs we saw), to save lookups.
-            let sierra_statement_idx = self.sierra_statement_index_by_pc(real_pc);
-            let user_function_idx = user_function_idx_by_sierra_statement_idx(
-                &self.sierra_program,
-                sierra_statement_idx,
-            );
-
-            *sierra_statement_weights
-                .entry(sierra_statement_idx)
-                .or_insert(0) += 1;
-
-            let Some(gen_statement) = self.sierra_program.statements.get(sierra_statement_idx.0)
-            else {
-                panic!("Failed fetching statement index {}", sierra_statement_idx.0);
+    let mut cumulative_visited_pcs = VisitedPcs::default();
+    for simulation in &simulations {
+        let Some(visited_pcs) = get_visited_program_counters(&simulation.trace) else {
+            continue;
+        };
+        cumulative_visited_pcs.extend(visited_pcs.iter().map(|(k, v)| {
+            let replay_class_hash = ReplayClassHash {
+                block_number: work.header.number,
+                class_hash: *k,
             };
-
-            match gen_statement {
-                GenStatement::Invocation(invocation) => {
-                    let libfunc_found = self
-                        .sierra_program_registry
-                        .get_libfunc(&invocation.libfunc_id);
-                    if matches!(libfunc_found, Ok(CoreConcreteLibfunc::FunctionCall(_))) {
-                        // Push to the stack.
-                        if function_stack_depth < MAX_STACK_TRACE_DEPTH_DEFAULT {
-                            function_stack.push((user_function_idx, cur_weight));
-                            cur_weight = 0;
-                        } else {
-                            tracing::info!("Exceeding depth");
-                        }
-                        function_stack_depth += 1;
-                    }
-                }
-                GenStatement::Return(_) => {
-                    // Pop from the stack.
-                    if function_stack_depth <= MAX_STACK_TRACE_DEPTH_DEFAULT {
-                        // The current stack trace, including the current
-                        // function.
-                        let cur_stack: Vec<_> =
-                            chain!(function_stack.iter().map(|f| f.0), [user_function_idx])
-                                .collect();
-                        *stack_trace_weights.entry(cur_stack).or_insert(0) += cur_weight;
-
-                        let Some(popped) = function_stack.pop() else {
-                            // End of the program. Not valid for Starknet
-                            // contracts.
-                            continue;
-                        };
-                        cur_weight += popped.1;
-                    } else {
-                        tracing::info!("Exceeding depth");
-                    }
-                    function_stack_depth -= 1;
-                }
-            }
-        }
-
-        // Remove the footer.
-        sierra_statement_weights.remove(&StatementIdx(sierra_len));
-
-        ProfilingInfo {
-            sierra_statement_weights,
-            stack_trace_weights,
-        }
+            let pcs = v.clone();
+            (replay_class_hash, pcs)
+        }));
     }
+    Ok(cumulative_visited_pcs)
 }

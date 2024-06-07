@@ -9,7 +9,7 @@ use std::fs;
 use std::ops::{Add, Div};
 use std::path::PathBuf;
 
-use super::runner::replay_statistics::ReplayStatistics;
+use super::profiler::replay_statistics::ReplayStatistics;
 use crate::error::HistogramError;
 use crate::histogram::plot::render;
 
@@ -181,6 +181,8 @@ impl Config {
 /// - `filename`: The filename to output the SVG.
 /// - `content`: The string containing the histogram to save to a file.
 ///
+/// # Errors
+///
 /// Returns [`Err`] if:
 ///
 /// - `filename` can't be written to.
@@ -198,8 +200,6 @@ fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramErro
 /// - `filename`: The filename to output the SVG.
 /// - `title`: The title of the histogram.
 /// - `libfunc_stats`: The object containing libfunc statistics.
-/// - `overwrite`: If `True` and `filename` already exists, the file will be
-///   overwritten.
 ///
 /// # Errors
 ///
@@ -207,7 +207,6 @@ fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramErro
 ///
 /// - The `filename` can't be written to.
 /// - There is any error rendering the data.
-/// - The file already exists and `overwrite` is `False`.
 ///
 /// # Panics
 ///
@@ -225,19 +224,13 @@ fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramErro
 /// replay_statistics.update(&"const_as_immediate".to_string(), 264);
 /// let filename = "doctest.svg";
 /// let title = "Doctest histogram";
-/// export(&filename.into(), title, &replay_statistics, true).unwrap();
+/// export(&filename.into(), title, &replay_statistics).unwrap();
 /// ```
 pub fn export(
     filename: &PathBuf,
     title: &str,
     libfunc_stats: &ReplayStatistics,
-    overwrite: bool,
 ) -> Result<(), HistogramError> {
-    if filename.exists() && !overwrite {
-        return Err(HistogramError::FileExists(
-            filename.as_path().display().to_string(),
-        ));
-    }
     let config = Config::new(libfunc_stats)?;
 
     let content = render(title, &config, libfunc_stats)?;
@@ -323,6 +316,6 @@ mod tests {
             generate_dummy_replay_statistics(string_len, number_libfuncs, max_frequency);
         let filename = "test_generate_histogram.svg";
         let title = "Running test_generate_histogram";
-        export(&filename.into(), title, &replay_statistics, true).unwrap();
+        export(&filename.into(), title, &replay_statistics).unwrap();
     }
 }

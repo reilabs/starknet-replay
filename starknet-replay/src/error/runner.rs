@@ -1,43 +1,19 @@
 //! This file contains the enum `Error` for all the errors returned by the
 //! module `runner`.
 
-use cairo_lang_runner::RunnerError as CairoError;
-use cairo_lang_sierra::program_registry::ProgramRegistryError;
-use cairo_lang_sierra_to_casm::compiler::CompilationError;
+use std::num::TryFromIntError;
+
 use pathfinder_executor::TransactionExecutionError;
 use thiserror::Error;
 
+use crate::error::DatabaseError;
+
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `Serde` variant is for errors reported by the crate `serde_json`.
-    #[error(transparent)]
-    Serde(#[from] serde_json::Error),
-
-    /// `CairoLangRunner` variant is for errors reported by the crate
-    /// `cairo_lang_runner`.
-    #[error(transparent)]
-    CairoLangRunner(#[from] CairoError),
-
-    /// `CairoLangSierra` variant is for errors reported by the crate
-    /// `cairo_lang_sierra`.
-    #[error(transparent)]
-    CairoLangSierra(#[from] Box<ProgramRegistryError>),
-
-    /// `CairoLangSierraToCasm` is for errors reported by the crate
-    /// `cairo_lang_sierra_to_casm`.
-    #[error(transparent)]
-    CairoLangSierraToCasm(#[from] Box<CompilationError>),
-
     /// `PathfinderExecutor` is for errors reported by the crate
     /// `pathfinder_executor`.
     #[error(transparent)]
     PathfinderExecutor(#[from] TransactionExecutionError),
-
-    /// `GetContractClassAtBlock` is used to encapsulate errors of type
-    /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::runner::get_contract_class_at_block`.
-    #[error(transparent)]
-    GetContractClassAtBlock(anyhow::Error),
 
     /// `GenerateReplayWork` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
@@ -57,11 +33,33 @@ pub enum Error {
     #[error(transparent)]
     ExecuteBlock(anyhow::Error),
 
-    /// `GetChainId` is used to encapsulate errors of type
-    /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::get_chain_id`.
+    /// `DatabaseAccess` is used to convert from `DatabaseError` into
+    /// `RunnerError` when database functions are called in the module `runner`.
     #[error(transparent)]
-    GetChainId(anyhow::Error),
+    DatabaseAccess(#[from] DatabaseError),
+
+    /// `InsufficientBlocks` is triggered when the most recent block in the
+    /// database is less than the starting block of the replay. For obvious
+    /// reasons the tool can't continue.
+    #[error(
+        "Most recent block found in the databse is {last_block}. Exiting because less than \
+         start_block {start_block}"
+    )]
+    InsufficientBlocks { last_block: u64, start_block: u64 },
+
+    /// `CastError` variant is triggered when casting from `u64` to `usize`.
+    #[error(transparent)]
+    CastError(#[from] TryFromIntError),
+
+    /// `BlockNumberNotValid` variant is triggered when constructing a new
+    /// `pathfinder_common::BlockNumber` returns `None`.
+    #[error("Block number {block_number} doesn't fit in i64 type.")]
+    BlockNumberNotValid { block_number: u64 },
+
+    /// `BlockNotFound` variant is returned when the block requested from the
+    /// Pathfinder database isn't found.
+    #[error("Block number {block_number} not found in database.")]
+    BlockNotFound { block_number: u64 },
 
     /// The `Unknown` variant is for any other uncategorised error.
     #[error("Unknown Error during block replay: {0:?}")]

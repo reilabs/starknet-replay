@@ -13,13 +13,12 @@ use std::process;
 use anyhow::bail;
 use clap::Parser;
 use exitcode::{OK, SOFTWARE};
-use itertools::Itertools;
-use starknet_replay::error::DatabaseError;
+use starknet_replay::profiler::analysis::extract_libfuncs_weight;
 use starknet_replay::{
     connect_to_database,
     export_histogram,
-    get_latest_block_number,
     run_replay,
+    write_to_file,
     ReplayRange,
 };
 
@@ -51,7 +50,13 @@ struct Args {
     #[arg(long)]
     svg_out: Option<PathBuf>,
 
-    /// Set to overwrite `svg_out` if it already exists.
+    /// The filename to output the raw libfunc usage statistics.
+    ///
+    /// If `None`, output file is skipped.
+    #[arg(long)]
+    txt_out: Option<PathBuf>,
+
+    /// Set to overwrite `svg_out` and/or `txt_out` if it already exists.
     #[arg(long)]
     overwrite: bool,
 }
@@ -72,6 +77,25 @@ fn main() {
             process::exit(SOFTWARE);
         }
     }
+}
+
+/// Returns an error if the file exists already and can't be overwritten,
+///
+/// # Arguments
+///
+/// - `path`: The file to write.
+/// - `overwrite`: If `true`, the file can be overwritten.
+fn check_file(path: &Option<PathBuf>, overwrite: bool) -> anyhow::Result<()> {
+    if let Some(filename) = path {
+        if filename.exists() && !overwrite {
+            let filename = filename.as_path().display();
+            bail!(
+                "The file {0:?} exists already. To ignore it, pass the flag --overwrite.",
+                filename
+            )
+        }
+    }
+    Ok(())
 }
 
 /// Take the command line input arguments and call starknet-replay.
@@ -95,54 +119,36 @@ fn run(args: Args) -> anyhow::Result<()> {
     let start_block = args.start_block;
     let end_block = args.end_block;
     let svg_path = args.svg_out;
+    let txt_out = args.txt_out;
     let overwrite = args.overwrite;
 
-    if start_block > end_block {
-        bail!("Exiting because end_block must be greater or equal to start_block.")
-    }
+    check_file(&svg_path, overwrite)?;
+    check_file(&txt_out, overwrite)?;
 
     let storage = connect_to_database(database_path)?;
 
-    let first_block: u64 = start_block;
+    let replay_range = ReplayRange::new(start_block, end_block)?;
 
-    let latest_block: u64 = get_latest_block_number(&storage)?;
-
-    let last_block: u64 = end_block.min(latest_block);
-
-    if start_block > last_block {
-        return Err(DatabaseError::InsufficientBlocks {
-            last_block,
-            start_block,
-        }
-        .into());
-    }
-
-    let replay_range = ReplayRange::new(first_block, last_block)?;
-
-    tracing::info!(%first_block, %last_block, "Re-executing blocks");
+    tracing::info!(%start_block, %end_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let libfunc_stats = run_replay(&replay_range, storage)?;
+    let visited_pcs = run_replay(&replay_range, storage.clone())?;
+
+    let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
 
     let elapsed = start_time.elapsed();
     tracing::info!(?elapsed, "Finished");
 
-    for (concrete_name, weight) in libfunc_stats
-        .concrete_libfunc
-        .iter()
-        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
-    {
-        tracing::info!("  libfunc {concrete_name}: {weight}");
+    if let Some(filename) = txt_out {
+        write_to_file(&filename, &libfunc_stats)?;
     }
 
-    match svg_path {
-        Some(filename) => {
-            let title =
-                format!("Filtered libfuncs usage from block {first_block} to block {last_block}");
-            let libfunc_stats = libfunc_stats.filter_most_frequent();
-            export_histogram(&filename, title.as_str(), &libfunc_stats, overwrite)?;
-            Ok(())
-        }
-        None => Ok(()),
+    if let Some(filename) = svg_path {
+        let title =
+            format!("Filtered libfuncs usage from block {start_block} to block {end_block}");
+        let libfunc_stats = libfunc_stats.filter_most_frequent();
+        export_histogram(&filename, title.as_str(), &libfunc_stats)?;
     }
+
+    Ok(())
 }
