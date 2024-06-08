@@ -19,8 +19,8 @@ use pathfinder_storage::{BlockId, JournalMode, Storage, Transaction};
 use rayon::current_num_threads;
 use starknet_api::hash::StarkFelt;
 
-use super::visited_pcs::ReplayClassHash;
 use crate::error::DatabaseError;
+use crate::runner::replay_class_hash::ReplayClassHash;
 
 /// Connects to the Pathfinder database
 ///

@@ -13,15 +13,14 @@ use pathfinder_storage::{BlockId, Storage};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use starknet_api::core::ClassHash as StarknetClassHash;
 
-use self::visited_pcs::ReplayClassHash;
-use crate::runner::pathfinder_db::get_chain_id;
-pub use crate::runner::visited_pcs::VisitedPcs;
+use self::replay_class_hash::ReplayClassHash;
+use crate::pathfinder_storage::get_chain_id;
+pub use crate::runner::replay_class_hash::VisitedPcs;
 use crate::{get_latest_block_number, ReplayBlock, ReplayRange, RunnerError};
 
-pub mod pathfinder_db;
 pub mod replay_block;
+pub mod replay_class_hash;
 pub mod replay_range;
-pub mod visited_pcs;
 
 /// Replays transactions as indicated by `replay_range` and extracts the list of
 /// visited program counters.

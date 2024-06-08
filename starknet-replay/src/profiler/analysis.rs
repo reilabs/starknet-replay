@@ -9,9 +9,9 @@ use itertools::Itertools;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
 use pathfinder_storage::Storage;
 
+use crate::pathfinder_storage::get_contract_class_at_block;
 use crate::profiler::replace_ids::replace_sierra_ids_in_program;
 use crate::profiler::{ProfilerError, SierraProfiler};
-use crate::runner::pathfinder_db::get_contract_class_at_block;
 use crate::runner::VisitedPcs;
 use crate::ReplayStatistics;
 
