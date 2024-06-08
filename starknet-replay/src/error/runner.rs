@@ -6,6 +6,7 @@ use std::num::TryFromIntError;
 use pathfinder_executor::TransactionExecutionError;
 use thiserror::Error;
 
+use crate::common::BlockNumber;
 use crate::error::DatabaseError;
 
 #[derive(Debug, Error)]
@@ -42,10 +43,13 @@ pub enum Error {
     /// database is less than the starting block of the replay. For obvious
     /// reasons the tool can't continue.
     #[error(
-        "Most recent block found in the databse is {last_block}. Exiting because less than \
-         start_block {start_block}"
+        "Most recent block found in the databse is {last_block:?}. Exiting because less than \
+         start_block {start_block:?}"
     )]
-    InsufficientBlocks { last_block: u64, start_block: u64 },
+    InsufficientBlocks {
+        last_block: BlockNumber,
+        start_block: BlockNumber,
+    },
 
     /// `CastError` variant is triggered when casting from `u64` to `usize`.
     #[error(transparent)]

@@ -2,8 +2,9 @@
 
 use std::collections::HashMap;
 
-use pathfinder_common::BlockNumber;
 use starknet_api::core::ClassHash as StarknetClassHash;
+
+use crate::common::BlockNumber;
 
 /// `ReplayClassHash` combines a `StarknetClassHash` with a `BlockNumber` in
 /// order to uniquely identify a Contract Class from the database.

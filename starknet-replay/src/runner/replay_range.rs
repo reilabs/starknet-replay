@@ -2,6 +2,7 @@
 //! the range of blocks to be replayed. This struct also ensures to the user
 //! that starting block is not greater than end block.
 
+use crate::common::BlockNumber;
 use crate::error::RunnerError;
 
 /// `ReplayRange` contains the block range that is replayed by
@@ -10,10 +11,10 @@ use crate::error::RunnerError;
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ReplayRange {
     /// The first block to replay.
-    start_block: u64,
+    start_block: BlockNumber,
 
     /// The last block to replay (inclusive).
-    end_block: u64,
+    end_block: BlockNumber,
 }
 
 impl ReplayRange {
@@ -38,20 +39,20 @@ impl ReplayRange {
         }
 
         Ok(Self {
-            start_block,
-            end_block,
+            start_block: BlockNumber::new(start_block),
+            end_block: BlockNumber::new(start_block),
         })
     }
 
     /// Get `start_block` field of `ReplayRange`.
     #[must_use]
-    pub fn get_start_block(&self) -> u64 {
+    pub fn get_start_block(&self) -> BlockNumber {
         self.start_block
     }
 
     /// Get `end_block` field of `ReplayRange`.
     #[must_use]
-    pub fn get_end_block(&self) -> u64 {
+    pub fn get_end_block(&self) -> BlockNumber {
         self.end_block
     }
 }

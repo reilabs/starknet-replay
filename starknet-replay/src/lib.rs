@@ -40,7 +40,6 @@ use error::RunnerError;
 use runner::replay_block::ReplayBlock;
 
 pub use crate::histogram::export as export_histogram;
-pub use crate::pathfinder_storage::{connect_to_database, get_latest_block_number};
 pub use crate::profiler::replay_statistics::ReplayStatistics;
 pub use crate::profiler::report::write_to_file;
 pub use crate::runner::replay_range::ReplayRange;
