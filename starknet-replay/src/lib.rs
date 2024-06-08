@@ -46,6 +46,7 @@ pub use crate::profiler::report::write_to_file;
 pub use crate::runner::replay_range::ReplayRange;
 pub use crate::runner::run_replay;
 
+pub mod common;
 pub mod error;
 pub mod histogram;
 pub mod pathfinder_storage;

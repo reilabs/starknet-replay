@@ -56,11 +56,6 @@ pub enum Error {
     #[error("Block number {block_number} doesn't fit in i64 type.")]
     BlockNumberNotValid { block_number: u64 },
 
-    /// `BlockNotFound` variant is returned when the block requested from the
-    /// Pathfinder database isn't found.
-    #[error("Block number {block_number} not found in database.")]
-    BlockNotFound { block_number: u64 },
-
     /// The `Unknown` variant is for any other uncategorised error.
     #[error("Unknown Error during block replay: {0:?}")]
     Unknown(String),

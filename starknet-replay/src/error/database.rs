@@ -13,17 +13,40 @@ pub enum Error {
     #[error(transparent)]
     ConnectToDatabase(anyhow::Error),
 
+    /// `BlockNotFound` variant is returned when the block requested from the
+    /// Pathfinder database isn't found.
+    #[error("Block number {block_id:?} not found in database.")]
+    BlockNotFound { block_id: BlockId },
+
     /// `GetLatestBlockNumber` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
     /// function `starknet_replay::runner::pathfinder_db::get_latest_block_number`.
     #[error(transparent)]
     GetLatestBlockNumber(anyhow::Error),
 
+    /// `GetBlockHeader` is used to encapsulate errors of type
+    /// `anyhow::Error` which are originating from the
+    /// function `starknet_replay::runner::pathfinder_db::get_block_header`.
+    #[error(transparent)]
+    GetBlockHeader(anyhow::Error),
+
     /// `GetContractClassAtBlock` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
     /// function `starknet_replay::runner::pathfinder_id::get_contract_class_at_block`.
     #[error(transparent)]
     GetContractClassAtBlock(anyhow::Error),
+
+    /// `GetTransactionsAndReceipts` is used to encapsulate errors of type
+    /// `anyhow::Error` which are originating from the
+    /// function `starknet_replay::runner::pathfinder_id::get_transactions_and_receipts_for_block`.
+    #[error(transparent)]
+    GetTransactionsAndReceipts(anyhow::Error),
+
+    /// `GetTransactionsAndReceiptsNotFound` is used for `None` results from the
+    /// database in the function
+    /// `starknet_replay::runner::pathfinder_id::get_transactions_and_receipts_for_block`.
+    #[error("Transactions for block {block_id:?} not found.")]
+    GetTransactionsAndReceiptsNotFound { block_id: BlockId },
 
     /// `ContractClassNotFound` is used for `None` results from the database in
     /// the function

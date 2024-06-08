@@ -89,13 +89,13 @@ pub fn extract_libfuncs_weight(
     let mut local_cumulative_libfuncs_weight: ReplayStatistics = ReplayStatistics::new();
 
     for (replay_class_hash, all_pcs) in visited_pcs {
-        let Ok(ContractClass::Sierra(ctx)) =
+        let Ok(ContractClass::Sierra(contract_class)) =
             get_contract_class_at_block(replay_class_hash, storage)
         else {
             continue;
         };
 
-        let Ok(sierra_program) = get_sierra_program_from_class_definition(&ctx) else {
+        let Ok(sierra_program) = get_sierra_program_from_class_definition(&contract_class) else {
             continue;
         };
 

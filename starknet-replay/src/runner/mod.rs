@@ -4,7 +4,6 @@
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
 
-use anyhow::Context;
 use pathfinder_common::BlockNumber;
 use pathfinder_executor::types::TransactionTrace;
 use pathfinder_executor::ExecutionState;
@@ -14,7 +13,11 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use starknet_api::core::ClassHash as StarknetClassHash;
 
 use self::replay_class_hash::ReplayClassHash;
-use crate::pathfinder_storage::get_chain_id;
+use crate::pathfinder_storage::{
+    get_block_header,
+    get_chain_id,
+    get_transactions_and_receipts_for_block,
+};
 pub use crate::runner::replay_class_hash::VisitedPcs;
 use crate::{get_latest_block_number, ReplayBlock, ReplayRange, RunnerError};
 
@@ -81,12 +84,6 @@ fn generate_replay_work(
         });
     }
 
-    let mut db = storage
-        .connection()
-        .context("Opening sqlite database connection")
-        .map_err(RunnerError::GenerateReplayWork)?;
-    let transaction = db.transaction().map_err(RunnerError::GenerateReplayWork)?;
-
     let number_of_blocks = (last_block - start_block + 1).try_into()?;
     let mut replay_blocks: Vec<ReplayBlock> = Vec::with_capacity(number_of_blocks);
 
@@ -95,27 +92,13 @@ fn generate_replay_work(
             BlockNumber::new(block_number)
                 .ok_or(RunnerError::BlockNumberNotValid { block_number })?,
         );
-        let Some(header) = transaction
-            .block_header(block_id)
-            .map_err(RunnerError::GenerateReplayWork)?
-        else {
-            return Err(RunnerError::BlockNotFound { block_number });
-        };
-        let transactions_and_receipts = transaction
-            .transaction_data_for_block(block_id)
-            .context("Reading transactions from sqlite database")
-            .map_err(RunnerError::GenerateReplayWork)?
-            .context(format!(
-                "Transaction data missing from sqlite database for block {block_number}"
-            ))
-            .map_err(RunnerError::GenerateReplayWork)?;
 
-        let (transactions, receipts): (Vec<_>, Vec<_>) =
-            transactions_and_receipts.into_iter().unzip();
+        let (transactions, receipts) = get_transactions_and_receipts_for_block(block_id, storage)?;
 
         let transactions_to_process = transactions.len();
         tracing::info!("{transactions_to_process} transactions to process in block {block_number}");
 
+        let header = get_block_header(block_id, storage)?;
         let replay_block = ReplayBlock::new(header, transactions, receipts)?;
         replay_blocks.push(replay_block);
     }
@@ -196,14 +179,12 @@ fn get_visited_program_counters(
 /// Returns [`Err`] if any transaction fails execution or if there is any error
 /// communicating with the Pathfinder database.
 fn execute_block(storage: &mut Storage, work: &ReplayBlock) -> Result<VisitedPcs, RunnerError> {
-    let mut db = storage.connection().map_err(RunnerError::ExecuteBlock)?;
+    let chain_id = get_chain_id(storage)?;
 
+    let mut db = storage.connection().map_err(RunnerError::ExecuteBlock)?;
     let db_tx = db
         .transaction()
         .expect("Create transaction with sqlite database");
-
-    let chain_id = get_chain_id(&db_tx)?;
-
     let execution_state = ExecutionState::trace(&db_tx, chain_id, work.header.clone(), None);
 
     let mut transactions = Vec::new();

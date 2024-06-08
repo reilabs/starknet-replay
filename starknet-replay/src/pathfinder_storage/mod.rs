@@ -12,10 +12,12 @@ use pathfinder_common::consts::{
     SEPOLIA_INTEGRATION_GENESIS_HASH,
     SEPOLIA_TESTNET_GENESIS_HASH,
 };
-use pathfinder_common::{BlockNumber, ChainId, ClassHash};
+use pathfinder_common::receipt::Receipt;
+use pathfinder_common::transaction::Transaction as StarknetTransaction;
+use pathfinder_common::{BlockHeader, BlockNumber, ChainId, ClassHash};
 use pathfinder_executor::IntoFelt;
 use pathfinder_rpc::v02::types::ContractClass;
-use pathfinder_storage::{BlockId, JournalMode, Storage, Transaction};
+use pathfinder_storage::{BlockId, JournalMode, Storage};
 use rayon::current_num_threads;
 use starknet_api::hash::StarkFelt;
 
@@ -75,6 +77,7 @@ pub fn get_latest_block_number(storage: &Storage) -> Result<u64, DatabaseError> 
     let tx_db = db
         .transaction()
         .map_err(DatabaseError::GetLatestBlockNumber)?;
+
     let Some((latest_block, _)) = tx_db
         .block_id(BlockId::Latest)
         .map_err(DatabaseError::GetLatestBlockNumber)?
@@ -91,7 +94,7 @@ pub fn get_latest_block_number(storage: &Storage) -> Result<u64, DatabaseError> 
 ///
 /// # Arguments
 ///
-/// - `tx`: This is the open `Transaction` object with the databse.
+/// - `storage`: The `Storage` object of the Pathfinder database connection.
 ///
 /// # Errors
 ///
@@ -100,8 +103,14 @@ pub fn get_latest_block_number(storage: &Storage) -> Result<u64, DatabaseError> 
 /// - The first block doesn't have a hash matching one of
 /// the known hashes
 /// - There is an error querying the database.
-pub fn get_chain_id(tx: &Transaction<'_>) -> Result<ChainId, DatabaseError> {
-    let (_, genesis_hash) = tx
+pub fn get_chain_id(storage: &Storage) -> Result<ChainId, DatabaseError> {
+    let mut db = storage
+        .connection()
+        .context("Opening database connection")
+        .map_err(DatabaseError::GetChainId)?;
+    let tx_db = db.transaction().map_err(DatabaseError::GetChainId)?;
+
+    let (_, genesis_hash) = tx_db
         .block_id(BlockNumber::GENESIS.into())
         .map_err(DatabaseError::GetChainId)?
         .context("Getting genesis hash")
@@ -124,9 +133,8 @@ pub fn get_chain_id(tx: &Transaction<'_>) -> Result<ChainId, DatabaseError> {
 ///
 /// # Arguments
 ///
-/// - `block_num`: The block number at which to retrieve the `ContractClass`.
-/// - `db`: The object to query the Pathfinder database.
-/// - `class_hash`: The class hash of the `ContractClass` to return
+/// - `replay_class_hash`: The class hash of the `ContractClass` to return.
+/// - `storage`: The `Storage` object of the Pathfinder database connection.
 ///
 /// # Errors
 ///
@@ -138,10 +146,10 @@ pub fn get_contract_class_at_block(
     let mut db = storage
         .connection()
         .context("Opening database connection")
-        .map_err(DatabaseError::GetLatestBlockNumber)?;
+        .map_err(DatabaseError::GetContractClassAtBlock)?;
     let tx_db = db
         .transaction()
-        .map_err(DatabaseError::GetLatestBlockNumber)?;
+        .map_err(DatabaseError::GetContractClassAtBlock)?;
 
     let block_number = replay_class_hash.block_number;
     let block_id = BlockId::Number(block_number);
@@ -158,4 +166,65 @@ pub fn get_contract_class_at_block(
     let contract_class = ContractClass::from_definition_bytes(&class_definition)
         .map_err(DatabaseError::GetContractClassAtBlock)?;
     Ok(contract_class)
+}
+
+/// Returns the header of a block from the database.
+///
+/// # Arguments
+///
+/// - `block_id`: The block to query.
+/// - `storage`: The `Storage` object of the Pathfinder database connection.
+///
+/// # Errors
+///
+/// Returns [`Err`] if `block_id` doesn't exist.
+pub fn get_block_header(
+    block_id: BlockId,
+    storage: &Storage,
+) -> Result<BlockHeader, DatabaseError> {
+    let mut db = storage
+        .connection()
+        .context("Opening database connection")
+        .map_err(DatabaseError::GetBlockHeader)?;
+    let tx_db = db.transaction().map_err(DatabaseError::GetBlockHeader)?;
+
+    let Some(header) = tx_db
+        .block_header(block_id)
+        .map_err(DatabaseError::GetBlockHeader)?
+    else {
+        return Err(DatabaseError::BlockNotFound { block_id });
+    };
+    Ok(header)
+}
+
+/// Returns the transactions and transaction receipts of a block.
+///
+/// # Arguments
+///
+/// - `block_id`: The block to query.
+/// - `storage`: The `Storage` object of the Pathfinder database connection.
+///
+/// # Errors
+///
+/// Returns [`Err`] if `block_id` doesn't exist or there are no transactions.
+pub fn get_transactions_and_receipts_for_block(
+    block_id: BlockId,
+    storage: &Storage,
+) -> Result<(Vec<StarknetTransaction>, Vec<Receipt>), DatabaseError> {
+    let mut db = storage
+        .connection()
+        .context("Opening database connection")
+        .map_err(DatabaseError::GetTransactionsAndReceipts)?;
+    let tx_db = db
+        .transaction()
+        .map_err(DatabaseError::GetTransactionsAndReceipts)?;
+
+    let transactions_and_receipts = tx_db
+        .transaction_data_for_block(block_id)
+        .map_err(DatabaseError::GetTransactionsAndReceipts)?;
+    let transactions_and_receipts: Vec<(StarknetTransaction, Receipt)> = transactions_and_receipts
+        .ok_or(DatabaseError::GetTransactionsAndReceiptsNotFound { block_id })?;
+
+    let (transactions, receipts): (Vec<_>, Vec<_>) = transactions_and_receipts.into_iter().unzip();
+    Ok((transactions, receipts))
 }
