@@ -14,13 +14,14 @@ use pathfinder_common::consts::{
 };
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction as StarknetTransaction;
-use pathfinder_common::{BlockHeader, BlockNumber, ChainId, ClassHash};
+use pathfinder_common::{BlockHeader, BlockNumber as PathfinderBlockNumber, ChainId, ClassHash};
 use pathfinder_executor::IntoFelt;
 use pathfinder_rpc::v02::types::ContractClass;
 use pathfinder_storage::{BlockId, JournalMode, Storage};
 use rayon::current_num_threads;
 use starknet_api::hash::StarkFelt;
 
+use crate::common::BlockNumber;
 use crate::error::DatabaseError;
 use crate::runner::replay_class_hash::ReplayClassHash;
 
@@ -111,7 +112,7 @@ pub fn get_chain_id(storage: &Storage) -> Result<ChainId, DatabaseError> {
     let tx_db = db.transaction().map_err(DatabaseError::GetChainId)?;
 
     let (_, genesis_hash) = tx_db
-        .block_id(BlockNumber::GENESIS.into())
+        .block_id(PathfinderBlockNumber::GENESIS.into())
         .map_err(DatabaseError::GetChainId)?
         .context("Getting genesis hash")
         .map_err(DatabaseError::GetChainId)?;
@@ -172,14 +173,14 @@ pub fn get_contract_class_at_block(
 ///
 /// # Arguments
 ///
-/// - `block_id`: The block to query.
+/// - `block_number`: The block to query.
 /// - `storage`: The `Storage` object of the Pathfinder database connection.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if `block_id` doesn't exist.
 pub fn get_block_header(
-    block_id: BlockId,
+    block_number: BlockNumber,
     storage: &Storage,
 ) -> Result<BlockHeader, DatabaseError> {
     let mut db = storage
@@ -187,6 +188,8 @@ pub fn get_block_header(
         .context("Opening database connection")
         .map_err(DatabaseError::GetBlockHeader)?;
     let tx_db = db.transaction().map_err(DatabaseError::GetBlockHeader)?;
+
+    let block_id = BlockId::Number(block_number.into());
 
     let Some(header) = tx_db
         .block_header(block_id)
@@ -201,14 +204,14 @@ pub fn get_block_header(
 ///
 /// # Arguments
 ///
-/// - `block_id`: The block to query.
+/// - `block_number`: The block to query.
 /// - `storage`: The `Storage` object of the Pathfinder database connection.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if `block_id` doesn't exist or there are no transactions.
 pub fn get_transactions_and_receipts_for_block(
-    block_id: BlockId,
+    block_number: BlockNumber,
     storage: &Storage,
 ) -> Result<(Vec<StarknetTransaction>, Vec<Receipt>), DatabaseError> {
     let mut db = storage
@@ -218,6 +221,8 @@ pub fn get_transactions_and_receipts_for_block(
     let tx_db = db
         .transaction()
         .map_err(DatabaseError::GetTransactionsAndReceipts)?;
+
+    let block_id = BlockId::Number(block_number.into());
 
     let transactions_and_receipts = tx_db
         .transaction_data_for_block(block_id)

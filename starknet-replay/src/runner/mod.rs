@@ -4,15 +4,15 @@
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
 
-use pathfinder_common::BlockNumber;
 use pathfinder_executor::types::TransactionTrace;
 use pathfinder_executor::ExecutionState;
 use pathfinder_rpc::compose_executor_transaction;
-use pathfinder_storage::{BlockId, Storage};
+use pathfinder_storage::Storage;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use starknet_api::core::ClassHash as StarknetClassHash;
 
 use self::replay_class_hash::ReplayClassHash;
+use crate::common::BlockNumber;
 use crate::pathfinder_storage::{
     get_block_header,
     get_chain_id,
@@ -88,17 +88,17 @@ fn generate_replay_work(
     let mut replay_blocks: Vec<ReplayBlock> = Vec::with_capacity(number_of_blocks);
 
     for block_number in start_block..=last_block {
-        let block_id = BlockId::Number(
-            BlockNumber::new(block_number)
-                .ok_or(RunnerError::BlockNumberNotValid { block_number })?,
-        );
+        let block_number = BlockNumber::new(block_number);
 
-        let (transactions, receipts) = get_transactions_and_receipts_for_block(block_id, storage)?;
+        let (transactions, receipts) =
+            get_transactions_and_receipts_for_block(block_number, storage)?;
 
         let transactions_to_process = transactions.len();
-        tracing::info!("{transactions_to_process} transactions to process in block {block_number}");
+        tracing::info!(
+            "{transactions_to_process} transactions to process in block {block_number:?}"
+        );
 
-        let header = get_block_header(block_id, storage)?;
+        let header = get_block_header(block_number, storage)?;
         let replay_block = ReplayBlock::new(header, transactions, receipts)?;
         replay_blocks.push(replay_block);
     }
