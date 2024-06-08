@@ -1,5 +1,6 @@
 //! The module which provides an interface to libfunc usage statistics.
 
+use std::collections::HashMap;
 use std::io::Write;
 use std::ops::{Div, Mul};
 
@@ -13,10 +14,9 @@ pub struct ReplayStatistics {
     /// This field contains the association between libfunc name (key) and
     /// number of calls (value).
     ///
-    /// It is using `OrderedHashMap` because inherited from Cairo crate.
-    /// However, there is no architectural reason in `starknet-replay` that
-    /// requires it and it can be changed as needed.
-    pub concrete_libfunc: OrderedHashMap<String, usize>,
+    /// Storing as `HashMap` instead of `OrderedHashMap` for ease of comparison
+    /// because order doesn't matter.
+    pub concrete_libfunc: HashMap<String, usize>,
 }
 
 impl ReplayStatistics {
@@ -26,7 +26,7 @@ impl ReplayStatistics {
     #[must_use]
     pub fn new() -> Self {
         ReplayStatistics {
-            concrete_libfunc: OrderedHashMap::default(),
+            concrete_libfunc: HashMap::default(),
         }
     }
 
@@ -204,5 +204,29 @@ impl ReplayStatistics {
             writeln!(f, "{concrete_name},{weight}")?;
         }
         Ok(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_equality_replay_statistics() {
+        let mut a = ReplayStatistics::new();
+        let mut b = ReplayStatistics::new();
+
+        a.update(&"u32_to_felt252".to_string(), 759);
+        a.update(&"const_as_immediate".to_string(), 264);
+        a.update(&"finalize_locals".to_string(), 24);
+
+        b.update(&"const_as_immediate".to_string(), 264);
+        b.update(&"finalize_locals".to_string(), 24);
+        b.update(&"u32_to_felt252".to_string(), 759);
+
+        assert_eq!(a, b);
+
+        b.update(&"u512_safe_divmod_by_u256".to_string(), 118);
+        assert_ne!(a, b);
     }
 }

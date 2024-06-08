@@ -43,7 +43,7 @@ pub use crate::histogram::export as export_histogram;
 pub use crate::profiler::replay_statistics::ReplayStatistics;
 pub use crate::profiler::report::write_to_file;
 pub use crate::runner::replay_range::ReplayRange;
-pub use crate::runner::run_replay;
+pub use crate::runner::{replay_blocks, run_replay};
 
 pub mod common;
 pub mod error;

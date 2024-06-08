@@ -306,6 +306,7 @@ mod tests {
         assert_eq!(height, expected_height);
     }
 
+    // Ignored because there is no assert.
     #[ignore]
     #[test]
     fn test_generate_histogram() {

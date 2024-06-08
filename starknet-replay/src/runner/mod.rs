@@ -112,7 +112,7 @@ fn generate_replay_work(
 ///
 /// Returns [`Err`] if the function `execute_block` fails to replay any
 /// transaction.
-fn replay_blocks(
+pub fn replay_blocks(
     storage: Box<dyn Storage + Sync + Send>,
     replay_work: &[ReplayBlock],
 ) -> Result<VisitedPcs, RunnerError> {
