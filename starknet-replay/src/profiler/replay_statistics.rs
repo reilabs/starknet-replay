@@ -70,7 +70,7 @@ impl ReplayStatistics {
     ///
     /// - `from`: Input `ReplayStatistics` to get data from.
     pub fn merge(&mut self, from: &ReplayStatistics) {
-        for (libfunc, weight) in from.concrete_libfunc.iter() {
+        for (libfunc, weight) in &from.concrete_libfunc {
             self.concrete_libfunc
                 .entry(libfunc.clone())
                 .and_modify(|e| *e += *weight)

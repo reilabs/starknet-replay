@@ -13,6 +13,7 @@ use std::process;
 use anyhow::bail;
 use clap::Parser;
 use exitcode::{OK, SOFTWARE};
+use starknet_replay::common::storage::Storage;
 use starknet_replay::pathfinder_storage::PathfinderStorage;
 use starknet_replay::profiler::analysis::extract_libfuncs_weight;
 use starknet_replay::{export_histogram, run_replay, write_to_file, ReplayRange};
@@ -127,7 +128,8 @@ fn run(args: Args) -> anyhow::Result<()> {
     tracing::info!(%start_block, %end_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let visited_pcs = run_replay(&replay_range, Box::new(storage.clone()))?;
+    let box_storage: Box<(dyn Storage + Send + Sync)> = Box::new(storage.clone());
+    let visited_pcs = run_replay(&replay_range, &box_storage)?;
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
 
