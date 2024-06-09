@@ -127,7 +127,7 @@ fn run(args: Args) -> anyhow::Result<()> {
     tracing::info!(%start_block, %end_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let visited_pcs = run_replay(&replay_range, Box::new(storage.clone()))?;
+    let visited_pcs = run_replay(&replay_range, &storage.clone())?;
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
 

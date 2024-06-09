@@ -46,7 +46,7 @@ fn test_replay_blocks() {
     let replay_block = ReplayBlock::new(header, transactions, receipts).unwrap();
     replay_work.push(replay_block);
 
-    let visited_pcs = replay_blocks(Box::new(storage.clone()), &replay_work).unwrap();
+    let visited_pcs = replay_blocks(&storage.clone(), &replay_work).unwrap();
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage).unwrap();
 
@@ -54,7 +54,7 @@ fn test_replay_blocks() {
     let contents = fs::read_to_string("./test_data/test_replay_blocks.out").unwrap();
     // skipping 1 line for header
     for line in contents.lines().skip(1) {
-        let line: Vec<&str> = line.split(",").collect();
+        let line: Vec<&str> = line.split(',').collect();
         let libfunc_name = line.as_slice()[0..line.len() - 1].join(",");
         let Ok(frequency) = line.last().unwrap().parse::<usize>() else {
             continue;

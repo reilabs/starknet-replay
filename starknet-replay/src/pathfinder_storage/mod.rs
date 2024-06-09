@@ -32,8 +32,14 @@ use crate::runner::replay_block::ReplayBlock;
 use crate::runner::replay_class_hash::ReplayClassHash;
 use crate::runner::VisitedPcs;
 
+pub mod block_number;
+
+/// `PathfinderStorage` implements the trait `ReplayStorage` to interact with
+/// the Pathfinder storage layer.
 #[derive(Clone)]
 pub struct PathfinderStorage {
+    /// The `Storage` object to create a connection with the `Pathfinder`
+    /// database.
     storage: Storage,
 }
 impl PathfinderStorage {
@@ -91,9 +97,8 @@ impl PathfinderStorage {
     ///
     /// - `trace`: the `TransactionTrace` to extract the visited program
     ///   counters from.
-    fn get_visited_program_counters<'a>(
-        &'a self,
-        trace: &'a TransactionTrace,
+    fn get_visited_program_counters(
+        trace: &TransactionTrace,
     ) -> Option<&HashMap<StarknetClassHash, Vec<Vec<usize>>>> {
         match trace {
             TransactionTrace::Invoke(tx) => Some(&tx.visited_pcs),
@@ -254,7 +259,9 @@ impl ReplayStorage for PathfinderStorage {
 
         let mut cumulative_visited_pcs = VisitedPcs::default();
         for simulation in &simulations {
-            let Some(visited_pcs) = self.get_visited_program_counters(&simulation.trace) else {
+            let Some(visited_pcs) =
+                PathfinderStorage::get_visited_program_counters(&simulation.trace)
+            else {
                 continue;
             };
             cumulative_visited_pcs.extend(visited_pcs.iter().map(|(k, v)| {
