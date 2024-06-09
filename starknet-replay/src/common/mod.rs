@@ -4,6 +4,8 @@
 //! `starknet-replay` equivalent.
 
 pub use block_number::BlockNumber;
+pub use contract_class::ContractClass;
 
 pub mod block_number;
+pub mod contract_class;
 pub mod storage;

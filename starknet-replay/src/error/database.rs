@@ -1,9 +1,10 @@
 //! This file contains the enum `Error` for all the errors returned by the
 //! module `pathfinder_db`.
 
-use pathfinder_storage::BlockId;
 use starknet_api::hash::StarkFelt;
 use thiserror::Error;
+
+use crate::common::BlockNumber;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -16,7 +17,7 @@ pub enum Error {
     /// `BlockNotFound` variant is returned when the block requested from the
     /// Pathfinder database isn't found.
     #[error("Block number {block_id:?} not found in database.")]
-    BlockNotFound { block_id: BlockId },
+    BlockNotFound { block_id: BlockNumber },
 
     /// `GetLatestBlockNumber` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
@@ -46,14 +47,14 @@ pub enum Error {
     /// database in the function
     /// `starknet_replay::runner::pathfinder_id::get_transactions_and_receipts_for_block`.
     #[error("Transactions for block {block_id:?} not found.")]
-    GetTransactionsAndReceiptsNotFound { block_id: BlockId },
+    GetTransactionsAndReceiptsNotFound { block_id: BlockNumber },
 
     /// `ContractClassNotFound` is used for `None` results from the database in
     /// the function
     /// `starknet_replay::runner::pathfinder_id::get_contract_class_at_block`.
     #[error("Contract Class {class_hash:?} not found in Database at block {block_id:?}.")]
     ContractClassNotFound {
-        block_id: BlockId,
+        block_id: BlockNumber,
         class_hash: StarkFelt,
     },
 

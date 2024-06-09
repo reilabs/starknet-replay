@@ -6,8 +6,8 @@ use cairo_lang_sierra::program::Program;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::Itertools;
-use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
 
+use crate::common::contract_class::ContractClass;
 use crate::common::storage::Storage;
 use crate::profiler::replace_ids::replace_sierra_ids_in_program;
 use crate::profiler::{ProfilerError, SierraProfiler};
@@ -23,12 +23,10 @@ use crate::ReplayStatistics;
 /// # Errors
 ///
 /// Returns [`Err`] if there is a serde deserialisation issue.
-fn get_sierra_program_from_class_definition(
-    ctx: &SierraContractClass,
-) -> Result<Program, ProfilerError> {
+fn get_sierra_program_from_class_definition(ctx: &ContractClass) -> Result<Program, ProfilerError> {
     let json = serde_json::json!({
         "abi": [],
-        "sierra_program": ctx.sierra_program,
+        "sierra_program": ctx.compressed_sierra_program,
         "contract_class_version": ctx.contract_class_version,
         "entry_points_by_type": ctx.entry_points_by_type,
     });
@@ -88,9 +86,7 @@ pub fn extract_libfuncs_weight(
     let mut local_cumulative_libfuncs_weight: ReplayStatistics = ReplayStatistics::new();
 
     for (replay_class_hash, all_pcs) in visited_pcs {
-        let Ok(ContractClass::Sierra(contract_class)) =
-            storage.get_contract_class_at_block(replay_class_hash)
-        else {
+        let Ok(contract_class) = storage.get_contract_class_at_block(replay_class_hash) else {
             continue;
         };
 
@@ -164,10 +160,10 @@ mod tests {
             .unwrap_or_else(|_| panic!("Unable to read file {sierra_program_json_file}"));
         let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
             .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_json_file} to json"));
-        let contract_class: SierraContractClass =
-            serde_json::from_value::<SierraContractClass>(sierra_program_json).unwrap_or_else(
-                |_| panic!("Unable to parse {sierra_program_json_file} to SierraContractClass"),
-            );
+        let contract_class: ContractClass =
+            serde_json::from_value::<ContractClass>(sierra_program_json).unwrap_or_else(|_| {
+                panic!("Unable to parse {sierra_program_json_file} to SierraContractClass")
+            });
         let sierra_program = get_sierra_program_from_class_definition(&contract_class)
             .unwrap_or_else(|_| {
                 panic!("Unable to create Program {sierra_program_json_file} to SierraContractClass")

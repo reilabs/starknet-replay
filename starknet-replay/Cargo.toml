@@ -21,23 +21,30 @@ cairo-lang-compiler = "2.6.0"
 cairo-lang-sierra = "2.6.0"
 cairo-lang-utils = "2.6.0"
 cairo-lang-sierra-generator = "2.6.0"
-# Some changes are required to `eqlabs/pathfinder` and to
-# `starkware-libs/blockifier`. These changes are in the branch `extract_libfunc`
-# of Reilabs fork and need to be merged in main branch.
-# Hardcoding the commit hash for the time being.
-pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
-pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
-pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
-pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+num-bigint = "0.4.5"
+# # Some changes are required to `eqlabs/pathfinder` and to
+# # `starkware-libs/blockifier`. These changes are in the branch `extract_libfunc`
+# # of Reilabs fork and need to be merged in main branch.
+# # Hardcoding the commit hash for the time being.
+# pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+# pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+# pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+# pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+papyrus_common = { git = "https://github.com/starkware-libs/papyrus.git", rev = "8d8d38c0112491490effefa2e1028fa38f6584d9" }
+papyrus_execution = { git = "https://github.com/starkware-libs/papyrus.git", rev = "8d8d38c0112491490effefa2e1028fa38f6584d9" }
+papyrus_node = { git = "https://github.com/starkware-libs/papyrus.git", rev = "8d8d38c0112491490effefa2e1028fa38f6584d9" }
+papyrus_rpc = { git = "https://github.com/starkware-libs/papyrus.git", rev = "8d8d38c0112491490effefa2e1028fa38f6584d9" }
+papyrus_storage = { git = "https://github.com/starkware-libs/papyrus.git", rev = "8d8d38c0112491490effefa2e1028fa38f6584d9" }
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
 # `next-release-devel` because it contains the fix for bug #551 related to
 # anchoring of labels when rotated. Issue #26.
 plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f8989af20931dd9e7e1f204d5254de3a8053" }
 rayon = "1.8.0"
-starknet_api = "0.10.0"
+# Use `=0.12.0-dev.1` to compile `papyrus-*` successfully.
+starknet_api = "=0.12.0-dev.1"
 serde = "1.0.192"
 serde_json = "1.0.105"
-smol_str = { version = "0.2.0", features = ["serde"] }
+#smol_str = { version = "0.2.0", features = ["serde"] }
 thiserror = "1.0.61"
 anyhow.workspace = true
 tracing.workspace = true

@@ -82,8 +82,11 @@ fn generate_replay_work(
     for block_number in start_block.get()..=last_block.get() {
         let block_number = BlockNumber::new(block_number);
 
-        let (transactions, receipts) =
+        let (mut transactions, mut receipts) =
             storage.get_transactions_and_receipts_for_block(block_number)?;
+
+        transactions.truncate(1);
+        receipts.truncate(1);
 
         let transactions_to_process = transactions.len();
         tracing::info!(

@@ -2,11 +2,11 @@
 //! `starknet-replay`. Implementing this trait allows to add compatibility with
 //! a new `Starknet` node.
 
-use pathfinder_common::receipt::Receipt;
-use pathfinder_common::transaction::Transaction;
-use pathfinder_common::{BlockHeader, ChainId};
-use pathfinder_rpc::v02::types::ContractClass;
+use starknet_api::block::BlockHeader;
+use starknet_api::core::ChainId;
+use starknet_api::transaction::{Transaction, TransactionOutput};
 
+use crate::common::contract_class::ContractClass;
 use crate::common::BlockNumber;
 use crate::error::DatabaseError;
 use crate::runner::replay_class_hash::ReplayClassHash;
@@ -77,7 +77,7 @@ pub trait Storage {
     fn get_transactions_and_receipts_for_block(
         &self,
         block_number: BlockNumber,
-    ) -> Result<(Vec<Transaction>, Vec<Receipt>), DatabaseError>;
+    ) -> Result<(Vec<Transaction>, Vec<TransactionOutput>), DatabaseError>;
 
     /// Replays the list of transactions in a block.
     ///

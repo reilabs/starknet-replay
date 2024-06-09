@@ -13,7 +13,7 @@ use std::process;
 use anyhow::bail;
 use clap::Parser;
 use exitcode::{OK, SOFTWARE};
-use starknet_replay::pathfinder_storage::PathfinderStorage;
+use starknet_replay::papyrus_storage::PapyrusStorage;
 use starknet_replay::profiler::analysis::extract_libfuncs_weight;
 use starknet_replay::{export_histogram, run_replay, write_to_file, ReplayRange};
 
@@ -120,7 +120,7 @@ fn run(args: Args) -> anyhow::Result<()> {
     check_file(&svg_path, overwrite)?;
     check_file(&txt_out, overwrite)?;
 
-    let storage = PathfinderStorage::new(database_path)?;
+    let storage = PapyrusStorage::new(database_path);
 
     let replay_range = ReplayRange::new(start_block, end_block)?;
 

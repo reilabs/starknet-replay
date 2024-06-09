@@ -48,6 +48,8 @@ pub use crate::runner::{replay_blocks, run_replay};
 pub mod common;
 pub mod error;
 pub mod histogram;
-pub mod pathfinder_storage;
+// Commented out for `papyrus` branch.
+// pub mod pathfinder_storage;
+pub mod papyrus_storage;
 pub mod profiler;
 pub mod runner;

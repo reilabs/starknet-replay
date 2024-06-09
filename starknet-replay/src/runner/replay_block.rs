@@ -1,8 +1,7 @@
 //! This module contains the definition of the struct `ReplayBlock`.
 
-use pathfinder_common::receipt::Receipt;
-use pathfinder_common::transaction::Transaction as StarknetTransaction;
-use pathfinder_common::BlockHeader;
+use starknet_api::block::BlockHeader;
+use starknet_api::transaction::{Transaction as StarknetTransaction, TransactionOutput};
 
 use crate::error::RunnerError;
 
@@ -26,7 +25,7 @@ pub struct ReplayBlock {
     ///
     /// The receipt of each transaction in the `transactions` vector is found
     /// at matching index in the `receipts` vector.
-    pub receipts: Vec<Receipt>,
+    pub receipts: Vec<TransactionOutput>,
 }
 
 impl ReplayBlock {
@@ -50,7 +49,7 @@ impl ReplayBlock {
     pub fn new(
         header: BlockHeader,
         transactions: Vec<StarknetTransaction>,
-        receipts: Vec<Receipt>,
+        receipts: Vec<TransactionOutput>,
     ) -> Result<ReplayBlock, RunnerError> {
         if transactions.len() != receipts.len() {
             return Err(RunnerError::Unknown(

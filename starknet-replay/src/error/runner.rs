@@ -3,7 +3,6 @@
 
 use std::num::TryFromIntError;
 
-use pathfinder_executor::TransactionExecutionError;
 use thiserror::Error;
 
 use crate::common::BlockNumber;
@@ -11,11 +10,6 @@ use crate::error::DatabaseError;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `PathfinderExecutor` is for errors reported by the crate
-    /// `pathfinder_executor`.
-    #[error(transparent)]
-    PathfinderExecutor(#[from] TransactionExecutionError),
-
     /// `GenerateReplayWork` is used to encapsulate errors of type
     /// `anyhow::Error` which are originating from the
     /// function `starknet_replay::generate_replay_work`.
