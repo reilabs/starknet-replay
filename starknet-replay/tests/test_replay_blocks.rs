@@ -46,8 +46,7 @@ fn test_replay_blocks() {
     let replay_block = ReplayBlock::new(header, transactions, receipts).unwrap();
     replay_work.push(replay_block);
 
-    let box_storage: Box<(dyn Storage + Send + Sync)> = Box::new(storage.clone());
-    let visited_pcs = replay_blocks(&box_storage, &replay_work).unwrap();
+    let visited_pcs = replay_blocks(&storage.clone(), &replay_work).unwrap();
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage).unwrap();
 

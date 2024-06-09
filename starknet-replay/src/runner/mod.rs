@@ -31,14 +31,14 @@ pub mod replay_range;
 /// - There is any error during transaction replay.
 pub fn run_replay(
     replay_range: &ReplayRange,
-    storage: &Box<dyn Storage + Sync + Send>,
+    storage: &(dyn Storage + Sync + Send),
 ) -> Result<VisitedPcs, RunnerError> {
     // List of blocks to be replayed
-    let replay_work: Vec<ReplayBlock> = generate_replay_work(replay_range, storage.as_ref())?;
+    let replay_work: Vec<ReplayBlock> = generate_replay_work(replay_range, storage)?;
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
-    replay_blocks(&storage, &replay_work)
+    replay_blocks(storage, &replay_work)
 }
 
 /// Generates the list of transactions to be replayed.
@@ -113,7 +113,7 @@ fn generate_replay_work(
 /// Returns [`Err`] if the function `execute_block` fails to replay any
 /// transaction.
 pub fn replay_blocks(
-    storage: &Box<dyn Storage + Sync + Send>,
+    storage: &(dyn Storage + Sync + Send),
     replay_work: &[ReplayBlock],
 ) -> Result<VisitedPcs, RunnerError> {
     let (sender, receiver) = channel();
@@ -121,7 +121,7 @@ pub fn replay_blocks(
         .iter()
         .par_bridge()
         .try_for_each_with(
-            (&storage, sender),
+            (storage, sender),
             |(storage, sender), block| -> anyhow::Result<()> {
                 let block_visited_pcs = storage.execute_block(block)?;
                 sender.send(block_visited_pcs)?;
