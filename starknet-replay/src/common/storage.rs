@@ -1,3 +1,7 @@
+//! The `Storage` trait contains the interface between a node storage layer and
+//! `starknet-replay`. Implementing this trait allows to add compatibility with
+//! a new `Starknet` node.
+
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
 use pathfinder_common::{BlockHeader, ChainId};
