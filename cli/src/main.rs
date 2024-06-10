@@ -20,44 +20,16 @@ use starknet_replay::runner::replay_range::ReplayRange;
 use starknet_replay::runner::run_replay;
 use starknet_replay::storage::pathfinder::PathfinderStorage;
 
+use crate::args::Args;
+
+mod args;
+
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
 // performance by using jemalloc (compared to the Linux glibc allocator).
 // TODO: review in other operating systems. Issue #21
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
-#[derive(Clone, Parser, Debug)]
-struct Args {
-    /// The path of the Pathfinder database file.
-    #[arg(long)]
-    db_path: PathBuf,
-
-    /// The starting block to replay transactions.
-    #[arg(long)]
-    start_block: u64,
-
-    /// The final block (included) to stop replaying transactions. It is
-    /// reduced if bigger than the biggest block in the database.
-    #[arg(long)]
-    end_block: u64,
-
-    /// The filename of the histogram SVG image.
-    ///
-    /// If `None`, histogram generation is skipped.
-    #[arg(long)]
-    svg_out: Option<PathBuf>,
-
-    /// The filename to output the raw libfunc usage statistics.
-    ///
-    /// If `None`, output file is skipped.
-    #[arg(long)]
-    txt_out: Option<PathBuf>,
-
-    /// Set to overwrite `svg_out` and/or `txt_out` if it already exists.
-    #[arg(long)]
-    overwrite: bool,
-}
 
 fn main() {
     tracing_subscriber::fmt()
