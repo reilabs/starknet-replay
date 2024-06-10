@@ -1,26 +1,27 @@
-//! This module exports `ReplayStatistics` to a text file.
+//! This module writes a report of the transactions replay. At the moment it
+//! exports [`ReplayStatistics`] to a text file.
 
 use std::fs;
 use std::path::PathBuf;
 
 use crate::error::ProfilerError;
-use crate::ReplayStatistics;
+use crate::profiler::replay_statistics::ReplayStatistics;
 
-/// This function writes a `ReplayStatistics` object in CSV format to a file.
+/// This function writes a [`ReplayStatistics`] object in CSV format to a file.
 ///
-/// If the file exists already, it is overwritten.
+/// If the file already exists, it is overwritten.
 ///
 /// # Arguments
 ///
 /// - `filename`: the file to write.
-/// - `replay_statistics`: the `ReplayStatistics` object.
+/// - `replay_statistics`: the [`ReplayStatistics`] object.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if:
 ///
 /// - `filename` can't be written to.
-/// - The list of parent directories in `filename` don't exist.
+/// - The list of parent directories in `filename` doesn't exist.
 pub fn write_to_file(
     filename: &PathBuf,
     replay_statistics: &ReplayStatistics,

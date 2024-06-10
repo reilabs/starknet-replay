@@ -8,7 +8,8 @@
 //! collect more kinds of data during replay.
 //!
 //! The simplest interaction with this library is to call the function
-//! [`run_replay`] which returns the usage statistics of libfuncs.
+//! [`crate::runner::run_replay`] which returns the usage statistics of
+//! libfuncs.
 //!
 //! The key structs of the library are as follows:
 //!
@@ -18,8 +19,8 @@
 //! - [`profiler::replace_ids::DebugReplacer`] struct replaces the ids of
 //!   libfuncs and types in a Sierra program.
 //!
-//! Beyond [`run_replay`], these are the other key public functions of the
-//! library:
+//! Beyond [`crate::runner::run_replay`], these are the other key public
+//! functions of the library:
 //!
 //! - [`profiler::analysis::extract_libfuncs_weight`] which updates the
 //!   cumulative usage of libfuncs
@@ -39,15 +40,9 @@
 use error::RunnerError;
 use runner::replay_block::ReplayBlock;
 
-pub use crate::histogram::export as export_histogram;
-pub use crate::profiler::replay_statistics::ReplayStatistics;
-pub use crate::profiler::report::write_to_file;
-pub use crate::runner::replay_range::ReplayRange;
-pub use crate::runner::{replay_blocks, run_replay};
-
-pub mod common;
+pub mod block_number;
 pub mod error;
 pub mod histogram;
-pub mod pathfinder_storage;
 pub mod profiler;
 pub mod runner;
+pub mod storage;

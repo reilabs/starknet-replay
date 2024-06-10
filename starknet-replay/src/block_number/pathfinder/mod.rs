@@ -1,9 +1,9 @@
 //! This module contains the conversion between
-//! [`pathfinder_common::BlockNumber`] and [`crate::common::BlockNumber`]
+//! [`pathfinder_common::BlockNumber`] and [`crate::block_number::BlockNumber`]
 
 use pathfinder_common::BlockNumber as PathfinderBlockNumber;
 
-use crate::common::BlockNumber;
+use crate::block_number::BlockNumber;
 
 impl From<PathfinderBlockNumber> for BlockNumber {
     fn from(item: PathfinderBlockNumber) -> Self {

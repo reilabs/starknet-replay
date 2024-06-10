@@ -1,6 +1,11 @@
 //! This module is an interface between the Pathfinder database API and
 //! `starknet-replay`.
 
+// Allowing `module_name_repetitions` is needed to make `clippy` happy and keep the suffix `Error`
+// for all the error categories. Alternatively, shortening the name would limit expressiveness of
+// the type in this case.
+#![allow(clippy::module_name_repetitions)]
+
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
@@ -25,28 +30,25 @@ use rayon::current_num_threads;
 use starknet_api::core::ClassHash as StarknetClassHash;
 use starknet_api::hash::StarkFelt;
 
-use crate::common::storage::Storage as ReplayStorage;
-use crate::common::BlockNumber;
+use crate::block_number::BlockNumber;
 use crate::error::{DatabaseError, RunnerError};
 use crate::runner::replay_block::ReplayBlock;
-use crate::runner::replay_class_hash::ReplayClassHash;
-use crate::runner::VisitedPcs;
+use crate::runner::replay_class_hash::{ReplayClassHash, VisitedPcs};
+use crate::storage::Storage as ReplayStorage;
 
-pub mod block_number;
-
-/// `PathfinderStorage` implements the trait `ReplayStorage` to interact with
+/// Implements the trait [`crate::storage::Storage`] to interact with
 /// the Pathfinder storage layer.
 #[derive(Clone)]
 pub struct PathfinderStorage {
-    /// The `Storage` object to create a connection with the `Pathfinder`
-    /// database.
+    /// The [`pathfinder_storage::Storage`] object to create a connection with
+    /// the `Pathfinder` database.
     storage: Storage,
 }
 impl PathfinderStorage {
-    /// Connects to the Pathfinder database
+    /// Connects to the Pathfinder database.
     ///
     /// The connection to the Pathfinder database is established with the
-    /// construction of the Storage object.
+    /// construction of the [`pathfinder_storage::Storage`] object.
     ///
     /// The number of parallel connections is set to be twice the number of
     /// threads in the CPU: this is to ensure spare capacity. In case of
@@ -86,8 +88,8 @@ impl PathfinderStorage {
     /// Returns the hashmap of visited program counters for the input `trace`.
     ///
     /// The result of `get_visited_program_counters` is a hashmap where the key
-    /// is the `StarknetClassHash` and the value is the Vector of visited
-    /// program counters for each `StarknetClassHash` execution in `trace`.
+    /// is the [`StarknetClassHash`] and the value is the Vector of visited
+    /// program counters for each [`StarknetClassHash`] execution in `trace`.
     ///
     /// If `trace` is not an Invoke transaction, the function returns None
     /// because no libfuncs have been called during the transaction
@@ -95,8 +97,8 @@ impl PathfinderStorage {
     ///
     /// # Arguments
     ///
-    /// - `trace`: the `TransactionTrace` to extract the visited program
-    ///   counters from.
+    /// - `trace`: the [`pathfinder_executor::types::TransactionTrace`] to
+    ///   extract the visited program counters from.
     fn get_visited_program_counters(
         trace: &TransactionTrace,
     ) -> Option<&HashMap<StarknetClassHash, Vec<Vec<usize>>>> {
@@ -107,25 +109,27 @@ impl PathfinderStorage {
     }
 }
 impl ReplayStorage for PathfinderStorage {
-    fn get_latest_block_number(&self) -> Result<BlockNumber, DatabaseError> {
+    fn get_most_recent_block_number(&self) -> Result<BlockNumber, DatabaseError> {
         let mut db = self
             .storage
             .connection()
             .context("Opening database connection")
-            .map_err(DatabaseError::GetLatestBlockNumber)?;
+            .map_err(DatabaseError::GetMostRecentBlockNumber)?;
         let tx_db = db
             .transaction()
-            .map_err(DatabaseError::GetLatestBlockNumber)?;
+            .map_err(DatabaseError::GetMostRecentBlockNumber)?;
 
         let Some((latest_block, _)) = tx_db
             .block_id(BlockId::Latest)
-            .map_err(DatabaseError::GetLatestBlockNumber)?
+            .map_err(DatabaseError::GetMostRecentBlockNumber)?
         else {
             return Ok(BlockNumber::new(0));
         };
         Ok(BlockNumber::new(latest_block.get()))
     }
 
+    /// This function detects the chain id by quering the hash of the first
+    /// block in the database.
     fn get_chain_id(&self) -> Result<ChainId, DatabaseError> {
         let mut db = self
             .storage

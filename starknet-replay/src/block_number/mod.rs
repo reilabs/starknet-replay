@@ -1,7 +1,11 @@
-//! This is `starknet-replay` representation of a `Starknet` block number.
+//! This is `starknet-replay`s representation of a `Starknet` block number.
+
+use std::fmt;
+
+pub mod pathfinder;
 
 /// `BlockNumber` is represented as a `u64` integer.
-#[derive(Copy, Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BlockNumber(u64);
 impl BlockNumber {
     /// Creates a new `BlockNumber`.
@@ -14,5 +18,10 @@ impl BlockNumber {
     #[must_use]
     pub fn get(&self) -> u64 {
         self.0
+    }
+}
+impl fmt::Display for BlockNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

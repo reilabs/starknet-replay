@@ -1,7 +1,8 @@
-//! This module uses the library `plotter` to render and export the histogram.
+//! This module uses the library [`plotters`] to render and export the
+//! histogram.
 //!
 //! To use another plotting library, it's sufficient to rewrite the function
-//! `render`.
+//! [`crate::histogram::render`].
 
 use plotters::backend::SVGBackend;
 use plotters::chart::ChartBuilder;
@@ -13,7 +14,7 @@ use plotters::style::text_anchor::{HPos, Pos, VPos};
 use plotters::style::{Color, FontTransform, IntoFont, TextStyle};
 
 use crate::histogram::{Config, HistogramError};
-use crate::ReplayStatistics;
+use crate::profiler::replay_statistics::ReplayStatistics;
 
 /// Create and export the histogram as SVG file.
 ///
@@ -27,7 +28,8 @@ use crate::ReplayStatistics;
 ///
 /// Returns [`Err`] if:
 ///
-/// - There is an error computing the histogram `Config` object.
+/// - There is an error computing the histogram [`crate::histogram::Config`]
+///   object.
 /// - There is an error rendering the histogram.
 pub fn render(
     title: &str,
@@ -39,7 +41,7 @@ pub fn render(
     Ok(buffer.clone())
 }
 
-/// Internal function to call `plotter` rendering backend.
+/// Internal function to call [`plotters`] rendering backend.
 ///
 /// # Arguments
 ///

@@ -1,12 +1,12 @@
 //! This file contains the enum `Error` for all the errors returned by the
-//! module `histogram`.
+//! module [`crate::histogram`].
 
 use plotters::drawing::DrawingAreaErrorKind;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `Drawing` variant is for errors reported by the crate `plotters`.
+    /// `Drawing` variant is for errors reported by the crate [`plotters`].
     #[error(transparent)]
     Drawing(#[from] DrawingAreaErrorKind<std::io::Error>),
 

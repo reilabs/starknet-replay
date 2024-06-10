@@ -4,8 +4,8 @@
 //! I am deriving only `Debug` and `Error` because not all inherited error types
 //! implement `Clone` and `Eq`.
 //!
-//! Some libraries return `anyhow::Error`. Because it's not possible to
-//! differentiate the origin of the error, `anyhow::Error` is transformed into
+//! Some libraries return [`anyhow::Error`]. Because it's not possible to
+//! differentiate the origin of the error, [`anyhow::Error`] is transformed into
 //! the `Unknown` type variant by implementing the `From<T>` trait.
 //! In other cases, the error enum variant matches the library name from which
 //! the error originates.
@@ -24,10 +24,10 @@ pub use self::histogram::Error as HistogramError;
 pub use self::profiler::Error as ProfilerError;
 pub use self::runner::Error as RunnerError;
 
-pub mod database;
-pub mod histogram;
-pub mod profiler;
-pub mod runner;
+mod database;
+mod histogram;
+mod profiler;
+mod runner;
 
 #[derive(Debug, Error)]
 pub enum Error {

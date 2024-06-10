@@ -5,10 +5,11 @@ use std::sync::mpsc::channel;
 
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use crate::common::storage::Storage;
-use crate::common::BlockNumber;
-pub use crate::runner::replay_class_hash::VisitedPcs;
-use crate::{ReplayBlock, ReplayRange, RunnerError};
+use crate::block_number::BlockNumber;
+use crate::runner::replay_class_hash::VisitedPcs;
+use crate::runner::replay_range::ReplayRange;
+use crate::storage::Storage;
+use crate::{ReplayBlock, RunnerError};
 
 pub mod replay_block;
 pub mod replay_class_hash;
@@ -29,10 +30,10 @@ pub mod replay_range;
 /// - The most recent block available in the database is less than the block to
 ///   start the replay.
 /// - There is any error during transaction replay.
-pub fn run_replay(
-    replay_range: &ReplayRange,
-    storage: &(dyn Storage + Sync + Send),
-) -> Result<VisitedPcs, RunnerError> {
+pub fn run_replay<T>(replay_range: &ReplayRange, storage: &T) -> Result<VisitedPcs, RunnerError>
+where
+    T: Storage + Sync + Send,
+{
     // List of blocks to be replayed
     let replay_work: Vec<ReplayBlock> = generate_replay_work(replay_range, storage)?;
 
@@ -58,14 +59,17 @@ pub fn run_replay(
 /// - There is an issue accessing the Pathfinder database.
 /// - The most recent block available in the database is less than the block to
 ///   start the replay.
-fn generate_replay_work(
+pub fn generate_replay_work<T>(
     replay_range: &ReplayRange,
-    storage: &(impl Storage + ?Sized),
-) -> Result<Vec<ReplayBlock>, RunnerError> {
+    storage: &T,
+) -> Result<Vec<ReplayBlock>, RunnerError>
+where
+    T: Storage + ?Sized,
+{
     let start_block = replay_range.get_start_block();
     let end_block = replay_range.get_end_block();
 
-    let latest_block = storage.get_latest_block_number()?;
+    let latest_block = storage.get_most_recent_block_number()?;
 
     let last_block = end_block.min(latest_block);
 
@@ -112,10 +116,10 @@ fn generate_replay_work(
 ///
 /// Returns [`Err`] if the function `execute_block` fails to replay any
 /// transaction.
-pub fn replay_blocks(
-    storage: &(dyn Storage + Sync + Send),
-    replay_work: &[ReplayBlock],
-) -> Result<VisitedPcs, RunnerError> {
+pub fn replay_blocks<T>(storage: &T, replay_work: &[ReplayBlock]) -> Result<VisitedPcs, RunnerError>
+where
+    T: Storage + Sync + Send,
+{
     let (sender, receiver) = channel();
     replay_work
         .iter()

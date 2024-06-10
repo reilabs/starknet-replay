@@ -14,13 +14,13 @@ pub struct ReplayStatistics {
     /// This field contains the association between libfunc name (key) and
     /// number of calls (value).
     ///
-    /// Storing as `HashMap` instead of `OrderedHashMap` for ease of comparison
-    /// because order doesn't matter.
+    /// Storing as [`HashMap`] instead of [`OrderedHashMap`] for ease of
+    /// comparison because order doesn't matter.
     pub concrete_libfunc: HashMap<String, usize>,
 }
 
 impl ReplayStatistics {
-    /// Initialisation of `ReplayStatistics`.
+    /// Initialisation of [`ReplayStatistics`].
     ///
     /// The struct is initialised with field `concrete_libfunc` empty.
     #[must_use]
@@ -30,10 +30,11 @@ impl ReplayStatistics {
         }
     }
 
-    /// Add libfunc with frequency to `ReplayStatistics`.
+    /// Add libfunc with frequency to [`ReplayStatistics`].
     ///
-    /// `name` is added to `self.concrete_libfunc` if not present. If the `name`
-    /// already exists, the `frequency` is increased accordingly.
+    /// `name` is added to [`ReplayStatistics::concrete_libfunc`] if not
+    /// present. If the `name` already exists, the `frequency` is increased
+    /// accordingly.
     ///
     /// # Arguments
     ///
@@ -46,10 +47,11 @@ impl ReplayStatistics {
             .or_insert(frequency);
     }
 
-    /// Update `ReplayStatistics` with results from contract replay.
+    /// Update [`ReplayStatistics`] with results from contract replay.
     ///
-    /// Keys are added to `self.concrete_libfunc` if not present. If the key
-    /// already exists, the value (count) is increased accordingly.
+    /// Keys are added to [`ReplayStatistics::concrete_libfunc`] if not present.
+    /// If the key already exists, the value (count) is increased
+    /// accordingly.
     ///
     /// # Arguments
     ///
@@ -62,7 +64,7 @@ impl ReplayStatistics {
         self
     }
 
-    /// Update `self` with data in `from`.
+    /// Update the object with data in `from`.
     ///
     /// This function adopts the same logic as `self.add_statistics`.
     ///
@@ -79,7 +81,7 @@ impl ReplayStatistics {
     }
 
     /// Returns the number of different concrete libfunc names in the
-    /// `ReplayStatistics` object.
+    /// [`ReplayStatistics`] object.
     #[must_use]
     pub fn get_number_of_libfuncs(&self) -> usize {
         self.concrete_libfunc.len()
@@ -165,7 +167,7 @@ impl ReplayStatistics {
         filtered_libfuncs
     }
 
-    /// Serialises `ReplayStatistics` to CSV format.
+    /// Serialises [`ReplayStatistics`] to CSV format.
     ///
     /// Libfuncs are reported in ascending order of weight.
     ///
@@ -178,7 +180,7 @@ impl ReplayStatistics {
     /// ```
     /// # use std::str;
     /// # use indoc::indoc;
-    /// # use starknet_replay::ReplayStatistics;
+    /// # use starknet_replay::profiler::replay_statistics::ReplayStatistics;
     /// let mut replay_statistics = ReplayStatistics::default();
     /// replay_statistics.update(&"u32_to_felt252".to_string(), 759);
     /// replay_statistics.update(&"const_as_immediate".to_string(), 264);

@@ -8,17 +8,18 @@ use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::Itertools;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
 
-use crate::common::storage::Storage;
 use crate::profiler::replace_ids::replace_sierra_ids_in_program;
+use crate::profiler::replay_statistics::ReplayStatistics;
 use crate::profiler::{ProfilerError, SierraProfiler};
-use crate::runner::VisitedPcs;
-use crate::ReplayStatistics;
+use crate::runner::replay_class_hash::VisitedPcs;
+use crate::storage::Storage;
 
-/// Converts transforms a `SierraContractClass` in Sierra `Program`.
+/// Converts transforms a [`pathfinder_rpc::v02::types::SierraContractClass`] in
+/// Sierra [`cairo_lang_sierra::program::Program`].
 ///
 /// # Arguments
 ///
-/// - `ctx`: The input `SierraContractClass`
+/// - `ctx`: The input [`pathfinder_rpc::v02::types::SierraContractClass`]
 ///
 /// # Errors
 ///

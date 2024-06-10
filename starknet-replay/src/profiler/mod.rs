@@ -1,5 +1,7 @@
-//! The module `profiler` contains the code to process a sequence of program
-//! counters and return the object `ReplayStatistics`.
+//! The module [`crate::profiler`] contains the code to process a sequence of
+//! program counters and return the object
+//! [`crate::profiler::replay_statistics::ReplayStatistics`] which contains call
+//! frequency of libfuncs.
 
 #![allow(clippy::module_name_repetitions)] // Added because of `SierraProfiler`
 
@@ -34,7 +36,7 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 10000;
 
 /// Creates the metadata required for a lowering a Sierra program to CASM.
 ///
-/// This function is copied from crate `cairo-lang-runner` because it
+/// This function is copied from crate [`cairo_lang_runner`] because it
 /// isn't public.
 ///
 /// # Arguments
@@ -47,8 +49,8 @@ const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 10000;
 ///
 /// Returns [`Err`] if:
 ///
-/// - Call to `calc_metadata` fails
-/// - Call to `calc_metadata_ap_change_only` fails
+/// - Call to [`calc_metadata`] fails
+/// - Call to [`calc_metadata_ap_change_only`] fails
 // TODO: Change `cairo` crate and make `create_metadata` public. Issue #23.
 fn create_metadata(
     sierra_program: &Program,
@@ -68,24 +70,27 @@ fn create_metadata(
 
 /// Extracts profiling data from the list of visited program counters.
 ///
-/// This is a slimmed down version of `SierraCasmRunner` from
-/// `cairo-lang-runner` crate adapted for use in Starknet contracts instead of
-/// Cairo programs. It is needed to setup the profiler during transaction
-/// replay. There is no call to `cairo-vm` because this slimmed down version
-/// takes the list of visited program counters as input in
-/// `collect_profiling_info`.
+/// This is a slimmed down version of [`cairo_lang_runner::SierraCasmRunner`]
+/// adapted for use in Starknet contracts instead of Cairo programs. It is
+/// needed to setup the profiler during transaction replay. There is no call to
+/// [`cairo-vm`] because this slimmed down version takes the list of visited
+/// program counters as input to
+/// [`SierraProfiler#method.collect_profiling_info`].
 pub struct SierraProfiler {
     /// The sierra program.
     sierra_program: Program,
+
     /// Program registry for the Sierra program.
     sierra_program_registry: ProgramRegistry<CoreType, CoreLibfunc>,
+
     /// The casm program matching the Sierra code.
     casm_program: CairoProgram,
+
     /// Whether to run the profiler when running using this runner.
     pub run_profiler: Option<ProfilingInfoCollectionConfig>,
 }
 impl SierraProfiler {
-    /// Generates a new `SierraCasmRunnerLight` object.
+    /// Generates a new [`SierraProfiler`] object.
     ///
     /// # Arguments
     ///
@@ -96,7 +101,7 @@ impl SierraProfiler {
     /// Returns [`Err`] if:
     ///
     /// - The call to `create_metadata` fails
-    /// - The generation of `sierra_program_registry` fails
+    /// - The generation of `[sierra_program_registry`] fails
     pub fn new(sierra_program: Program) -> Result<Self, ProfilerError> {
         // `run_profiler` and `metadata_config` are set as per default values
         // preventing the user from choosing `None` as in the original
@@ -142,9 +147,10 @@ impl SierraProfiler {
 
     /// Collects profiling info of the current run using the trace.
     ///
-    /// This function has been copied from `cairo-lang-runner` crate but it was
-    /// written for Cairo programs. It needs to be adapted for use with Starknet
-    /// contracts.
+    /// This function has been copied from
+    /// [`cairo_lang_runner::SierraCasmRunner#method.collect_profiling_info`]
+    /// but it was written for Cairo programs. It needs to be adapted for
+    /// use with Starknet contracts.
     ///
     /// In particular, the variable `end_of_program_reached` doesn't
     /// seem to be valid for Starknet contracts.

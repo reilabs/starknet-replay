@@ -6,20 +6,19 @@
 use std::fs;
 use std::path::PathBuf;
 
-use starknet_replay::common::storage::Storage;
-use starknet_replay::common::BlockNumber;
-use starknet_replay::pathfinder_storage::PathfinderStorage;
+use starknet_replay::block_number::BlockNumber;
 use starknet_replay::profiler::analysis::extract_libfuncs_weight;
+use starknet_replay::profiler::replay_statistics::ReplayStatistics;
 use starknet_replay::runner::replay_block::ReplayBlock;
-use starknet_replay::{replay_blocks, ReplayStatistics};
+use starknet_replay::runner::replay_blocks;
+use starknet_replay::storage::pathfinder::PathfinderStorage;
+use starknet_replay::storage::Storage;
 
 // Ignored because it requires an updated copy of the pathfinder sqlite
 // database.
 #[ignore]
 #[test]
 fn test_replay_blocks() {
-    // No trait is available to mock the `PathfinderStorage` struct.
-    // Issue #9.
     let database_path = "../../pathfinder/mainnet.sqlite";
     let block_number = 632917;
     let transaction_hash = "0x0177C9365875CAA840EA8F03F97B0E3A8EE8851A8B952BF157B5DBD4FECCB060";
