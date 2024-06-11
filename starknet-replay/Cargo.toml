@@ -25,10 +25,10 @@ cairo-lang-sierra-generator = "2.6.0"
 # `starkware-libs/blockifier`. These changes are in the branch `extract_libfunc`
 # of Reilabs fork and need to be merged in main branch.
 # Hardcoding the commit hash for the time being.
-pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
-pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
-pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
-pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "f802acfdc4e5842fc5f49f8e7ad60ed1379f8bf4" }
+pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
+pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
+pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
+pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
 # `next-release-devel` because it contains the fix for bug #551 related to
 # anchoring of labels when rotated. Issue #26.

@@ -1,3 +1,6 @@
+//! This file contains the structure of command line arguments supported by the
+//! tool.
+
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -29,9 +32,7 @@ pub struct Args {
     #[arg(long)]
     pub txt_out: Option<PathBuf>,
 
-    /// The filename to output
-    /// [`starknet_replay::transaction_trace::TransactionTrace`] from the
-    /// replay.
+    /// The filename to output transaction traces from the replay.
     ///
     /// If `None`, output file is skipped.
     #[arg(long)]

@@ -46,4 +46,3 @@ pub mod histogram;
 pub mod profiler;
 pub mod runner;
 pub mod storage;
-pub mod transaction_trace;

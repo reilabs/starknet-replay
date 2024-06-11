@@ -5,12 +5,12 @@
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction;
 use pathfinder_common::{BlockHeader, ChainId};
+use pathfinder_executor::types::TransactionSimulation;
 use pathfinder_rpc::v02::types::ContractClass;
 
 use crate::block_number::BlockNumber;
 use crate::error::DatabaseError;
 use crate::runner::replay_class_hash::ReplayClassHash;
-use crate::transaction_trace::TransactionTrace;
 use crate::{ReplayBlock, RunnerError};
 
 pub mod pathfinder;
@@ -90,5 +90,5 @@ pub trait Storage {
     ///
     /// Returns [`Err`] if any transaction fails execution or if there is any
     /// error communicating with the storage layer.
-    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionTrace>, RunnerError>;
+    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionSimulation>, RunnerError>;
 }

@@ -8,7 +8,7 @@
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
 use std::path::PathBuf;
-use std::process;
+use std::{fs, process};
 
 use anyhow::bail;
 use clap::Parser;
@@ -49,7 +49,9 @@ fn main() {
     }
 }
 
-/// Returns an error if the file exists already and can't be overwritten,
+/// Returns an error if the file exists already and can't be overwritten.
+///
+/// If the file exists and it can be overwritten, it is deleted.
 ///
 /// # Arguments
 ///
@@ -57,12 +59,15 @@ fn main() {
 /// - `overwrite`: If `true`, the file can be overwritten.
 fn check_file(path: &Option<PathBuf>, overwrite: bool) -> anyhow::Result<()> {
     if let Some(filename) = path {
-        if filename.exists() && !overwrite {
-            let filename = filename.as_path().display();
-            bail!(
-                "The file {0:?} exists already. To ignore it, pass the flag --overwrite.",
-                filename
-            )
+        if filename.exists() {
+            if !overwrite {
+                let filename = filename.as_path().display();
+                bail!(
+                    "The file {0:?} exists already. To ignore it, pass the flag --overwrite.",
+                    filename
+                )
+            }
+            fs::remove_file(filename)?;
         }
     }
     Ok(())
@@ -104,7 +109,7 @@ fn run(args: Args) -> anyhow::Result<()> {
     tracing::info!(%start_block, %end_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let visited_pcs = run_replay(&replay_range, &storage.clone())?;
+    let visited_pcs = run_replay(&replay_range, &trace_out, &storage.clone())?;
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
 

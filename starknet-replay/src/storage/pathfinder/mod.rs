@@ -20,6 +20,7 @@ use pathfinder_common::consts::{
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction as StarknetTransaction;
 use pathfinder_common::{BlockHeader, BlockNumber as PathfinderBlockNumber, ChainId, ClassHash};
+use pathfinder_executor::types::TransactionSimulation;
 use pathfinder_executor::{ExecutionState, IntoFelt};
 use pathfinder_rpc::compose_executor_transaction;
 use pathfinder_rpc::v02::types::ContractClass;
@@ -32,7 +33,6 @@ use crate::error::{DatabaseError, RunnerError};
 use crate::runner::replay_block::ReplayBlock;
 use crate::runner::replay_class_hash::ReplayClassHash;
 use crate::storage::Storage as ReplayStorage;
-use crate::transaction_trace::TransactionTrace;
 
 /// Implements the trait [`crate::storage::Storage`] to interact with
 /// the Pathfinder storage layer.
@@ -208,7 +208,7 @@ impl ReplayStorage for PathfinderStorage {
         Ok((transactions, receipts))
     }
 
-    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionTrace>, RunnerError> {
+    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionSimulation>, RunnerError> {
         let chain_id = self.get_chain_id()?;
 
         let mut db = self.get().connection().map_err(RunnerError::ExecuteBlock)?;
@@ -236,12 +236,13 @@ impl ReplayStorage for PathfinderStorage {
             error
         })?;
 
-        Ok(simulations
-            .into_iter()
-            .map(|t| {
-                let block_number: BlockNumber = work.header.number.into();
-                TransactionTrace::new(block_number, t.trace)
-            })
-            .collect())
+        Ok(simulations)
+        // Ok(simulations
+        //     .into_iter()
+        //     .map(|t| {
+        //         let block_number: BlockNumber = work.header.number.into();
+        //         TransactionTrace::new(block_number, t.trace)
+        //     })
+        //     .collect())
     }
 }
