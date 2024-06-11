@@ -29,6 +29,14 @@ pub struct Args {
     #[arg(long)]
     pub txt_out: Option<PathBuf>,
 
+    /// The filename to output
+    /// [`starknet_replay::transaction_trace::TransactionTrace`] from the
+    /// replay.
+    ///
+    /// If `None`, output file is skipped.
+    #[arg(long)]
+    pub trace_out: Option<PathBuf>,
+
     /// Set to overwrite `svg_out` and/or `txt_out` if it already exists.
     #[arg(long)]
     pub overwrite: bool,

@@ -90,10 +90,12 @@ fn run(args: Args) -> anyhow::Result<()> {
     let end_block = args.end_block;
     let svg_path = args.svg_out;
     let txt_out = args.txt_out;
+    let trace_out = args.trace_out;
     let overwrite = args.overwrite;
 
     check_file(&svg_path, overwrite)?;
     check_file(&txt_out, overwrite)?;
+    check_file(&trace_out, overwrite)?;
 
     let storage = PathfinderStorage::new(database_path)?;
 

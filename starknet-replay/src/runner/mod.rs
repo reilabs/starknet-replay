@@ -5,6 +5,7 @@ use std::sync::mpsc::channel;
 
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
+use self::replay_class_hash::ReplayClassHash;
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::VisitedPcs;
 use crate::runner::replay_range::ReplayRange;
@@ -138,8 +139,22 @@ where
 
     let mut cumulative_visited_pcs = VisitedPcs::default();
 
-    for visited_pcs in res {
-        cumulative_visited_pcs.extend(visited_pcs.iter().map(|(k, v)| (*k, v.clone())));
+    for simulations in res {
+        for trace in &simulations {
+            let Some(visited_pcs) = trace.get_visited_program_counters() else {
+                continue;
+            };
+
+            cumulative_visited_pcs.extend(visited_pcs.iter().map(|(k, v)| {
+                let replay_class_hash = ReplayClassHash {
+                    block_number: trace.block_number,
+                    class_hash: *k,
+                };
+                let pcs = v.clone();
+                (replay_class_hash, pcs)
+            }));
+        }
     }
+
     Ok(cumulative_visited_pcs)
 }
