@@ -1,4 +1,4 @@
-//! This module contains the definition of the struct `ReplayBlock`.
+//! This module contains the definition of the struct [`ReplayBlock`].
 
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction as StarknetTransaction;
@@ -6,7 +6,7 @@ use pathfinder_common::BlockHeader;
 
 use crate::error::RunnerError;
 
-/// `ReplayBlock` contains the data necessary to replay a single block from
+/// [`ReplayBlock`] contains the data necessary to replay a single block from
 /// the Starknet blockchain.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ReplayBlock {

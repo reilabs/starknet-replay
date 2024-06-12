@@ -2,7 +2,7 @@
 //!
 //! Iterates over specified blocks in the database and re-executes all
 //! transactions within those blocks. This is only the CLI front-end. All the
-//! logic is contained in the library `starknet-replay`.
+//! logic is contained in the library [`starknet_replay`].
 
 #![warn(clippy::all, clippy::cargo, clippy::pedantic)]
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
@@ -13,14 +13,12 @@ use std::process;
 use anyhow::bail;
 use clap::Parser;
 use exitcode::{OK, SOFTWARE};
+use starknet_replay::histogram::export as export_histogram;
 use starknet_replay::profiler::analysis::extract_libfuncs_weight;
-use starknet_replay::{
-    connect_to_database,
-    export_histogram,
-    run_replay,
-    write_to_file,
-    ReplayRange,
-};
+use starknet_replay::profiler::report::write_to_file;
+use starknet_replay::runner::replay_range::ReplayRange;
+use starknet_replay::runner::run_replay;
+use starknet_replay::storage::pathfinder::PathfinderStorage;
 
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
@@ -98,7 +96,7 @@ fn check_file(path: &Option<PathBuf>, overwrite: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Take the command line input arguments and call starknet-replay.
+/// Take the command line input arguments and call the replayer.
 ///
 /// Sanitisation of the inputs is done in this function.
 ///
@@ -113,7 +111,7 @@ fn check_file(path: &Option<PathBuf>, overwrite: bool) -> anyhow::Result<()> {
 /// - `start_block` is greater than `end_block`.
 /// - Not enough blocks in the database to cover the required range of blocks to
 ///   replay.
-/// - Any error during execution of `starknet-replay`.
+/// - Any error during execution of the replayer..
 fn run(args: Args) -> anyhow::Result<()> {
     let database_path = args.db_path;
     let start_block = args.start_block;
@@ -125,14 +123,14 @@ fn run(args: Args) -> anyhow::Result<()> {
     check_file(&svg_path, overwrite)?;
     check_file(&txt_out, overwrite)?;
 
-    let storage = connect_to_database(database_path)?;
+    let storage = PathfinderStorage::new(database_path)?;
 
     let replay_range = ReplayRange::new(start_block, end_block)?;
 
     tracing::info!(%start_block, %end_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let visited_pcs = run_replay(&replay_range, storage.clone())?;
+    let visited_pcs = run_replay(&replay_range, &storage.clone())?;
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
 

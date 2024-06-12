@@ -7,19 +7,19 @@ use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractC
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::Itertools;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
-use pathfinder_storage::Storage;
 
 use crate::profiler::replace_ids::replace_sierra_ids_in_program;
+use crate::profiler::replay_statistics::ReplayStatistics;
 use crate::profiler::{ProfilerError, SierraProfiler};
-use crate::runner::pathfinder_db::get_contract_class_at_block;
-use crate::runner::VisitedPcs;
-use crate::ReplayStatistics;
+use crate::runner::replay_class_hash::VisitedPcs;
+use crate::storage::Storage;
 
-/// Converts transforms a `SierraContractClass` in Sierra `Program`.
+/// Converts transforms a [`pathfinder_rpc::v02::types::SierraContractClass`] in
+/// Sierra [`cairo_lang_sierra::program::Program`].
 ///
 /// # Arguments
 ///
-/// - `ctx`: The input `SierraContractClass`
+/// - `ctx`: The input [`pathfinder_rpc::v02::types::SierraContractClass`]
 ///
 /// # Errors
 ///
@@ -84,18 +84,18 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
 /// Returns [`Err`] if the constructor of `SierraCasmRunnerLight` fails.
 pub fn extract_libfuncs_weight(
     visited_pcs: &VisitedPcs,
-    storage: &Storage,
+    storage: &impl Storage,
 ) -> Result<ReplayStatistics, ProfilerError> {
     let mut local_cumulative_libfuncs_weight: ReplayStatistics = ReplayStatistics::new();
 
     for (replay_class_hash, all_pcs) in visited_pcs {
-        let Ok(ContractClass::Sierra(ctx)) =
-            get_contract_class_at_block(replay_class_hash, storage)
+        let Ok(ContractClass::Sierra(contract_class)) =
+            storage.get_contract_class_at_block(replay_class_hash)
         else {
             continue;
         };
 
-        let Ok(sierra_program) = get_sierra_program_from_class_definition(&ctx) else {
+        let Ok(sierra_program) = get_sierra_program_from_class_definition(&contract_class) else {
             continue;
         };
 

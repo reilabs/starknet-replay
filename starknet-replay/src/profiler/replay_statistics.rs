@@ -1,5 +1,6 @@
 //! The module which provides an interface to libfunc usage statistics.
 
+use std::collections::HashMap;
 use std::io::Write;
 use std::ops::{Div, Mul};
 
@@ -13,27 +14,27 @@ pub struct ReplayStatistics {
     /// This field contains the association between libfunc name (key) and
     /// number of calls (value).
     ///
-    /// It is using `OrderedHashMap` because inherited from Cairo crate.
-    /// However, there is no architectural reason in `starknet-replay` that
-    /// requires it and it can be changed as needed.
-    pub concrete_libfunc: OrderedHashMap<String, usize>,
+    /// Storing as [`HashMap`] instead of [`OrderedHashMap`] for ease of
+    /// comparison because order doesn't matter.
+    pub concrete_libfunc: HashMap<String, usize>,
 }
 
 impl ReplayStatistics {
-    /// Initialisation of `ReplayStatistics`.
+    /// Initialisation of [`ReplayStatistics`].
     ///
     /// The struct is initialised with field `concrete_libfunc` empty.
     #[must_use]
     pub fn new() -> Self {
         ReplayStatistics {
-            concrete_libfunc: OrderedHashMap::default(),
+            concrete_libfunc: HashMap::default(),
         }
     }
 
-    /// Add libfunc with frequency to `ReplayStatistics`.
+    /// Add libfunc with frequency to [`ReplayStatistics`].
     ///
-    /// `name` is added to `self.concrete_libfunc` if not present. If the `name`
-    /// already exists, the `frequency` is increased accordingly.
+    /// `name` is added to [`ReplayStatistics::concrete_libfunc`] if not
+    /// present. If the `name` already exists, the `frequency` is increased
+    /// accordingly.
     ///
     /// # Arguments
     ///
@@ -46,10 +47,11 @@ impl ReplayStatistics {
             .or_insert(frequency);
     }
 
-    /// Update `ReplayStatistics` with results from contract replay.
+    /// Update [`ReplayStatistics`] with results from contract replay.
     ///
-    /// Keys are added to `self.concrete_libfunc` if not present. If the key
-    /// already exists, the value (count) is increased accordingly.
+    /// Keys are added to [`ReplayStatistics::concrete_libfunc`] if not present.
+    /// If the key already exists, the value (count) is increased
+    /// accordingly.
     ///
     /// # Arguments
     ///
@@ -62,7 +64,7 @@ impl ReplayStatistics {
         self
     }
 
-    /// Update `self` with data in `from`.
+    /// Update the object with data in `from`.
     ///
     /// This function adopts the same logic as `self.add_statistics`.
     ///
@@ -70,7 +72,7 @@ impl ReplayStatistics {
     ///
     /// - `from`: Input `ReplayStatistics` to get data from.
     pub fn merge(&mut self, from: &ReplayStatistics) {
-        for (libfunc, weight) in from.concrete_libfunc.iter() {
+        for (libfunc, weight) in &from.concrete_libfunc {
             self.concrete_libfunc
                 .entry(libfunc.clone())
                 .and_modify(|e| *e += *weight)
@@ -79,7 +81,7 @@ impl ReplayStatistics {
     }
 
     /// Returns the number of different concrete libfunc names in the
-    /// `ReplayStatistics` object.
+    /// [`ReplayStatistics`] object.
     #[must_use]
     pub fn get_number_of_libfuncs(&self) -> usize {
         self.concrete_libfunc.len()
@@ -165,7 +167,7 @@ impl ReplayStatistics {
         filtered_libfuncs
     }
 
-    /// Serialises `ReplayStatistics` to CSV format.
+    /// Serialises [`ReplayStatistics`] to CSV format.
     ///
     /// Libfuncs are reported in ascending order of weight.
     ///
@@ -178,7 +180,7 @@ impl ReplayStatistics {
     /// ```
     /// # use std::str;
     /// # use indoc::indoc;
-    /// # use starknet_replay::ReplayStatistics;
+    /// # use starknet_replay::profiler::replay_statistics::ReplayStatistics;
     /// let mut replay_statistics = ReplayStatistics::default();
     /// replay_statistics.update(&"u32_to_felt252".to_string(), 759);
     /// replay_statistics.update(&"const_as_immediate".to_string(), 264);
@@ -204,5 +206,29 @@ impl ReplayStatistics {
             writeln!(f, "{concrete_name},{weight}")?;
         }
         Ok(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_equality_replay_statistics() {
+        let mut a = ReplayStatistics::new();
+        let mut b = ReplayStatistics::new();
+
+        a.update(&"u32_to_felt252".to_string(), 759);
+        a.update(&"const_as_immediate".to_string(), 264);
+        a.update(&"finalize_locals".to_string(), 24);
+
+        b.update(&"const_as_immediate".to_string(), 264);
+        b.update(&"finalize_locals".to_string(), 24);
+        b.update(&"u32_to_felt252".to_string(), 759);
+
+        assert_eq!(a, b);
+
+        b.update(&"u512_safe_divmod_by_u256".to_string(), 118);
+        assert_ne!(a, b);
     }
 }

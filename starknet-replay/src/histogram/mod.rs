@@ -2,7 +2,7 @@
 //! libfunc histogram.
 //!
 //! The file `mod.rs` contains the public interface. The main entry function to
-//! use this module is by calling the function `export` to render and save the
+//! use this module is by calling the function [`export`] to render and save the
 //! SVG image.
 
 use std::fs;
@@ -35,7 +35,7 @@ pub struct Config {
     pub x_label_area: PixelCount,
 }
 impl Config {
-    /// Construct a new `Config` object.
+    /// Constructs a new [`Config`] object.
     ///
     /// # Arguments
     ///
@@ -47,7 +47,7 @@ impl Config {
     ///
     /// # Panics
     ///
-    /// - There is a math overflow when computing the `Config` parameters
+    /// - There is a math overflow when computing the [`Config`] parameters
     /// - There is a truncation when casting from `usize` to `u32`.
     pub fn new(libfunc_stats: &ReplayStatistics) -> Result<Self, HistogramError> {
         let max_frequency = libfunc_stats
@@ -176,6 +176,7 @@ impl Config {
 }
 
 /// This function saves the SVG image to file.
+///
 /// # Arguments
 ///
 /// - `filename`: The filename to output the SVG.
@@ -216,7 +217,7 @@ fn save(filename: &PathBuf, content: &impl ToString) -> Result<(), HistogramErro
 ///
 /// ```
 /// # use starknet_replay::histogram::export;
-/// # use starknet_replay::ReplayStatistics;
+/// # use starknet_replay::profiler::replay_statistics::ReplayStatistics;
 /// let mut replay_statistics = ReplayStatistics::default();
 /// replay_statistics.update(&"store_temp".to_string(), 367);
 /// replay_statistics.update(&"enum_match".to_string(), 895);
@@ -306,6 +307,7 @@ mod tests {
         assert_eq!(height, expected_height);
     }
 
+    // Ignored because there is no assert.
     #[ignore]
     #[test]
     fn test_generate_histogram() {

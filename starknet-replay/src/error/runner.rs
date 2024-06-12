@@ -6,35 +6,36 @@ use std::num::TryFromIntError;
 use pathfinder_executor::TransactionExecutionError;
 use thiserror::Error;
 
+use crate::block_number::BlockNumber;
 use crate::error::DatabaseError;
 
 #[derive(Debug, Error)]
 pub enum Error {
     /// `PathfinderExecutor` is for errors reported by the crate
-    /// `pathfinder_executor`.
+    /// [`pathfinder_executor`].
     #[error(transparent)]
     PathfinderExecutor(#[from] TransactionExecutionError),
 
     /// `GenerateReplayWork` is used to encapsulate errors of type
-    /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::generate_replay_work`.
+    /// [`anyhow::Error`] which are originating from the function
+    /// [`crate::runner::generate_replay_work`].
     #[error(transparent)]
     GenerateReplayWork(anyhow::Error),
 
-    /// `ReplayBlocks` is used to encapsulate errors of type
-    /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::replay_blocks`.
+    /// `ReplayBlocks` is used to encapsulate errors of type [`anyhow::Error`]
+    /// which are originating from the function
+    /// [`crate::runner::generate_replay_work`].
     #[error(transparent)]
     ReplayBlocks(anyhow::Error),
 
-    /// `ExecuteBlock` is used to encapsulate errors of type
-    /// `anyhow::Error` which are originating from the
-    /// function `starknet_replay::execute_block`.
+    /// `ExecuteBlock` is used to encapsulate errors of type [`anyhow::Error`]
+    /// which are originating from the function
+    /// [`crate::runner::generate_replay_work`].
     #[error(transparent)]
     ExecuteBlock(anyhow::Error),
 
-    /// `DatabaseAccess` is used to convert from `DatabaseError` into
-    /// `RunnerError` when database functions are called in the module `runner`.
+    /// `DatabaseAccess` is used to report [`crate::error::DatabaseError`] when
+    /// database functions are called in the module [`crate::runner`].
     #[error(transparent)]
     DatabaseAccess(#[from] DatabaseError),
 
@@ -45,21 +46,19 @@ pub enum Error {
         "Most recent block found in the databse is {last_block}. Exiting because less than \
          start_block {start_block}"
     )]
-    InsufficientBlocks { last_block: u64, start_block: u64 },
+    InsufficientBlocks {
+        last_block: BlockNumber,
+        start_block: BlockNumber,
+    },
 
     /// `CastError` variant is triggered when casting from `u64` to `usize`.
     #[error(transparent)]
     CastError(#[from] TryFromIntError),
 
     /// `BlockNumberNotValid` variant is triggered when constructing a new
-    /// `pathfinder_common::BlockNumber` returns `None`.
+    /// [`crate::block_number::BlockNumber`] returns `None`.
     #[error("Block number {block_number} doesn't fit in i64 type.")]
     BlockNumberNotValid { block_number: u64 },
-
-    /// `BlockNotFound` variant is returned when the block requested from the
-    /// Pathfinder database isn't found.
-    #[error("Block number {block_number} not found in database.")]
-    BlockNotFound { block_number: u64 },
 
     /// The `Unknown` variant is for any other uncategorised error.
     #[error("Unknown Error during block replay: {0:?}")]

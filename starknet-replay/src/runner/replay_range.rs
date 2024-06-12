@@ -1,23 +1,23 @@
-//! This module contains the implementation of `ReplayRange` to keep track of
+//! This module contains the implementation of [`ReplayRange`] to keep track of
 //! the range of blocks to be replayed. This struct also ensures to the user
 //! that starting block is not greater than end block.
 
+use crate::block_number::BlockNumber;
 use crate::error::RunnerError;
 
-/// `ReplayRange` contains the block range that is replayed by
-/// `starknet-replay`. The fields are not public to ensure no tampering after
-/// the struct is initialised.
+/// [`ReplayRange`] contains the block range that is replayed. The fields are
+/// not public to ensure no tampering after the struct is initialised.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ReplayRange {
     /// The first block to replay.
-    start_block: u64,
+    start_block: BlockNumber,
 
     /// The last block to replay (inclusive).
-    end_block: u64,
+    end_block: BlockNumber,
 }
 
 impl ReplayRange {
-    /// Constructs a new `ReplayRange` object.
+    /// Constructs a new [`ReplayRange`] object.
     ///
     /// The constructor checks that `start_block` is not greater than
     /// `end_block`.
@@ -38,20 +38,20 @@ impl ReplayRange {
         }
 
         Ok(Self {
-            start_block,
-            end_block,
+            start_block: BlockNumber::new(start_block),
+            end_block: BlockNumber::new(start_block),
         })
     }
 
-    /// Get `start_block` field of `ReplayRange`.
+    /// Get `start_block` field of [`ReplayRange`].
     #[must_use]
-    pub fn get_start_block(&self) -> u64 {
+    pub fn get_start_block(&self) -> BlockNumber {
         self.start_block
     }
 
-    /// Get `end_block` field of `ReplayRange`.
+    /// Get `end_block` field of [`ReplayRange`].
     #[must_use]
-    pub fn get_end_block(&self) -> u64 {
+    pub fn get_end_block(&self) -> BlockNumber {
         self.end_block
     }
 }
