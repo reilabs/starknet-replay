@@ -2,10 +2,14 @@
 
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 pub mod pathfinder;
 
 /// `BlockNumber` is represented as a `u64` integer.
-#[derive(Copy, Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Copy, Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
 pub struct BlockNumber(u64);
 impl BlockNumber {
     /// Creates a new `BlockNumber`.

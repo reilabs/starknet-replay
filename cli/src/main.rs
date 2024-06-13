@@ -8,7 +8,7 @@
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
 use std::path::PathBuf;
-use std::process;
+use std::{fs, process};
 
 use anyhow::bail;
 use clap::Parser;
@@ -20,44 +20,16 @@ use starknet_replay::runner::replay_range::ReplayRange;
 use starknet_replay::runner::run_replay;
 use starknet_replay::storage::pathfinder::PathfinderStorage;
 
+use crate::args::Args;
+
+mod args;
+
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
 // performance by using jemalloc (compared to the Linux glibc allocator).
 // TODO: review in other operating systems. Issue #21
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
-#[derive(Clone, Parser, Debug)]
-struct Args {
-    /// The path of the Pathfinder database file.
-    #[arg(long)]
-    db_path: PathBuf,
-
-    /// The starting block to replay transactions.
-    #[arg(long)]
-    start_block: u64,
-
-    /// The final block (included) to stop replaying transactions. It is
-    /// reduced if bigger than the biggest block in the database.
-    #[arg(long)]
-    end_block: u64,
-
-    /// The filename of the histogram SVG image.
-    ///
-    /// If `None`, histogram generation is skipped.
-    #[arg(long)]
-    svg_out: Option<PathBuf>,
-
-    /// The filename to output the raw libfunc usage statistics.
-    ///
-    /// If `None`, output file is skipped.
-    #[arg(long)]
-    txt_out: Option<PathBuf>,
-
-    /// Set to overwrite `svg_out` and/or `txt_out` if it already exists.
-    #[arg(long)]
-    overwrite: bool,
-}
 
 fn main() {
     tracing_subscriber::fmt()
@@ -77,7 +49,9 @@ fn main() {
     }
 }
 
-/// Returns an error if the file exists already and can't be overwritten,
+/// Returns an error if the file exists already and can't be overwritten.
+///
+/// If the file exists and it can be overwritten, it is deleted.
 ///
 /// # Arguments
 ///
@@ -85,12 +59,15 @@ fn main() {
 /// - `overwrite`: If `true`, the file can be overwritten.
 fn check_file(path: &Option<PathBuf>, overwrite: bool) -> anyhow::Result<()> {
     if let Some(filename) = path {
-        if filename.exists() && !overwrite {
-            let filename = filename.as_path().display();
-            bail!(
-                "The file {0:?} exists already. To ignore it, pass the flag --overwrite.",
-                filename
-            )
+        if filename.exists() {
+            if !overwrite {
+                let filename = filename.as_path().display();
+                bail!(
+                    "The file {0:?} exists already. To ignore it, pass the flag --overwrite.",
+                    filename
+                )
+            }
+            fs::remove_file(filename)?;
         }
     }
     Ok(())
@@ -118,10 +95,12 @@ fn run(args: Args) -> anyhow::Result<()> {
     let end_block = args.end_block;
     let svg_path = args.svg_out;
     let txt_out = args.txt_out;
+    let trace_out = args.trace_out;
     let overwrite = args.overwrite;
 
     check_file(&svg_path, overwrite)?;
     check_file(&txt_out, overwrite)?;
+    check_file(&trace_out, overwrite)?;
 
     let storage = PathfinderStorage::new(database_path)?;
 
@@ -130,7 +109,7 @@ fn run(args: Args) -> anyhow::Result<()> {
     tracing::info!(%start_block, %end_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let visited_pcs = run_replay(&replay_range, &storage.clone())?;
+    let visited_pcs = run_replay(&replay_range, &trace_out, &storage.clone())?;
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
 

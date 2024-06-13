@@ -45,7 +45,8 @@ fn test_replay_blocks() {
     let replay_block = ReplayBlock::new(header, transactions, receipts).unwrap();
     replay_work.push(replay_block);
 
-    let visited_pcs = replay_blocks(&storage.clone(), &replay_work).unwrap();
+    let trace_out = None;
+    let visited_pcs = replay_blocks(&storage.clone(), &trace_out, &replay_work).unwrap();
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage).unwrap();
 

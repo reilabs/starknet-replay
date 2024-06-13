@@ -6,7 +6,6 @@
 // the type in this case.
 #![allow(clippy::module_name_repetitions)]
 
-use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 
@@ -21,19 +20,18 @@ use pathfinder_common::consts::{
 use pathfinder_common::receipt::Receipt;
 use pathfinder_common::transaction::Transaction as StarknetTransaction;
 use pathfinder_common::{BlockHeader, BlockNumber as PathfinderBlockNumber, ChainId, ClassHash};
-use pathfinder_executor::types::TransactionTrace;
+use pathfinder_executor::types::TransactionSimulation;
 use pathfinder_executor::{ExecutionState, IntoFelt};
 use pathfinder_rpc::compose_executor_transaction;
 use pathfinder_rpc::v02::types::ContractClass;
 use pathfinder_storage::{BlockId, JournalMode, Storage};
 use rayon::current_num_threads;
-use starknet_api::core::ClassHash as StarknetClassHash;
 use starknet_api::hash::StarkFelt;
 
 use crate::block_number::BlockNumber;
 use crate::error::{DatabaseError, RunnerError};
 use crate::runner::replay_block::ReplayBlock;
-use crate::runner::replay_class_hash::{ReplayClassHash, VisitedPcs};
+use crate::runner::replay_class_hash::ReplayClassHash;
 use crate::storage::Storage as ReplayStorage;
 
 /// Implements the trait [`crate::storage::Storage`] to interact with
@@ -83,29 +81,6 @@ impl PathfinderStorage {
     #[must_use]
     pub fn get(&self) -> &Storage {
         &self.storage
-    }
-
-    /// Returns the hashmap of visited program counters for the input `trace`.
-    ///
-    /// The result of `get_visited_program_counters` is a hashmap where the key
-    /// is the [`StarknetClassHash`] and the value is the Vector of visited
-    /// program counters for each [`StarknetClassHash`] execution in `trace`.
-    ///
-    /// If `trace` is not an Invoke transaction, the function returns None
-    /// because no libfuncs have been called during the transaction
-    /// execution.
-    ///
-    /// # Arguments
-    ///
-    /// - `trace`: the [`pathfinder_executor::types::TransactionTrace`] to
-    ///   extract the visited program counters from.
-    fn get_visited_program_counters(
-        trace: &TransactionTrace,
-    ) -> Option<&HashMap<StarknetClassHash, Vec<Vec<usize>>>> {
-        match trace {
-            TransactionTrace::Invoke(tx) => Some(&tx.visited_pcs),
-            _ => None,
-        }
     }
 }
 impl ReplayStorage for PathfinderStorage {
@@ -233,7 +208,7 @@ impl ReplayStorage for PathfinderStorage {
         Ok((transactions, receipts))
     }
 
-    fn execute_block(&self, work: &ReplayBlock) -> Result<VisitedPcs, RunnerError> {
+    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionSimulation>, RunnerError> {
         let chain_id = self.get_chain_id()?;
 
         let mut db = self.get().connection().map_err(RunnerError::ExecuteBlock)?;
@@ -261,22 +236,13 @@ impl ReplayStorage for PathfinderStorage {
             error
         })?;
 
-        let mut cumulative_visited_pcs = VisitedPcs::default();
-        for simulation in &simulations {
-            let Some(visited_pcs) =
-                PathfinderStorage::get_visited_program_counters(&simulation.trace)
-            else {
-                continue;
-            };
-            cumulative_visited_pcs.extend(visited_pcs.iter().map(|(k, v)| {
-                let replay_class_hash = ReplayClassHash {
-                    block_number: work.header.number.into(),
-                    class_hash: *k,
-                };
-                let pcs = v.clone();
-                (replay_class_hash, pcs)
-            }));
-        }
-        Ok(cumulative_visited_pcs)
+        Ok(simulations)
+        // Ok(simulations
+        //     .into_iter()
+        //     .map(|t| {
+        //         let block_number: BlockNumber = work.header.number.into();
+        //         TransactionTrace::new(block_number, t.trace)
+        //     })
+        //     .collect())
     }
 }
