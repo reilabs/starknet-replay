@@ -237,12 +237,5 @@ impl ReplayStorage for PathfinderStorage {
         })?;
 
         Ok(simulations)
-        // Ok(simulations
-        //     .into_iter()
-        //     .map(|t| {
-        //         let block_number: BlockNumber = work.header.number.into();
-        //         TransactionTrace::new(block_number, t.trace)
-        //     })
-        //     .collect())
     }
 }
