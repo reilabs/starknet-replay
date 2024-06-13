@@ -52,8 +52,8 @@ histogram in the file named `"histogram.svg"`.
 ## Limitations
 
 - Libfunc frequency results haven't been checked yet
-- Replay time and analysis takes about 60s per transaction. It still needs to be
-  optimised.
+- Log of transaction traces to JSON requires a lot of memory allocation. It
+  still needs to be optimised.
 
 ## Requirements
 
