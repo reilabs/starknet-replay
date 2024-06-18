@@ -4,9 +4,11 @@
 use cairo_lang_runner::profiling::{ProfilingInfoProcessor, ProfilingInfoProcessorParams};
 use cairo_lang_sierra::program::Program;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
+use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::Itertools;
 use pathfinder_rpc::v02::types::{ContractClass, SierraContractClass};
+use smol_str::SmolStr;
 
 use crate::profiler::replace_ids::replace_sierra_ids_in_program;
 use crate::profiler::replay_statistics::ReplayStatistics;
@@ -64,6 +66,26 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
     }
 }
 
+pub fn process_visited_pcs(
+    pcs: &[usize],
+    sierra_program: &Program,
+) -> Result<OrderedHashMap<SmolStr, usize>, ProfilerError> {
+    let runner = SierraProfiler::new(sierra_program.clone())?;
+    let raw_profiling_info = runner.collect_profiling_info(pcs)?;
+
+    let profiling_info_processor =
+        ProfilingInfoProcessor::new(None, runner.sierra_program, UnorderedHashMap::default());
+
+    let profiling_info_processor_params = get_profiling_info_processor_params();
+    let profiling_info =
+        profiling_info_processor.process_ex(&raw_profiling_info, &profiling_info_processor_params);
+    let Some(concrete_libfunc_weights) = profiling_info.libfunc_weights.concrete_libfunc_weights
+    else {
+        return Ok(OrderedHashMap::default());
+    };
+    Ok(concrete_libfunc_weights)
+}
+
 /// Extracts the frequency of libfuncs from visited program counters.
 ///
 /// The process to extract the frequency of libfuncs called is:
@@ -99,25 +121,8 @@ pub fn extract_libfuncs_weight(
             continue;
         };
 
-        let runner = SierraProfiler::new(sierra_program.clone())?;
-
         for pcs in all_pcs {
-            let raw_profiling_info = runner.collect_profiling_info(pcs.as_slice())?;
-
-            let profiling_info_processor = ProfilingInfoProcessor::new(
-                None,
-                sierra_program.clone(),
-                UnorderedHashMap::default(),
-            );
-
-            let profiling_info_processor_params = get_profiling_info_processor_params();
-            let profiling_info = profiling_info_processor
-                .process_ex(&raw_profiling_info, &profiling_info_processor_params);
-            let Some(concrete_libfunc_weights) =
-                profiling_info.libfunc_weights.concrete_libfunc_weights
-            else {
-                continue;
-            };
+            let concrete_libfunc_weights = process_visited_pcs(pcs.as_slice(), &sierra_program)?;
             local_cumulative_libfuncs_weight =
                 local_cumulative_libfuncs_weight.add_statistics(&concrete_libfunc_weights);
         }
@@ -186,5 +191,42 @@ mod tests {
             });
 
         assert_eq!(sierra_program_test, sierra_program);
+    }
+
+    #[test]
+    fn test_process_visited_pcs() {
+        let pcs: Vec<usize> = vec![
+            1, 8, 10, 11, 13, 14, 15, 156, 157, 161, 163, 164, 166, 167, 175, 176, 177, 179, 180,
+            181, 263, 281, 282, 284, 285, 287, 289, 291, 292, 300, 183, 185, 186, 187, 188, 190,
+            191, 17, 19, 20, 21, 22, 156, 157, 161, 163, 164, 166, 167, 175, 176, 177, 179, 180,
+            181, 263, 281, 282, 284, 285, 287, 289, 291, 292, 300, 183, 185, 186, 187, 188, 190,
+            191, 24, 26, 27, 29, 31, 50, 325, 52, 54, 55, 64, 66, 67, 69, 70, 71, 212, 220, 221,
+            223, 224, 226, 228, 229, 236, 238, 301, 303, 305, 307, 309, 310, 240, 242, 243, 245,
+            247, 248, 73, 75, 77, 78, 79, 80, 255, 256, 257, 258, 320, 321, 322, 324, 260, 261,
+            262, 82, 83, 84, 85, 87, 88, 89,
+        ];
+
+        let sierra_program_json_file = "/test_data/test_process_visited_pcs.json";
+        let sierra_program_json = read_test_file(sierra_program_json_file)
+            .unwrap_or_else(|_| panic!("Unable to read file {sierra_program_json_file}"));
+        let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
+            .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_json_file} to json"));
+        let contract_class: SierraContractClass =
+            serde_json::from_value::<SierraContractClass>(sierra_program_json).unwrap_or_else(
+                |_| panic!("Unable to parse {sierra_program_json_file} to SierraContractClass"),
+            );
+        let sierra_program = get_sierra_program_from_class_definition(&contract_class)
+            .unwrap_or_else(|_| {
+                panic!("Unable to create Program {sierra_program_json_file} to SierraContractClass")
+            });
+
+        let expected_total_calls = 173;
+        //assert_eq!(pcs.len(), expected_total_calls);
+
+        let called_libfuncs = process_visited_pcs(pcs.as_slice(), &sierra_program).unwrap();
+        println!("{:#?}", called_libfuncs);
+
+        let total_calls: usize = called_libfuncs.values().sum();
+        assert_eq!(total_calls, expected_total_calls);
     }
 }

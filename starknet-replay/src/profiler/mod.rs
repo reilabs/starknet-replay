@@ -164,7 +164,8 @@ impl SierraProfiler {
     /// - Sierra statement not found.
     // TODO: To be refactored. Issue #5.
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> Result<ProfilingInfo, ProfilerError> {
-        let sierra_len = self.casm_program.debug_info.sierra_statement_info.len();
+        let sierra_len = self.casm_program.debug_info.sierra_statement_info.len() - 1;
+        println!("sierra_len {}", sierra_len);
         let bytecode_len = self
             .casm_program
             .debug_info
@@ -210,14 +211,18 @@ impl SierraProfiler {
         // program by the runner). The header is not counted, and the
         // footer is, but then the relevant entry is removed.
         let mut sierra_statement_weights = UnorderedHashMap::default();
+        println!("real_pc_0 {}", real_pc_0);
+        println!("bytecode_len {}", bytecode_len);
         for step in pcs {
             // Skip the header.
             if *step < real_pc_0 {
+                println!("Skipping Header {:}", step);
                 continue;
             }
             let real_pc = step - real_pc_0;
             // Skip the footer.
-            if real_pc == bytecode_len {
+            if real_pc >= bytecode_len {
+                println!("Skipping Footer {:}", step);
                 continue;
             }
 
@@ -263,10 +268,10 @@ impl SierraProfiler {
                     if function_stack_depth <= MAX_STACK_TRACE_DEPTH_DEFAULT {
                         // The current stack trace, including the current
                         // function.
-                        let cur_stack: Vec<_> =
-                            chain!(function_stack.iter().map(|f| f.0), [user_function_idx])
-                                .collect();
-                        *stack_trace_weights.entry(cur_stack).or_insert(0) += cur_weight;
+                        // let cur_stack: Vec<_> =
+                        //     chain!(function_stack.iter().map(|f| f.0), [user_function_idx])
+                        //         .collect();
+                        //*stack_trace_weights.entry(cur_stack).or_insert(0) += cur_weight;
 
                         let Some(popped) = function_stack.pop() else {
                             // End of the program. Not valid for Starknet
