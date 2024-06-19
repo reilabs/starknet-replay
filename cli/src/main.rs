@@ -24,13 +24,6 @@ use crate::args::Args;
 
 mod args;
 
-// The Cairo VM allocates felts on the stack, so during execution it's making
-// a huge number of allocations. We get roughly two times better execution
-// performance by using jemalloc (compared to the Linux glibc allocator).
-// TODO: review in other operating systems. Issue #21
-#[global_allocator]
-static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
 fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
