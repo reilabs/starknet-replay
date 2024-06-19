@@ -39,7 +39,7 @@ impl ReplayRange {
 
         Ok(Self {
             start_block: BlockNumber::new(start_block),
-            end_block: BlockNumber::new(start_block),
+            end_block: BlockNumber::new(end_block),
         })
     }
 
@@ -53,5 +53,31 @@ impl ReplayRange {
     #[must_use]
     pub fn get_end_block(&self) -> BlockNumber {
         self.end_block
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_replay_range() {
+        let start_block: u64 = 10;
+        let end_block: u64 = 20;
+        let replay_range = ReplayRange::new(start_block, end_block).unwrap();
+
+        assert_eq!(
+            replay_range.get_start_block(),
+            BlockNumber::new(start_block)
+        );
+        assert_eq!(replay_range.get_end_block(), BlockNumber::new(end_block));
+    }
+
+    #[test]
+    #[should_panic(expected = "Exiting because end_block must be greater or equal to start_block.")]
+    fn test_replay_range_panic() {
+        let start_block: u64 = 20;
+        let end_block: u64 = 19;
+        ReplayRange::new(start_block, end_block).unwrap();
     }
 }
