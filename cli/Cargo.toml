@@ -15,7 +15,11 @@ publish = false
 [dependencies]
 starknet-replay = { path = "../starknet-replay" }
 clap = { version = "4.5.3", features = ["derive"] }
-jemallocator = "0.5.4"
+# The Cairo VM allocates felts on the stack, so during execution it's making
+# a huge number of allocations. We get roughly two times better execution
+# performance by using jemalloc (compared to the Linux glibc allocator).
+# Disabled for other operating systems.
+jemallocator-global = { version = "0.3.2", features = ["force_global_jemalloc"] }
 tracing-subscriber = { version = "0.3.17", features = [
     "env-filter",
     "time",
