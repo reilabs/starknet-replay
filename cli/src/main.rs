@@ -111,20 +111,22 @@ fn run(args: Args) -> anyhow::Result<()> {
 
     let visited_pcs = run_replay(&replay_range, &trace_out, &storage.clone())?;
 
-    let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
-
     let elapsed = start_time.elapsed();
     tracing::info!(?elapsed, "Finished");
 
-    if let Some(filename) = txt_out {
-        write_to_file(&filename, &libfunc_stats)?;
-    }
+    if txt_out.is_some() || svg_path.is_some() {
+        let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage)?;
 
-    if let Some(filename) = svg_path {
-        let title =
-            format!("Filtered libfuncs usage from block {start_block} to block {end_block}");
-        let libfunc_stats = libfunc_stats.filter_most_frequent();
-        export_histogram(&filename, title.as_str(), &libfunc_stats)?;
+        if let Some(filename) = txt_out {
+            write_to_file(&filename, &libfunc_stats)?;
+        }
+
+        if let Some(filename) = svg_path {
+            let title =
+                format!("Filtered libfuncs usage from block {start_block} to block {end_block}");
+            let libfunc_stats = libfunc_stats.filter_most_frequent();
+            export_histogram(&filename, title.as_str(), &libfunc_stats)?;
+        }
     }
 
     Ok(())
