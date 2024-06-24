@@ -1,25 +1,27 @@
 //! The module runner contains the code to replay transactions and extract the
 //! sequence of visited program counters from each transaction replayed.
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 
-use pathfinder_executor::types::{TransactionSimulation, TransactionTrace};
+use blockifier::state::cached_state::CachedState;
+use blockifier::state::state_api::StateReader;
+use blockifier::transaction::objects::TransactionExecutionInfo;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use starknet_api::core::ClassHash as StarknetClassHash;
 
 use self::replay_class_hash::ReplayClassHash;
 use self::report::write_to_file;
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::VisitedPcs;
 use crate::runner::replay_range::ReplayRange;
+use crate::runner::replay_state_reader::ReplayStateReader;
 use crate::storage::Storage;
 use crate::{ReplayBlock, RunnerError};
 
 pub mod replay_block;
 pub mod replay_class_hash;
 pub mod replay_range;
+pub mod replay_state_reader;
 pub mod report;
 
 /// Replays transactions as indicated by `replay_range` and extracts the list of
@@ -113,30 +115,6 @@ where
     Ok(replay_blocks)
 }
 
-/// Returns the hashmap of visited program counters for the input `trace`.
-///
-/// The result of `get_visited_program_counters` is a hashmap where the key
-/// is the [`StarknetClassHash`] and the value is the Vector of visited
-/// program counters for each [`StarknetClassHash`] execution in `trace`.
-///
-/// If `trace` is not an Invoke transaction, the function returns None
-/// because no libfuncs have been called during the transaction
-/// execution.
-///
-/// # Arguments
-///
-/// - `trace`: the [`pathfinder_executor::types::TransactionTrace`] to extract
-///   the visited program counters from.
-#[must_use]
-pub fn get_visited_program_counters(
-    trace: TransactionTrace,
-) -> Option<HashMap<StarknetClassHash, Vec<Vec<usize>>>> {
-    match trace {
-        TransactionTrace::Invoke(tx) => Some(tx.visited_pcs),
-        _ => None,
-    }
-}
-
 /// Generated the [`VisitedPcs`] from the list of transaction traces.
 ///
 /// # Arguments
@@ -146,15 +124,17 @@ pub fn get_visited_program_counters(
 /// - `block_number`: The block number where the transaction traces have been
 ///   appended.
 #[must_use]
-pub fn process_transaction_traces(
-    transaction_simulations: Vec<TransactionSimulation>,
+pub fn process_transaction_traces<S: StateReader>(
+    transaction_simulations: Vec<(TransactionExecutionInfo, &CachedState<S>)>,
     block_number: BlockNumber,
 ) -> VisitedPcs {
     let mut cumulative_visited_pcs = VisitedPcs::default();
     for simulation in transaction_simulations {
-        let Some(visited_pcs) = get_visited_program_counters(simulation.trace) else {
+        // TODO: this is a performance hit. Refactor to avoid cloning.
+        let visited_pcs = simulation.1.visited_pcs.clone();
+        if visited_pcs.is_empty() {
             continue;
-        };
+        }
 
         cumulative_visited_pcs.extend(visited_pcs.into_iter().map(|(class_hash, pcs)| {
             let replay_class_hash = ReplayClassHash {
@@ -196,17 +176,15 @@ where
         .try_for_each_with(
             (storage, trace_out, sender),
             |(storage, trace_out, sender), block| -> anyhow::Result<()> {
-                let block_transaction_traces = storage.execute_block(block)?;
-                let block_number = block.header.number;
+                let block_transaction_traces = storage.execute_block::<ReplayStateReader>(block)?;
+                let block_number = BlockNumber::new(block.header.block_number.0);
                 tracing::info!("Simulation completed block {block_number}");
                 if let Some(filename) = trace_out {
                     write_to_file(filename, &block_transaction_traces)?;
                 }
                 tracing::info!("Saved transaction trace block {block_number}");
-                let visited_pcs = process_transaction_traces(
-                    block_transaction_traces,
-                    block.header.number.into(),
-                );
+                let visited_pcs =
+                    process_transaction_traces(block_transaction_traces, block_number);
                 sender.send(visited_pcs)?;
                 Ok(())
             },

@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use starknet_api::core::ClassHash as StarknetClassHash;
 
 use crate::runner::BlockNumber;
@@ -9,9 +10,12 @@ use crate::runner::BlockNumber;
 /// [`ReplayClassHash`] combines [`StarknetClassHash`] with
 /// [`crate::block_number::BlockNumber`] in order to uniquely identify a
 /// Contract Class from the database.
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize,
+)]
 pub struct ReplayClassHash {
     /// The block number.
+    #[serde(rename = "block_id")]
     pub block_number: BlockNumber,
 
     /// The class hash.

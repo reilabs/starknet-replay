@@ -2,7 +2,9 @@ use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
-use pathfinder_executor::types::TransactionSimulation;
+use blockifier::state::cached_state::CachedState;
+use blockifier::state::state_api::StateReader;
+use blockifier::transaction::objects::TransactionExecutionInfo;
 
 use crate::error::RunnerError;
 
@@ -18,17 +20,17 @@ use crate::error::RunnerError;
 /// # Errors
 ///
 /// Returns [`Err`] if there is any error writing to `filename`.
-pub fn write_to_file(
+pub fn write_to_file<S: StateReader>(
     filename: &PathBuf,
-    traces: &Vec<TransactionSimulation>,
+    traces: &Vec<(TransactionExecutionInfo, &CachedState<S>)>,
 ) -> Result<(), RunnerError> {
     let output_file = OpenOptions::new()
         .append(true)
         .create(true)
         .open(filename)?;
     let mut f = BufWriter::new(output_file);
-    for trace in traces {
-        let output = serde_json::to_string(&trace.trace)?;
+    for (trace, _) in traces {
+        let output = serde_json::to_string(&trace)?;
         f.write_all(output.as_bytes())?;
     }
     Ok(())

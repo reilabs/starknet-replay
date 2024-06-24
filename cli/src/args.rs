@@ -4,12 +4,13 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use url::Url;
 
 #[derive(Clone, Parser, Debug)]
 pub struct Args {
     /// The path of the Pathfinder database file.
     #[arg(long)]
-    pub db_path: PathBuf,
+    pub rpc_url: Url,
 
     /// The starting block to replay transactions.
     #[arg(long)]

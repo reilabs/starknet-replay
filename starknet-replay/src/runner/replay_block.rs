@@ -1,8 +1,7 @@
 //! This module contains the definition of the struct [`ReplayBlock`].
 
-use pathfinder_common::receipt::Receipt;
-use pathfinder_common::transaction::Transaction as StarknetTransaction;
-use pathfinder_common::BlockHeader;
+use starknet_api::block::BlockHeader;
+use starknet_api::transaction::{Transaction, TransactionReceipt};
 
 use crate::error::RunnerError;
 
@@ -20,13 +19,13 @@ pub struct ReplayBlock {
     /// - there aren't missing transactions from block `header`
     // TODO: analyse if there is a workaround to enforce that transactions
     // aren't misplaced in the wrong block. Issue #22
-    pub transactions: Vec<StarknetTransaction>,
+    pub transactions: Vec<Transaction>,
 
     /// The list of receipts of `transactions`.
     ///
     /// The receipt of each transaction in the `transactions` vector is found
     /// at matching index in the `receipts` vector.
-    pub receipts: Vec<Receipt>,
+    pub receipts: Vec<TransactionReceipt>,
 }
 
 impl ReplayBlock {
@@ -49,8 +48,8 @@ impl ReplayBlock {
     /// have different length.
     pub fn new(
         header: BlockHeader,
-        transactions: Vec<StarknetTransaction>,
-        receipts: Vec<Receipt>,
+        transactions: Vec<Transaction>,
+        receipts: Vec<TransactionReceipt>,
     ) -> Result<ReplayBlock, RunnerError> {
         if transactions.len() != receipts.len() {
             return Err(RunnerError::Unknown(
@@ -59,6 +58,7 @@ impl ReplayBlock {
                     .to_string(),
             ));
         }
+
         Ok(Self {
             header,
             transactions,

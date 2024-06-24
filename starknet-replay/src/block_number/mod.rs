@@ -4,28 +4,28 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-pub mod pathfinder;
-
 /// `BlockNumber` is represented as a `u64` integer.
 #[derive(
     Copy, Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
 )]
-pub struct BlockNumber(u64);
+pub struct BlockNumber {
+    block_number: u64,
+}
 impl BlockNumber {
     /// Creates a new `BlockNumber`.
     #[must_use]
     pub fn new(block_number: u64) -> Self {
-        BlockNumber(block_number)
+        BlockNumber { block_number }
     }
 
     /// Returns the block number as `u64`.
     #[must_use]
     pub fn get(&self) -> u64 {
-        self.0
+        self.block_number
     }
 }
 impl fmt::Display for BlockNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.block_number)
     }
 }

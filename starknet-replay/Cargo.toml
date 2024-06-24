@@ -25,23 +25,32 @@ cairo-lang-sierra-generator = "2.6.0"
 # `starkware-libs/blockifier`. These changes are in the branch `extract_libfunc`
 # of Reilabs fork and need to be merged in main branch.
 # Hardcoding the commit hash for the time being.
-pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
-pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
-pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
-pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
+blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "fdb86caf85435cb42ae363c7b04b5620bc80c24a" }
+# pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
+# pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
+# pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
+# pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
 # `next-release-devel` because it contains the fix for bug #551 related to
 # anchoring of labels when rotated. Issue #26.
 plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f8989af20931dd9e7e1f204d5254de3a8053" }
+flate2 = "1.0.25"
 rayon = "1.8.0"
 starknet_api = "0.10.0"
+starknet = "0.5.0"
 serde = "1.0.192"
 serde_json = "1.0.105"
+serde_with = "3.0.0"
 smol_str = { version = "0.2.0", features = ["serde"] }
 thiserror = "1.0.61"
+jsonrpc = { version = "0.18.0", features = ["minreq_http"] }
+url = "2.5.2"
 anyhow.workspace = true
 tracing.workspace = true
 itertools.workspace = true
+
+[dependencies.minreq]
+features = ["https"]
 
 [dev-dependencies]
 indoc = "2.0.5"
