@@ -33,7 +33,8 @@
     clippy::all,
     clippy::cargo,
     clippy::pedantic,
-    clippy::missing_docs_in_private_items
+    clippy::missing_docs_in_private_items,
+    clippy::unwrap_used
 )]
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 

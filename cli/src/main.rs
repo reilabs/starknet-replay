@@ -4,7 +4,13 @@
 //! transactions within those blocks. This is only the CLI front-end. All the
 //! logic is contained in the library [`starknet_replay`].
 
-#![warn(clippy::all, clippy::cargo, clippy::pedantic)]
+#![warn(
+    clippy::all,
+    clippy::cargo,
+    clippy::pedantic,
+    clippy::missing_docs_in_private_items,
+    clippy::unwrap_used
+)]
 #![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
 
 use std::path::PathBuf;
@@ -18,7 +24,7 @@ use starknet_replay::profiler::analysis::extract_libfuncs_weight;
 use starknet_replay::profiler::report::write_to_file;
 use starknet_replay::runner::replay_range::ReplayRange;
 use starknet_replay::runner::run_replay;
-use starknet_replay::storage::pathfinder::PathfinderStorage;
+use starknet_replay::storage::rpc::RpcStorage;
 
 use crate::args::Args;
 
@@ -28,6 +34,7 @@ mod args;
 // a huge number of allocations. We get roughly two times better execution
 // performance by using jemalloc (compared to the Linux glibc allocator).
 // TODO: review in other operating systems. Issue #21
+/// Custom allocator for efficiency in Linux.
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
@@ -90,7 +97,7 @@ fn check_file(path: &Option<PathBuf>, overwrite: bool) -> anyhow::Result<()> {
 ///   replay.
 /// - Any error during execution of the replayer..
 fn run(args: Args) -> anyhow::Result<()> {
-    let database_path = args.db_path;
+    let rpc_url = args.rpc_url;
     let start_block = args.start_block;
     let end_block = args.end_block;
     let svg_path = args.svg_out;
@@ -102,14 +109,14 @@ fn run(args: Args) -> anyhow::Result<()> {
     check_file(&txt_out, overwrite)?;
     check_file(&trace_out, overwrite)?;
 
-    let storage = PathfinderStorage::new(database_path)?;
+    let storage = RpcStorage::new(rpc_url)?;
 
     let replay_range = ReplayRange::new(start_block, end_block)?;
 
     tracing::info!(%start_block, %end_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let visited_pcs = run_replay(&replay_range, &trace_out, &storage.clone())?;
+    let visited_pcs = run_replay(&replay_range, &trace_out, &storage)?;
 
     let elapsed = start_time.elapsed();
     tracing::info!(?elapsed, "Finished");

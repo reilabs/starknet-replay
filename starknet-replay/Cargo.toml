@@ -21,29 +21,38 @@ cairo-lang-compiler = "2.6.0"
 cairo-lang-sierra = "2.6.0"
 cairo-lang-utils = "2.6.0"
 cairo-lang-sierra-generator = "2.6.0"
-# Some changes are required to `eqlabs/pathfinder` and to
-# `starkware-libs/blockifier`. These changes are in the branch `extract_libfunc`
-# of Reilabs fork and need to be merged in main branch.
+# Some changes are required to `starkware-libs/blockifier`. These changes are
+# in the branch `extract_libfunc` of Reilabs fork and need to be merged
+# in main branch.
 # Hardcoding the commit hash for the time being.
-pathfinder-common =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
-pathfinder-executor =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
-pathfinder-rpc =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
-pathfinder-storage =  { git = "https://github.com/reilabs/pathfinder.git", rev = "fdeb5b0d1747d6396e5b0774140026a3b1beae2f" }
+blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "fdb86caf85435cb42ae363c7b04b5620bc80c24a" }
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
 # `next-release-devel` because it contains the fix for bug #551 related to
 # anchoring of labels when rotated. Issue #26.
 plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f8989af20931dd9e7e1f204d5254de3a8053" }
+flate2 = "1.0.25"
 rayon = "1.8.0"
 starknet_api = "0.10.0"
+starknet = "0.5.0"
 serde = "1.0.192"
 serde_json = "1.0.105"
+serde_with = "3.0.0"
 smol_str = { version = "0.2.0", features = ["serde"] }
 thiserror = "1.0.61"
+jsonrpc = { version = "0.18.0", features = ["minreq_http"] }
+url = "2.5.2"
+hex = "0.4.3"
+once_cell = "1.17.1"
 anyhow.workspace = true
 tracing.workspace = true
 itertools.workspace = true
+
+[dependencies.minreq]
+version = "2.11.2"
+features = ["https"]
 
 [dev-dependencies]
 indoc = "2.0.5"
 rand = "0.8.4"
 rand_chacha = "0.3.1"
+test-log = { version = "0.2.16", features = ["trace"] }

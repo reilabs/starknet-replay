@@ -4,12 +4,15 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use url::Url;
 
+/// This is the struct of the command line arguments accepted by
+/// `starknet-replay`.
 #[derive(Clone, Parser, Debug)]
 pub struct Args {
     /// The path of the Pathfinder database file.
     #[arg(long)]
-    pub db_path: PathBuf,
+    pub rpc_url: Url,
 
     /// The starting block to replay transactions.
     #[arg(long)]
@@ -38,7 +41,8 @@ pub struct Args {
     #[arg(long)]
     pub trace_out: Option<PathBuf>,
 
-    /// Set to overwrite `svg_out` and/or `txt_out` if it already exists.
+    /// Set to overwrite `svg_out`, `txt_out`, `trace_out` if they already
+    /// exists.
     #[arg(long)]
     pub overwrite: bool,
 }

@@ -28,7 +28,7 @@ In the future, this tool is likely to evolve to support:
 ## How to Use
 
 ```bash
-cargo run --release -- --db-path <PATHFINDER_DB> --start-block <BLOCK_NUM> --end-block <BLOCK_NUM>
+cargo run --release -- --rpc-url <STARKNET_JSONRPC_ENDPOINT> --start-block <BLOCK_NUM> --end-block <BLOCK_NUM>
 ```
 
 `PATHFINDER_DB` is the path of the Pathfinder sqlite database. The Pathfinder
@@ -42,7 +42,7 @@ This tool makes use of `tracing` library for log purposes. For this reason set
 ## Example
 
 ```bash
-cargo run -- --db-path ../pathfinder/mainnet.sqlite --start-block 632917 --end-block 632917 --svg-out "histogram.svg"
+cargo run --release -- --rpc-url https://starknet-mainnet.public.blastapi.io/rpc/v0_7 --start-block 632917 --end-block 632917 --svg-out "histogram.svg"
 ```
 
 The command above replays all transactions of block
