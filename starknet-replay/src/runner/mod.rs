@@ -26,7 +26,10 @@ pub mod report;
 /// # Arguments
 ///
 /// - `replay_range`: The range of blocks to be replayed.
-/// - `storage`: Connection with the Pathfinder database.
+/// - `trace_out`: The location to save the output trace of the replayed
+///   transactions.
+/// - `storage`: The object to query the starknet blockchain using the RPC
+///   protocol.
 ///
 /// # Errors
 ///
@@ -53,19 +56,20 @@ where
 
 /// Generates the list of transactions to be replayed.
 ///
-/// This function queries the Pathfinder database to get the list of
+/// This function queries the Starknet blockchain to get the list of
 /// transactions that need to be replayed.
 ///
 /// # Arguments
 ///
 /// - `replay_range`: The range of blocks to be replayed.
-/// - `storage`: Connection with the Pathfinder database.
+/// - `storage`: the object to query the starknet blockchain using the RPC
+///   protocol.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if:
 ///
-/// - There is an issue accessing the Pathfinder database.
+/// - There is an issue querying Starknet data.
 /// - The most recent block available in the database is less than the block to
 ///   start the replay.
 pub fn generate_replay_work<T>(
@@ -143,7 +147,8 @@ pub fn process_transaction_traces(
 ///
 /// # Arguments
 ///
-/// - `storage`: The connection with the Pathfinder database.
+/// - `storage`: The object to query the starknet blockchain using the RPC
+///   protocol.
 /// - `trace_out`: The output file of the transaction traces.
 /// - `replay_work`: The list of blocks to be replayed.
 ///

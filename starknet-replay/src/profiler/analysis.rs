@@ -74,16 +74,18 @@ fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
 ///
 /// The process to extract the frequency of libfuncs called is:
 /// 1- Get the vector of visited program counters
-/// 2- Query the pathfinder database to extract the Starknet contract from the
-/// class hash and block number.
-/// 3- Run the profiler over the list of visited program counters to determine
-/// which lines of the Sierra code have been executed and collect the results.
+/// 2- Query the RPC endpoint to extract the Starknet contract from the class
+/// hash and block number.
+/// 3- Run the profiler over the list of visited program
+/// counters to determine which lines of the Sierra code have been executed and
+/// collect the results.
 ///
 /// # Arguments
 ///
 /// - `visited_pcs`: The object that contains the list of visited program
 ///   counters for each transaction replayed.
-/// - `storage`: Connection with the Pathfinder database.
+/// - `storage`: The object to query the starknet blockchain using the RPC
+///   protocol.
 ///
 /// # Errors
 ///

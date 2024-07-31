@@ -62,6 +62,6 @@ pub enum Error {
     ClassInfoInvalid(#[from] ContractClassError),
 
     /// The `Unknown` variant is for any other uncategorised error.
-    #[error("Unknown Error communicating with Pathfinder database: {0:?}")]
+    #[error("Unknown Error: {0:?}")]
     Unknown(String),
 }

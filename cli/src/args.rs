@@ -10,7 +10,7 @@ use url::Url;
 /// `starknet-replay`.
 #[derive(Clone, Parser, Debug)]
 pub struct Args {
-    /// The path of the Pathfinder database file.
+    /// The url of the RPC node.
     #[arg(long)]
     pub rpc_url: Url,
 

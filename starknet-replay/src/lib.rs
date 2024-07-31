@@ -1,6 +1,5 @@
-//! The library `starknet-replay` replays transactions from the `pathfinder`
-//! sqlite database and collects statistics on the execution of those
-//! transactions.
+//! The library `starknet-replay` replays transactions from the Starknet
+//! blockchain and collects statistics on the execution of those transactions.
 //!
 //! At the current time, the library focuses on gathering usage
 //! statistics of the various library functions (libfuncs) in the
@@ -36,7 +35,7 @@
     clippy::missing_docs_in_private_items,
     clippy::unwrap_used
 )]
-#![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
+#![allow(clippy::multiple_crate_versions)] // Different libraries depend on different versions of the same library.
 
 use error::RunnerError;
 use runner::replay_block::ReplayBlock;

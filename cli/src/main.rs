@@ -11,7 +11,7 @@
     clippy::missing_docs_in_private_items,
     clippy::unwrap_used
 )]
-#![allow(clippy::multiple_crate_versions)] // Due to duplicate dependencies in pathfinder
+#![allow(clippy::multiple_crate_versions)] // Different libraries depend on different versions of the same library.
 
 use std::path::PathBuf;
 use std::{fs, process};
