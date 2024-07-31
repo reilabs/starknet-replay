@@ -47,10 +47,10 @@ pub enum Error {
         start_block: BlockNumber,
     },
 
-    /// `IntTooBig` variant is triggered when casting from `u64` to `usize`
-    /// returns an error.
+    /// `IntegerTooLarge` variant is triggered when casting from `u64` to
+    /// `usize` returns an error.
     #[error(transparent)]
-    IntTooBig(#[from] TryFromIntError),
+    IntegerTooLarge(#[from] TryFromIntError),
 
     /// `FileIO` variant is for errors reported when saving transaction traces
     /// to JSON file.
