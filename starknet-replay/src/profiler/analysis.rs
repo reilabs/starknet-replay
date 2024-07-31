@@ -171,8 +171,8 @@ mod tests {
             .unwrap_or_else(|_| panic!("Unable to read file {sierra_program_json_file}"));
         let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
             .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_json_file} to json"));
-        let contract_class: ContractClass =
-            serde_json::from_value::<ContractClass>(sierra_program_json).unwrap_or_else(|_| {
+        let contract_class: ContractClass = serde_json::from_value(sierra_program_json)
+            .unwrap_or_else(|_| {
                 panic!("Unable to parse {sierra_program_json_file} to SierraContractClass")
             });
         let sierra_program = get_sierra_program_from_class_definition(&contract_class)
@@ -186,10 +186,8 @@ mod tests {
         let sierra_program_test_json: serde_json::Value =
             serde_json::from_str(&sierra_program_test_json)
                 .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_test_file} to json"));
-        let sierra_program_test: Program =
-            serde_json::from_value::<Program>(sierra_program_test_json).unwrap_or_else(|_| {
-                panic!("Unable to parse {sierra_program_test_file} to Program")
-            });
+        let sierra_program_test: Program = serde_json::from_value(sierra_program_test_json)
+            .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_test_file} to Program"));
 
         assert_eq!(sierra_program_test, sierra_program);
     }
