@@ -129,8 +129,7 @@ pub fn process_transaction_traces(
 ) -> VisitedPcs {
     let mut cumulative_visited_pcs = VisitedPcs::default();
     for simulation in transaction_simulations {
-        // TODO: this is a performance hit. Refactor to avoid cloning.
-        let visited_pcs = simulation.1.clone();
+        let visited_pcs = simulation.1;
         if visited_pcs.is_empty() {
             continue;
         }
