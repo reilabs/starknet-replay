@@ -11,7 +11,7 @@ use crate::runner::BlockNumber;
 /// [`crate::block_number::BlockNumber`] in order to uniquely identify a
 /// Contract Class from the database.
 #[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize,
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub struct ReplayClassHash {
     /// The block number.
