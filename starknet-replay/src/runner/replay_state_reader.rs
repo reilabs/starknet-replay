@@ -28,7 +28,7 @@ impl ReplayStateReader<'_> {
     ///
     /// # Arguments
     ///
-    /// - `storage`: The reference object exposing RPC calls to query blockchain
+    /// - `storage`: The object exposing RPC calls to query the blockchain
     ///   state.
     /// - `block_number`: The block number at which state is read.
     pub fn new(storage: &RpcStorage, block_number: BlockNumber) -> ReplayStateReader<'_> {

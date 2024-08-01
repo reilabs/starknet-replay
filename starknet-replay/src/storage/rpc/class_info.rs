@@ -21,10 +21,9 @@ use crate::storage::Storage;
 ///
 /// # Arguments
 ///
-/// - `storage`: the struct which implements the trait
-///   [`crate::storage::Storage`] to query the Starknet blockchain.
-/// - `block_number`: the block number replayed.
-/// - `class_hash`: the class hash.
+/// - `storage`: The struct to query the Starknet blockchain.
+/// - `block_number`: The block number replayed.
+/// - `class_hash`: The class hash.
 ///
 /// # Errors
 ///
@@ -65,10 +64,9 @@ where
 ///
 /// # Arguments
 ///
-/// - `storage`: the struct which implements the trait
-///   [`crate::storage::Storage`] to query the Starknet blockchain.
-/// - `block_number`: the block number replayed.
-/// - `tx`: the transaction to replay.
+/// - `storage`: The struct to query the Starknet blockchain.
+/// - `block_number`: The block number replayed.
+/// - `tx`: The transaction to replay.
 ///
 /// # Errors
 ///
