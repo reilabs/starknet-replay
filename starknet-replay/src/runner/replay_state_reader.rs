@@ -1,6 +1,6 @@
 //! This module implements [`blockifier::state::state_api::StateReader`] for use
-//! in Starknet transactions replay. The calls to read the blockchain state rely
-//! on the Starknet RPC protocol.
+//! in Starknet transactions replay. The functions to read the blockchain state
+//! use the Starknet RPC protocol.
 
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::state::errors::StateError;
@@ -14,6 +14,8 @@ use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::ReplayClassHash;
 use crate::storage::rpc::{contract_class, RpcStorage};
 
+/// This structure is used by [`blockifier`] to access blockchain data during
+/// transaction replay.
 pub struct ReplayStateReader<'a> {
     /// The reference to [`crate::storage::rpc::RpcStorage`] to make RPC calls.
     storage: &'a RpcStorage,
