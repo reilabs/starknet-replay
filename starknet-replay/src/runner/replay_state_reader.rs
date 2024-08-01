@@ -1,5 +1,5 @@
 //! This module implements [`blockifier::state::state_api::StateReader`] for use
-//! in Starknet transactions replay. The functions to read the blockchain state
+//! in Starknet transaction replay. The functions to read the blockchain state
 //! use the Starknet RPC protocol.
 
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;

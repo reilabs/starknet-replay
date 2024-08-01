@@ -22,8 +22,8 @@ cairo-lang-sierra = "2.6.0"
 cairo-lang-utils = "2.6.0"
 cairo-lang-sierra-generator = "2.6.0"
 # Some changes are required to `starkware-libs/blockifier`. These changes are
-# in the branch `extract_libfunc` of Reilabs fork and need to be merged
-# in main branch.
+# in the branch `extract_libfunc` of Reilabs' fork and need to be merged
+# into the main branch.
 # Hardcoding the commit hash for the time being.
 blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "fdb86caf85435cb42ae363c7b04b5620bc80c24a" }
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
