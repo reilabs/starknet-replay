@@ -2,14 +2,13 @@
 //! and `starknet-replay`. Implementing this trait allows adding compatibility
 //! with a new `Starknet` node.
 
-use blockifier::transaction::objects::TransactionExecutionInfo;
 use starknet::core::types::ContractClass;
 use starknet_api::block::BlockHeader;
 use starknet_api::transaction::{Transaction, TransactionReceipt};
 
 use crate::block_number::BlockNumber;
 use crate::error::DatabaseError;
-use crate::runner::replay_class_hash::{ReplayClassHash, VisitedPcs};
+use crate::runner::replay_class_hash::{ReplayClassHash, TransactionOutput};
 use crate::{ReplayBlock, RunnerError};
 
 pub mod rpc;
@@ -77,8 +76,5 @@ pub trait Storage {
     ///
     /// Returns [`Err`] if any transaction fails execution or if there is any
     /// error communicating with the storage layer.
-    fn execute_block(
-        &self,
-        work: &ReplayBlock,
-    ) -> Result<Vec<(TransactionExecutionInfo, VisitedPcs)>, RunnerError>;
+    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionOutput>, RunnerError>;
 }

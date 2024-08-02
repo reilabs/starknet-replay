@@ -10,7 +10,6 @@ use blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair};
 use blockifier::context::ChainInfo;
 use blockifier::state::cached_state::{CachedState, GlobalContractCache};
 use blockifier::state::state_api::State;
-use blockifier::transaction::objects::TransactionExecutionInfo;
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
@@ -32,7 +31,7 @@ use url::Url;
 use crate::block_number::BlockNumber;
 use crate::error::{DatabaseError, RunnerError};
 use crate::runner::replay_block::ReplayBlock;
-use crate::runner::replay_class_hash::{ReplayClassHash, VisitedPcs};
+use crate::runner::replay_class_hash::{ReplayClassHash, TransactionOutput, VisitedPcs};
 use crate::runner::replay_state_reader::ReplayStateReader;
 use crate::storage::rpc::receipt::deserialize_receipt_json;
 use crate::storage::rpc::transaction::deserialize_transaction_json;
@@ -417,10 +416,7 @@ impl ReplayStorage for RpcStorage {
         Ok(transactions)
     }
 
-    fn execute_block(
-        &self,
-        work: &ReplayBlock,
-    ) -> Result<Vec<(TransactionExecutionInfo, VisitedPcs)>, RunnerError> {
+    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionOutput>, RunnerError> {
         let block_number = BlockNumber::new(work.header.block_number.0);
 
         let mut transactions: Vec<BlockifierTransaction> =

@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use blockifier::transaction::objects::TransactionExecutionInfo;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ClassHash as StarknetClassHash;
 
@@ -24,3 +25,7 @@ pub struct ReplayClassHash {
 /// The type [`VisitedPcs`] is a hashmap to store the visited program counters
 /// for each contract invocation during replay.
 pub type VisitedPcs = HashMap<ReplayClassHash, Vec<Vec<usize>>>;
+
+/// The type [`TransactionOutput`] contains the combination of transaction
+/// receipt and list of visited program counters.
+pub type TransactionOutput = (TransactionExecutionInfo, VisitedPcs);

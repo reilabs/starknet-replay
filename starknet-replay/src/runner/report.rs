@@ -2,9 +2,7 @@ use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
-use blockifier::transaction::objects::TransactionExecutionInfo;
-
-use super::replay_class_hash::VisitedPcs;
+use super::replay_class_hash::TransactionOutput;
 use crate::error::RunnerError;
 
 /// Writes transaction traces to JSON file.
@@ -21,7 +19,7 @@ use crate::error::RunnerError;
 /// Returns [`Err`] if there is any error writing to `filename`.
 pub fn write_to_file(
     filename: &PathBuf,
-    traces: &Vec<(TransactionExecutionInfo, VisitedPcs)>,
+    traces: &Vec<TransactionOutput>,
 ) -> Result<(), RunnerError> {
     let output_file = OpenOptions::new()
         .append(true)

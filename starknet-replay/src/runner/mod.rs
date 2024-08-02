@@ -4,9 +4,9 @@
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 
-use blockifier::transaction::objects::TransactionExecutionInfo;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
+use self::replay_class_hash::TransactionOutput;
 use self::report::write_to_file;
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::VisitedPcs;
@@ -121,12 +121,8 @@ where
 ///
 /// - `transaction_simulations`: The list of transaction traces from the
 ///   replayer.
-/// - `block_number`: The block number where the transaction traces have been
-///   appended.
 #[must_use]
-pub fn process_transaction_traces(
-    transaction_simulations: Vec<(TransactionExecutionInfo, VisitedPcs)>,
-) -> VisitedPcs {
+pub fn process_transaction_traces(transaction_simulations: Vec<TransactionOutput>) -> VisitedPcs {
     let mut cumulative_visited_pcs = VisitedPcs::default();
     for simulation in transaction_simulations {
         let visited_pcs = simulation.1;
