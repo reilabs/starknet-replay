@@ -4,9 +4,9 @@
 //! replay.
 
 use blockifier::execution::contract_class::ClassInfo;
-use starknet::core::types::ContractClass;
 use starknet_api::core::ClassHash;
 use starknet_api::transaction::{DeclareTransaction, Transaction};
+use starknet_core::types::ContractClass;
 
 use super::contract_class::decompress_sierra;
 use crate::block_number::BlockNumber;

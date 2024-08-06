@@ -10,14 +10,14 @@ use blockifier::execution::contract_class::{
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use flate2::bufread;
-use starknet::core::types::contract::legacy::{LegacyContractClass, LegacyProgram};
-use starknet::core::types::{CompressedLegacyContractClass, FlattenedSierraClass};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use starknet_core::types::contract::legacy::{LegacyContractClass, LegacyProgram};
+use starknet_core::types::{CompressedLegacyContractClass, FlattenedSierraClass};
 
 use crate::error::DatabaseError;
 use crate::storage::rpc::contract_class;
 
-/// This function converts [`starknet::core::types::FlattenedSierraClass`]
+/// This function converts [`starknet_core::types::FlattenedSierraClass`]
 /// into [`blockifier::execution::contract_class::ContractClass`].
 ///
 /// # Arguments
@@ -53,7 +53,7 @@ pub fn decompress_sierra(
 }
 
 /// This function converts
-/// [`starknet::core::types::CompressedLegacyContractClass`]
+/// [`starknet_core::types::CompressedLegacyContractClass`]
 /// into [`blockifier::execution::contract_class::ContractClass`].
 ///
 /// # Arguments

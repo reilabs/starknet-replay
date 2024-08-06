@@ -11,7 +11,7 @@
     clippy::missing_docs_in_private_items,
     clippy::unwrap_used
 )]
-#![allow(clippy::multiple_crate_versions)] // Different libraries depend on different versions of the same library.
+#![allow(clippy::multiple_crate_versions)] // Due to conflicts between dependencies of `starknet-crypto` and other crates.
 
 use std::path::PathBuf;
 use std::{fs, process};

@@ -9,8 +9,8 @@
 use std::{env, fs, io};
 
 use itertools::Itertools;
-use starknet::core::types::ContractClass;
 use starknet_api::core::ClassHash as StarknetClassHash;
+use starknet_core::types::ContractClass;
 use starknet_replay::block_number::BlockNumber;
 use starknet_replay::runner::replay_class_hash::ReplayClassHash;
 use starknet_replay::storage::rpc::RpcStorage;

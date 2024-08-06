@@ -18,7 +18,6 @@ use jsonrpc::{Client, Response};
 use once_cell::sync::Lazy;
 use serde_json::json;
 use serde_json::value::{to_raw_value, RawValue};
-use starknet::core::types::ContractClass;
 use starknet_api::block::{BlockHeader, StarknetVersion};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::data_availability::L1DataAvailabilityMode;
@@ -26,6 +25,7 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StorageKey;
 use starknet_api::transaction::{Transaction, TransactionReceipt};
 use starknet_api::{contract_address, patricia_key};
+use starknet_core::types::ContractClass;
 use url::Url;
 
 use crate::block_number::BlockNumber;
@@ -527,8 +527,8 @@ impl ReplayStorage for RpcStorage {
 #[cfg(test)]
 mod tests {
 
-    use starknet::core::types::FieldElement;
     use starknet_api::hash::StarkHash;
+    use starknet_core::types::FieldElement;
 
     use super::*;
 

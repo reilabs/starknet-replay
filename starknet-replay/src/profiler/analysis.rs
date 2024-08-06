@@ -6,7 +6,7 @@ use cairo_lang_sierra::program::Program;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::Itertools;
-use starknet::core::types::ContractClass;
+use starknet_core::types::ContractClass;
 
 use crate::profiler::replace_ids::replace_sierra_ids_in_program;
 use crate::profiler::replay_statistics::ReplayStatistics;
@@ -14,12 +14,12 @@ use crate::profiler::{ProfilerError, SierraProfiler};
 use crate::runner::replay_class_hash::VisitedPcs;
 use crate::storage::Storage;
 
-/// Converts transforms a [`starknet::core::types::ContractClass`] in Sierra
+/// Converts transforms a [`starknet_core::types::ContractClass`] in Sierra
 /// [`cairo_lang_sierra::program::Program`].
 ///
 /// # Arguments
 ///
-/// - `ctx`: The input [`starknet::core::types::ContractClass`]
+/// - `ctx`: The input [`starknet_core::types::ContractClass`]
 ///
 /// # Errors
 ///

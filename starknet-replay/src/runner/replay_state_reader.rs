@@ -5,10 +5,10 @@
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader, StateResult};
-use starknet::core::types::ContractClass as StarknetContractClass;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
+use starknet_core::types::ContractClass as StarknetContractClass;
 
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::ReplayClassHash;

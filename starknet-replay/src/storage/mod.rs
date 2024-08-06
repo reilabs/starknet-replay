@@ -2,9 +2,9 @@
 //! and `starknet-replay`. Implementing this trait allows adding compatibility
 //! with a new `Starknet` node.
 
-use starknet::core::types::ContractClass;
 use starknet_api::block::BlockHeader;
 use starknet_api::transaction::{Transaction, TransactionReceipt};
+use starknet_core::types::ContractClass;
 
 use crate::block_number::BlockNumber;
 use crate::error::DatabaseError;
@@ -23,13 +23,13 @@ pub trait Storage {
     /// Returns [`Err`] if the low level API with the storage returns an error.
     fn get_most_recent_block_number(&self) -> Result<BlockNumber, DatabaseError>;
 
-    /// Returns the [`starknet::core::types::ContractClass`] object of a
+    /// Returns the [`starknet_core::types::ContractClass`] object of a
     /// `class_hash`.
     ///
     /// # Arguments
     ///
     /// - `replay_class_hash`: The class hash of the
-    ///   [`starknet::core::types::ContractClass`] to return.
+    ///   [`starknet_core::types::ContractClass`] to return.
     ///
     /// # Errors
     ///

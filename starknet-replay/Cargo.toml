@@ -33,7 +33,7 @@ plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f89
 flate2 = "1.0.25"
 rayon = "1.8.0"
 starknet_api = "0.10.0"
-starknet = "0.5.0"
+starknet-core = "0.10.0"
 serde = "1.0.192"
 serde_json = "1.0.105"
 serde_with = "3.0.0"
