@@ -4,7 +4,6 @@
 #![allow(clippy::module_name_repetitions)] // Added because of `ClassInfo`
 
 use std::num::NonZeroU128;
-use std::path::Path;
 
 use blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair};
 use blockifier::context::ChainInfo;
@@ -46,17 +45,21 @@ pub mod transaction;
 /// older Starknet versions.
 /// This is for Starknet 0.13.1.0
 static VERSIONED_CONSTANTS_13_0: Lazy<VersionedConstants> = Lazy::new(|| {
-    VersionedConstants::try_from(Path::new(
-        "../../../resources/versioned_constants_13_0.json",
-    ))
+    // I am not using relative path to avoid IoError 36 "File name too long"
+    serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/resources/versioned_constants_13_0.json"
+    )))
     .expect("Versioned constants JSON file is malformed")
 });
 
 /// This is for Starknet 0.13.1.1
 static VERSIONED_CONSTANTS_13_1: Lazy<VersionedConstants> = Lazy::new(|| {
-    VersionedConstants::try_from(Path::new(
-        "../../../resources/versioned_constants_13_1.json",
-    ))
+    // I am not using relative path to avoid IoError 36 "File name too long"
+    serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/resources/versioned_constants_13_1.json"
+    )))
     .expect("Versioned constants JSON file is malformed")
 });
 
@@ -673,5 +676,16 @@ mod tests {
         let chain_id = rpc_storage.starknet_get_chain_id().unwrap();
         assert_eq!(chain_id, main_chain);
         assert_eq!(chain_id.as_hex(), main_chain.as_hex());
+    }
+
+    #[test]
+    fn test_versioned_constants() {
+        let starknet_version = StarknetVersion("0.13.0.0".to_string());
+        let constants = RpcStorage::versioned_constants(&starknet_version);
+        assert_eq!(constants.invoke_tx_max_n_steps, 3_000_000);
+
+        let starknet_version = StarknetVersion("0.13.1.0".to_string());
+        let constants = RpcStorage::versioned_constants(&starknet_version);
+        assert_eq!(constants.invoke_tx_max_n_steps, 4_000_000);
     }
 }
