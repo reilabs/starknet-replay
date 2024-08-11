@@ -33,8 +33,9 @@ mod args;
 // The Cairo VM allocates felts on the stack, so during execution it's making
 // a huge number of allocations. We get roughly two times better execution
 // performance by using jemalloc (compared to the Linux glibc allocator).
-// TODO: review in other operating systems. Issue #21
-/// Custom allocator for efficiency in Linux.
+/// Custom allocator for efficiency, `msvc` is excluded because the library
+/// can't be compiled natively on Windows machines.
+#[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
