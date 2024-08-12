@@ -56,7 +56,7 @@ impl DebugReplacer {
             .libfunc_declarations
             .iter()
             .find(|f| f.id.id == id.id)
-            .unwrap()
+            .expect("ConcreteLibfuncId should be found in libfunc_declarations.")
             .clone()
             .long_id
     }
@@ -68,7 +68,7 @@ impl DebugReplacer {
             .type_declarations
             .iter()
             .find(|f| f.id.id == id.id)
-            .unwrap()
+            .expect("ConcreteTypeId should be found in type_declarations.")
             .clone();
         SierraGeneratorTypeLongId::Regular(Arc::new(concrete_type.long_id))
     }

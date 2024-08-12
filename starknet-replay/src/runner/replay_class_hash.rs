@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 
+use blockifier::transaction::objects::TransactionExecutionInfo;
+use serde::{Deserialize, Serialize};
 use starknet_api::core::ClassHash as StarknetClassHash;
 
 use crate::runner::BlockNumber;
@@ -9,7 +11,9 @@ use crate::runner::BlockNumber;
 /// [`ReplayClassHash`] combines [`StarknetClassHash`] with
 /// [`crate::block_number::BlockNumber`] in order to uniquely identify a
 /// Contract Class from the database.
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct ReplayClassHash {
     /// The block number.
     pub block_number: BlockNumber,
@@ -21,3 +25,7 @@ pub struct ReplayClassHash {
 /// The type [`VisitedPcs`] is a hashmap to store the visited program counters
 /// for each contract invocation during replay.
 pub type VisitedPcs = HashMap<ReplayClassHash, Vec<Vec<usize>>>;
+
+/// The type [`TransactionOutput`] contains the combination of transaction
+/// receipt and list of visited program counters.
+pub type TransactionOutput = (TransactionExecutionInfo, VisitedPcs);

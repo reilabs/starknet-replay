@@ -1,76 +1,67 @@
 //! This file contains the enum `Error` for all the errors returned by the
-//! module `pathfinder_db`.
+//! module `storage`.
 
-use pathfinder_storage::BlockId;
-use starknet_api::hash::StarkFelt;
+use std::str::Utf8Error;
+
+use blockifier::execution::errors::ContractClassError;
+use cairo_lang_starknet_classes::casm_contract_class::StarknetSierraCompilationError;
+use hex::FromHexError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `ConnectToDatabase` is used to encapsulate errors of type
-    /// [`anyhow::Error`] which are originating from the
-    /// function [`crate::storage::pathfinder::PathfinderStorage::new`].
+    /// `MinReq` variant is used for errors when creating a new
+    /// [`crate::storage::rpc::RpcStorage`].
     #[error(transparent)]
-    ConnectToDatabase(anyhow::Error),
+    MinReq(#[from] jsonrpc::minreq_http::Error),
 
-    /// `BlockNotFound` variant is returned when the block requested from the
-    /// Pathfinder database isn't found.
-    #[error("Block number {block_id:?} not found in database.")]
-    BlockNotFound { block_id: BlockId },
-
-    /// `GetLatestBlockNumber` is used to encapsulate errors of type
-    /// [`anyhow::Error`] which are originating from the
-    /// function [`crate::storage::pathfinder::PathfinderStorage#method.
-    /// get_most_recent_block_number`].
+    /// `JsonRpc` variant is used for errors parsing RPC responses.
     #[error(transparent)]
-    GetMostRecentBlockNumber(anyhow::Error),
+    JsonRpc(#[from] jsonrpc::Error),
 
-    /// `GetBlockHeader` is used to encapsulate errors of type
-    /// [`anyhow::Error`] which are originating from the function
-    /// [`crate::storage::pathfinder::PathfinderStorage#method.
-    /// get_block_header`.
+    /// `FileIO` variant is used for io errors.
     #[error(transparent)]
-    GetBlockHeader(anyhow::Error),
+    FileIO(#[from] std::io::Error),
 
-    /// `GetContractClassAtBlock` is used to encapsulate errors of type
-    /// [`anyhow::Error`] which are originating from the function
-    /// [`crate::storage::pathfinder::PathfinderStorage#method.
-    /// get_contract_class_at_block`].
+    /// `Serde` variant is used for errors reported by the crate [`serde_json`].
     #[error(transparent)]
-    GetContractClassAtBlock(anyhow::Error),
+    Serde(#[from] serde_json::Error),
 
-    /// `GetTransactionsAndReceipts` is used to encapsulate errors of type
-    /// [`anyhow::Error`] which are originating from the function
-    /// [`crate::storage::pathfinder::PathfinderStorage#method.
-    /// get_transactions_and_receipts_for_block`].
+    /// `Starknet` variant is used for errors reported by the crate
+    /// [`starknet_api`]
     #[error(transparent)]
-    GetTransactionsAndReceipts(anyhow::Error),
+    Starknet(#[from] starknet_api::StarknetApiError),
 
-    /// `GetTransactionsAndReceiptsNotFound` is used for `None` results from the
-    /// database in the function
-    /// [`crate::storage::pathfinder::PathfinderStorage#method.
-    /// get_transactions_and_receipts_for_block`].
-    #[error("Transactions for block {block_id:?} not found.")]
-    GetTransactionsAndReceiptsNotFound { block_id: BlockId },
-
-    /// `ContractClassNotFound` is used for `None` results from the database in
-    /// the function
-    /// [`crate::storage::pathfinder::PathfinderStorage#method.
-    /// get_contract_class_at_block`].
-    #[error("Contract Class {class_hash:?} not found in Database at block {block_id:?}.")]
-    ContractClassNotFound {
-        block_id: BlockId,
-        class_hash: StarkFelt,
-    },
-
-    /// `GetChainId` is used to encapsulate errors of type [`anyhow::Error`]
-    /// which are originating from the function
-    /// [`crate::storage::pathfinder::PathfinderStorage#method.
-    /// get_chain_id`].
+    /// `DecodeHex` variant is used for errors reported by the crate [`hex`]
+    /// used to convert from hex to ASCII string.
     #[error(transparent)]
-    GetChainId(anyhow::Error),
+    DecodeHex(#[from] FromHexError),
+
+    /// `InvalidHex` variant is used for strings not matching a hex number.
+    #[error("Chain id returned from RPC endpoint is not valid hex number.")]
+    InvalidHex(),
+
+    /// `DecodeBytes` variant is used for errors arising from converting a slice
+    /// of bytes into a [`String`].
+    #[error(transparent)]
+    DecodeBytes(#[from] Utf8Error),
+
+    /// `SierraCompiler` variant is for errors reported when compiling Sierra
+    /// contracts to CASM.
+    #[error(transparent)]
+    SierraCompiler(#[from] StarknetSierraCompilationError),
+
+    /// The `IntoInvalid` variant is for errors arising from the use of
+    /// `try_into`.
+    #[error("Error converting {0:?} into {1:?}")]
+    IntoInvalid(String, String),
+
+    /// The `ClassInfoInvalid` variant is for errors generated when
+    /// constructing a [`blockifier::execution::contract_class::ClassInfo`]
+    #[error(transparent)]
+    ClassInfoInvalid(#[from] ContractClassError),
 
     /// The `Unknown` variant is for any other uncategorised error.
-    #[error("Unknown Error communicating with Pathfinder database: {0:?}")]
+    #[error("Unknown Error: {0:?}")]
     Unknown(String),
 }

@@ -7,6 +7,7 @@ members = [
 ]
 
 [workspace.package]
+# Edition 2021 is chosen to support async.
 edition = "2021"
 # Version chosen only because 1.78.0 is the stable version when writing this Cargo.toml
 # If this version is changed, amend the version set in `build.yml`

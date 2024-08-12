@@ -145,7 +145,9 @@ impl ReplayStatistics {
             .rev()
             .enumerate()
         {
-            cumulative_frequency = cumulative_frequency.checked_add(*frequency).unwrap();
+            cumulative_frequency = cumulative_frequency
+                .checked_add(*frequency)
+                .expect("Sum of libfunc frequencies should not overflow.");
             if cumulative_frequency > percentage_of_total {
                 truncation_index = idx;
                 break;

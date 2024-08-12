@@ -4,27 +4,29 @@
 #![cfg(test)]
 
 use std::fs;
-use std::path::PathBuf;
 
+use starknet_api::hash::StarkHash;
+use starknet_api::transaction::TransactionHash;
 use starknet_replay::block_number::BlockNumber;
 use starknet_replay::profiler::analysis::extract_libfuncs_weight;
 use starknet_replay::profiler::replay_statistics::ReplayStatistics;
 use starknet_replay::runner::replay_block::ReplayBlock;
 use starknet_replay::runner::replay_blocks;
-use starknet_replay::storage::pathfinder::PathfinderStorage;
+use starknet_replay::storage::rpc::RpcStorage;
 use starknet_replay::storage::Storage;
+use test_log::test;
+use url::Url;
 
-// Ignored because it requires an updated copy of the pathfinder sqlite
-// database.
-#[ignore]
 #[test]
 fn test_replay_blocks() {
-    let database_path = "../../pathfinder/mainnet.sqlite";
     let block_number = 632917;
-    let transaction_hash = "0x0177C9365875CAA840EA8F03F97B0E3A8EE8851A8B952BF157B5DBD4FECCB060";
+    let transaction_hash: StarkHash =
+        "0x0177C9365875CAA840EA8F03F97B0E3A8EE8851A8B952BF157B5DBD4FECCB060"
+            .try_into()
+            .unwrap();
 
-    let database_path = PathBuf::from(database_path);
-    let storage = PathfinderStorage::new(database_path).unwrap();
+    let endpoint: Url = Url::parse("https://starknet-mainnet.public.blastapi.io/rpc/v0_7").unwrap();
+    let storage = RpcStorage::new(endpoint).unwrap();
     let mut replay_work: Vec<ReplayBlock> = Vec::new();
 
     let block_number = BlockNumber::new(block_number);
@@ -35,7 +37,7 @@ fn test_replay_blocks() {
 
     let index = receipts
         .iter()
-        .position(|r| r.transaction_hash.to_string() == transaction_hash)
+        .position(|r| r.transaction_hash == TransactionHash(transaction_hash))
         .unwrap();
 
     let transactions = vec![transactions.get(index).unwrap().clone()];
@@ -46,7 +48,7 @@ fn test_replay_blocks() {
     replay_work.push(replay_block);
 
     let trace_out = None;
-    let visited_pcs = replay_blocks(&storage.clone(), &trace_out, &replay_work).unwrap();
+    let visited_pcs = replay_blocks(&storage, &trace_out, &replay_work).unwrap();
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage).unwrap();
 

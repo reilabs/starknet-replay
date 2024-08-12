@@ -2,18 +2,16 @@
 //! and `starknet-replay`. Implementing this trait allows adding compatibility
 //! with a new `Starknet` node.
 
-use pathfinder_common::receipt::Receipt;
-use pathfinder_common::transaction::Transaction;
-use pathfinder_common::{BlockHeader, ChainId};
-use pathfinder_executor::types::TransactionSimulation;
-use pathfinder_rpc::v02::types::ContractClass;
+use starknet_api::block::BlockHeader;
+use starknet_api::transaction::{Transaction, TransactionReceipt};
+use starknet_core::types::ContractClass;
 
 use crate::block_number::BlockNumber;
 use crate::error::DatabaseError;
-use crate::runner::replay_class_hash::ReplayClassHash;
+use crate::runner::replay_class_hash::{ReplayClassHash, TransactionOutput};
 use crate::{ReplayBlock, RunnerError};
 
-pub mod pathfinder;
+pub mod rpc;
 
 pub trait Storage {
     /// Returns the most recent block number available in the storage.
@@ -25,25 +23,13 @@ pub trait Storage {
     /// Returns [`Err`] if the low level API with the storage returns an error.
     fn get_most_recent_block_number(&self) -> Result<BlockNumber, DatabaseError>;
 
-    /// Get the `chain_id` of the storage.
-    ///
-    /// It can detect only Mainnet, Goerli, and Sepolia.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if:
-    ///
-    /// - The chain isn't recognised or supported.
-    /// - There is an error querying the storage layer.
-    fn get_chain_id(&self) -> Result<ChainId, DatabaseError>;
-
-    /// Returns the [`pathfinder_rpc::v02::types::ContractClass`] object of a
+    /// Returns the [`starknet_core::types::ContractClass`] object of a
     /// `class_hash`.
     ///
     /// # Arguments
     ///
     /// - `replay_class_hash`: The class hash of the
-    ///   [`pathfinder_rpc::v02::types::ContractClass`] to return.
+    ///   [`starknet_core::types::ContractClass`] to return.
     ///
     /// # Errors
     ///
@@ -77,7 +63,7 @@ pub trait Storage {
     fn get_transactions_and_receipts_for_block(
         &self,
         block_number: BlockNumber,
-    ) -> Result<(Vec<Transaction>, Vec<Receipt>), DatabaseError>;
+    ) -> Result<(Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError>;
 
     /// Replays the list of transactions in a block and returns the list of
     /// transactions traces.
@@ -90,5 +76,5 @@ pub trait Storage {
     ///
     /// Returns [`Err`] if any transaction fails execution or if there is any
     /// error communicating with the storage layer.
-    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionSimulation>, RunnerError>;
+    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionOutput>, RunnerError>;
 }

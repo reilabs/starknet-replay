@@ -3,7 +3,8 @@
 
 use std::num::TryFromIntError;
 
-use pathfinder_executor::TransactionExecutionError;
+use blockifier::state::errors::StateError;
+use blockifier::transaction::errors::TransactionExecutionError;
 use thiserror::Error;
 
 use crate::block_number::BlockNumber;
@@ -11,11 +12,6 @@ use crate::error::DatabaseError;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `PathfinderExecutor` is for errors reported by the crate
-    /// [`pathfinder_executor`].
-    #[error(transparent)]
-    PathfinderExecutor(#[from] TransactionExecutionError),
-
     /// `GenerateReplayWork` is used to encapsulate errors of type
     /// [`anyhow::Error`] which are originating from the function
     /// [`crate::runner::generate_replay_work`].
@@ -51,23 +47,29 @@ pub enum Error {
         start_block: BlockNumber,
     },
 
-    /// `CastError` variant is triggered when casting from `u64` to `usize`.
+    /// `IntegerTooLarge` variant is triggered when casting from `u64` to
+    /// `usize` returns an error.
     #[error(transparent)]
-    CastError(#[from] TryFromIntError),
+    IntegerTooLarge(#[from] TryFromIntError),
 
-    /// `BlockNumberNotValid` variant is triggered when constructing a new
-    /// [`crate::block_number::BlockNumber`] returns `None`.
-    #[error("Block number {block_number} doesn't fit in i64 type.")]
-    BlockNumberNotValid { block_number: u64 },
-
-    /// `Save` variant is for errors reported when saving the transaction traces
+    /// `FileIO` variant is for errors reported when saving transaction traces
     /// to JSON file.
     #[error(transparent)]
-    Save(#[from] std::io::Error),
+    FileIO(#[from] std::io::Error),
 
     /// `Serde` variant is for errors reported by the crate [`serde_json`].
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
+
+    /// `Execution` variant is for errors reported during transaction replay
+    /// from [`blockifier`].
+    #[error(transparent)]
+    Execution(#[from] TransactionExecutionError),
+
+    /// `State` variant is for errors reported when calling the function
+    /// [`blockifier::block::pre_process_block`].
+    #[error(transparent)]
+    State(#[from] StateError),
 
     /// The `Unknown` variant is for any other uncategorised error.
     #[error("Unknown Error during block replay: {0:?}")]

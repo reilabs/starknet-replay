@@ -31,8 +31,7 @@ mod runner;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `Error::Database` error is caused by issues quering the Pathfinder
-    /// database.
+    /// `Error::Database` error is caused by issues quering the RPC endpoint.
     #[error(transparent)]
     Database(#[from] DatabaseError),
 
