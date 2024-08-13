@@ -19,3 +19,6 @@ rust-toolchain.toml
 
 # Avoid pushing statistics report from CLI output
 *.log
+
+# Mac OS DS_Store file
+.DS_Store
