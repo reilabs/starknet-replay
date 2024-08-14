@@ -395,7 +395,7 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.8.0-rc.0"
-source = "git+https://github.com/reilabs/blockifier.git?rev=3062b0cbc10f5562acc04bbd912afad284357082#3062b0cbc10f5562acc04bbd912afad284357082"
+source = "git+https://github.com/reilabs/blockifier.git?rev=b8f98da161a0de30223bfdc1f9fc22de01b1fc41#b8f98da161a0de30223bfdc1f9fc22de01b1fc41"
 dependencies = [
  "anyhow",
  "ark-ec",

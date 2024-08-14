@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Back end to replay Starknet transactions and print histogram of libfuncs usage."
 categories = ["cryptography::cryptocurrencies"]
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
@@ -25,7 +26,7 @@ cairo-lang-sierra-generator = "2.7.0-rc.1"
 # in the branch `extract_libfunc` of Reilabs' fork and need to be merged
 # into the main branch.
 # Hardcoding the commit hash for the time being.
-blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "3062b0cbc10f5562acc04bbd912afad284357082", features = ["vector_of_visited_program_counters"] }
+blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "b8f98da161a0de30223bfdc1f9fc22de01b1fc41", features = ["vector_of_visited_program_counters"] }
 #blockifier = { path = "../../blockifier/crates/blockifier", features = ["vector_of_visited_program_counters"] } #"0.8.0-rc.0"
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
 # `next-release-devel` because it contains the fix for bug #551 related to
