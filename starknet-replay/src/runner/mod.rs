@@ -126,6 +126,7 @@ pub fn process_transaction_traces(transaction_simulations: Vec<TransactionOutput
     let mut cumulative_visited_pcs = VisitedPcs::default();
     for simulation in transaction_simulations {
         let visited_pcs = simulation.1;
+
         if visited_pcs.is_empty() {
             continue;
         }
