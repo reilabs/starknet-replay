@@ -10,15 +10,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    /// `MinReq` variant is used for errors when creating a new
-    /// [`crate::storage::rpc::RpcStorage`].
-    #[error(transparent)]
-    MinReq(#[from] jsonrpc::minreq_http::Error),
-
-    /// `JsonRpc` variant is used for errors parsing RPC responses.
-    #[error(transparent)]
-    JsonRpc(#[from] jsonrpc::Error),
-
     /// `FileIO` variant is used for io errors.
     #[error(transparent)]
     FileIO(#[from] std::io::Error),

@@ -33,28 +33,21 @@ blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "3062b0
 plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f8989af20931dd9e7e1f204d5254de3a8053" }
 flate2 = "1.0.25"
 rayon = "1.8.0"
-serde = "1.0.192"
-serde_json = "1.0.105"
-serde_with = "3.0.0"
-smol_str = { version = "0.2.0", features = ["serde"] }
-thiserror = "1.0.61"
-jsonrpc = { version = "0.18.0", features = ["minreq_http"] }
-url = "2.5.2"
-hex = "0.4.3"
-once_cell = "1.17.1"
-tokio = { version = "1.27.0", features = ["full"] }
 # The versions of `starknet` dependencies must match the version used in blockifier.
 starknet_api = "0.13.0-rc.0"
 starknet-core = "0.11.0"
 starknet-providers = "0.11.0"
+serde = "1.0.192"
+serde_json = "1.0.105"
+thiserror = "1.0.61"
+url = "2.5.2"
+hex = "0.4.3"
+once_cell = "1.17.1"
+tokio = { version = "1.27.0", features = ["full"] }
 primitive-types = "0.12.2"
 anyhow.workspace = true
 tracing.workspace = true
 itertools.workspace = true
-
-[dependencies.minreq]
-version = "2.11.2"
-features = ["https"]
 
 [dev-dependencies]
 indoc = "2.0.5"
