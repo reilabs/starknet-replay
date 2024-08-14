@@ -26,7 +26,7 @@ fn test_replay_blocks() {
             .unwrap();
 
     let endpoint: Url = Url::parse("https://starknet-mainnet.public.blastapi.io/rpc/v0_7").unwrap();
-    let storage = RpcStorage::new(endpoint).unwrap();
+    let storage = RpcStorage::new(endpoint);
     let mut replay_work: Vec<ReplayBlock> = Vec::new();
 
     let block_number = BlockNumber::new(block_number);

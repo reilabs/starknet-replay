@@ -35,7 +35,7 @@ fn test_contract_class_at_block() {
     };
 
     let endpoint: Url = Url::parse("https://starknet-mainnet.public.blastapi.io/rpc/v0_7").unwrap();
-    let storage = RpcStorage::new(endpoint).unwrap();
+    let storage = RpcStorage::new(endpoint);
     let contract_class = storage
         .get_contract_class_at_block(&replay_class_hash)
         .unwrap();

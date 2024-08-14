@@ -67,7 +67,7 @@ pub enum Error {
     Execution(#[from] TransactionExecutionError),
 
     /// `State` variant is for errors reported when calling the function
-    /// [`blockifier::block::pre_process_block`].
+    /// [`blockifier::blockifier::block::pre_process_block`].
     #[error(transparent)]
     State(#[from] StateError),
 

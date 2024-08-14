@@ -34,6 +34,14 @@ use starknet_core::types::{
 
 use crate::error::DatabaseError;
 
+/// This function generates a hashmap of builtins usage in a transaction.
+///
+/// It is needed to generate the object
+/// [`starknet_api::transaction::ExecutionResources`].
+///
+/// # Arguments
+///
+/// - `computation_resources`: The object returned from the RPC call.
 fn generate_builtin_counter(computation_resources: &ComputationResources) -> HashMap<Builtin, u64> {
     let mut builtin_instance_counter = HashMap::default();
     builtin_instance_counter.insert(
@@ -87,38 +95,75 @@ fn generate_builtin_counter(computation_resources: &ComputationResources) -> Has
     builtin_instance_counter
 }
 
+/// This function converts from a vector of [`starknet_core::types::Event`] to a
+/// vector of [`starknet_api::transaction::Event`].
+///
+/// # Arguments
+///
+/// - `input`: The input events.
+///
+/// # Errors
+///
+/// Returns [`Err`] if a [`starknet_core::types::Felt`] address is not a valid
+/// [`starknet_api::core::ContractAddress`].
 fn generate_events(
-    events: Vec<starknet_core::types::Event>,
-) -> Vec<starknet_api::transaction::Event> {
-    events
+    input: Vec<starknet_core::types::Event>,
+) -> Result<Vec<starknet_api::transaction::Event>, DatabaseError> {
+    let mut events: Vec<starknet_api::transaction::Event> = Vec::with_capacity(input.len());
+    input
         .into_iter()
-        .map(|e| Event {
-            from_address: ContractAddress(e.from_address.try_into().unwrap()),
-            content: EventContent {
-                keys: e.keys.into_iter().map(|k| EventKey(k)).collect(),
-                data: EventData(e.data),
-            },
-        })
-        .collect()
+        .try_for_each(|e| -> Result<(), DatabaseError> {
+            events.push(Event {
+                from_address: ContractAddress(e.from_address.try_into()?),
+                content: EventContent {
+                    keys: e.keys.into_iter().map(EventKey).collect(),
+                    data: EventData(e.data),
+                },
+            });
+            Ok(())
+        })?;
+    Ok(events)
 }
 
-fn generate_messages(messages_sent: Vec<MsgToL1>) -> Vec<MessageToL1> {
-    messages_sent
+/// This function converts from a vector of
+/// [`starknet_core::types::MsgToL1`] to a vector of
+/// [`starknet_api::transaction::MessageToL1`].
+///
+/// # Arguments
+///
+/// - `input`: The input messages.
+///
+/// # Errors
+///
+/// Returns [`Err`] if a [`starknet_core::types::Felt`] address is not a valid
+/// [`starknet_api::core::ContractAddress`].
+fn generate_messages(input: Vec<MsgToL1>) -> Result<Vec<MessageToL1>, DatabaseError> {
+    let mut messages: Vec<MessageToL1> = Vec::with_capacity(input.len());
+    input
         .into_iter()
-        .map(|m| MessageToL1 {
-            from_address: ContractAddress(m.from_address.try_into().unwrap()),
-            to_address: {
-                let bytes = m.to_address.to_bytes_be();
-                let (_, h160_bytes) = bytes.split_at(12);
-                EthAddress(H160::from_slice(h160_bytes))
-            },
-            payload: L2ToL1Payload(m.payload),
-        })
-        .collect()
+        .try_for_each(|m| -> Result<(), DatabaseError> {
+            messages.push(MessageToL1 {
+                from_address: ContractAddress(m.from_address.try_into()?),
+                to_address: {
+                    let bytes = m.to_address.to_bytes_be();
+                    let (_, h160_bytes) = bytes.split_at(12);
+                    EthAddress(H160::from_slice(h160_bytes))
+                },
+                payload: L2ToL1Payload(m.payload),
+            });
+            Ok(())
+        })?;
+    Ok(messages)
 }
 
+/// This function converts [`starknet_core::types::ExecutionResources`] into
+/// [`starknet_api::transaction::ExecutionResources`].
+///
+/// # Arguments
+///
+/// - `execution_resources`: The input object.
 fn generate_execution_resources(
-    execution_resources: starknet_core::types::ExecutionResources,
+    execution_resources: &starknet_core::types::ExecutionResources,
 ) -> ExecutionResources {
     ExecutionResources {
         steps: execution_resources.computation_resources.steps,
@@ -143,6 +188,13 @@ fn generate_execution_resources(
     }
 }
 
+/// This function converts
+/// [`starknet_core::types::ExecutionResult`] into
+/// [`starknet_api::transaction::TransactionExecutionStatus`].
+///
+/// # Arguments
+///
+/// - `execution_result`: The input object.
 fn generate_execution_status(execution_result: ExecutionResult) -> TransactionExecutionStatus {
     match execution_result {
         starknet_core::types::ExecutionResult::Succeeded => {
@@ -158,92 +210,105 @@ fn generate_execution_status(execution_result: ExecutionResult) -> TransactionEx
     }
 }
 
+/// This function converts [`starknet_core::types::TransactionReceipt`] into
+/// [`starknet_api::transaction::TransactionReceipt`].
+///
+/// # Arguments
+///
+/// - `block_hash`: Hash of the block including the transaction.
+/// - `block_number`: Number of the block including the transaction.
+/// - `receipt`: The transaction receipt.
+///
+/// # Errors
+///
+/// Returns [`Err`] if `receipt` contains invalid numbers that can't be
+/// translated to a [`starknet_api::transaction::TransactionReceipt`] object.
 pub fn convert_receipt(
     block_hash: &Felt,
     block_number: &u64,
     receipt: StarknetCoreReceipt,
 ) -> Result<StarknetApiReceipt, DatabaseError> {
-    let block_hash = BlockHash(Felt::from_bytes_be(&block_hash.to_bytes_be().into()));
-    let block_number = starknet_api::block::BlockNumber(block_number.clone());
+    let block_hash = BlockHash(Felt::from_bytes_be(&block_hash.to_bytes_be()));
+    let block_number = starknet_api::block::BlockNumber(*block_number);
     match receipt {
         StarknetCoreReceipt::Invoke(receipt) => {
             let tx_output = InvokeTransactionOutput {
-                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
-                messages_sent: generate_messages(receipt.messages_sent),
-                events: generate_events(receipt.events),
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse()?),
+                messages_sent: generate_messages(receipt.messages_sent)?,
+                events: generate_events(receipt.events)?,
                 execution_status: generate_execution_status(receipt.execution_result),
-                execution_resources: generate_execution_resources(receipt.execution_resources),
+                execution_resources: generate_execution_resources(&receipt.execution_resources),
             };
             let receipt = StarknetApiReceipt {
                 transaction_hash: TransactionHash(receipt.transaction_hash),
-                block_hash: block_hash.clone(),
-                block_number: block_number.clone(),
+                block_hash,
+                block_number,
                 output: TransactionOutput::Invoke(tx_output),
             };
             Ok(receipt)
         }
         StarknetCoreReceipt::L1Handler(receipt) => {
             let tx_output = L1HandlerTransactionOutput {
-                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
-                messages_sent: generate_messages(receipt.messages_sent),
-                events: generate_events(receipt.events),
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse()?),
+                messages_sent: generate_messages(receipt.messages_sent)?,
+                events: generate_events(receipt.events)?,
                 execution_status: generate_execution_status(receipt.execution_result),
-                execution_resources: generate_execution_resources(receipt.execution_resources),
+                execution_resources: generate_execution_resources(&receipt.execution_resources),
             };
             let receipt = StarknetApiReceipt {
                 transaction_hash: TransactionHash(receipt.transaction_hash),
-                block_hash: block_hash.clone(),
-                block_number: block_number.clone(),
+                block_hash,
+                block_number,
                 output: TransactionOutput::L1Handler(tx_output),
             };
             Ok(receipt)
         }
         StarknetCoreReceipt::Declare(receipt) => {
             let tx_output = DeclareTransactionOutput {
-                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
-                messages_sent: generate_messages(receipt.messages_sent),
-                events: generate_events(receipt.events),
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse()?),
+                messages_sent: generate_messages(receipt.messages_sent)?,
+                events: generate_events(receipt.events)?,
                 execution_status: generate_execution_status(receipt.execution_result),
-                execution_resources: generate_execution_resources(receipt.execution_resources),
+                execution_resources: generate_execution_resources(&receipt.execution_resources),
             };
             let receipt = StarknetApiReceipt {
                 transaction_hash: TransactionHash(receipt.transaction_hash),
-                block_hash: block_hash.clone(),
-                block_number: block_number.clone(),
+                block_hash,
+                block_number,
                 output: TransactionOutput::Declare(tx_output),
             };
             Ok(receipt)
         }
         StarknetCoreReceipt::Deploy(receipt) => {
             let tx_output = DeployTransactionOutput {
-                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
-                messages_sent: generate_messages(receipt.messages_sent),
-                events: generate_events(receipt.events),
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse()?),
+                messages_sent: generate_messages(receipt.messages_sent)?,
+                events: generate_events(receipt.events)?,
                 execution_status: generate_execution_status(receipt.execution_result),
-                execution_resources: generate_execution_resources(receipt.execution_resources),
-                contract_address: ContractAddress(receipt.contract_address.try_into().unwrap()),
+                execution_resources: generate_execution_resources(&receipt.execution_resources),
+                contract_address: ContractAddress(receipt.contract_address.try_into()?),
             };
             let receipt = StarknetApiReceipt {
                 transaction_hash: TransactionHash(receipt.transaction_hash),
-                block_hash: block_hash.clone(),
-                block_number: block_number.clone(),
+                block_hash,
+                block_number,
                 output: TransactionOutput::Deploy(tx_output),
             };
             Ok(receipt)
         }
         StarknetCoreReceipt::DeployAccount(receipt) => {
             let tx_output = DeployAccountTransactionOutput {
-                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
-                messages_sent: generate_messages(receipt.messages_sent),
-                events: generate_events(receipt.events),
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse()?),
+                messages_sent: generate_messages(receipt.messages_sent)?,
+                events: generate_events(receipt.events)?,
                 execution_status: generate_execution_status(receipt.execution_result),
-                execution_resources: generate_execution_resources(receipt.execution_resources),
-                contract_address: ContractAddress(receipt.contract_address.try_into().unwrap()),
+                execution_resources: generate_execution_resources(&receipt.execution_resources),
+                contract_address: ContractAddress(receipt.contract_address.try_into()?),
             };
             let receipt = StarknetApiReceipt {
                 transaction_hash: TransactionHash(receipt.transaction_hash),
-                block_hash: block_hash.clone(),
-                block_number: block_number.clone(),
+                block_hash,
+                block_number,
                 output: TransactionOutput::DeployAccount(tx_output),
             };
             Ok(receipt)

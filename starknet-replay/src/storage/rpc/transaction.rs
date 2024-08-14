@@ -35,6 +35,18 @@ use starknet_core::types::Transaction as StarknetCoreTransaction;
 
 use crate::error::DatabaseError;
 
+/// This function converts [`starknet_core::types::Transaction`] into
+/// [`starknet_api::transaction::Transaction`].
+///
+/// # Arguments
+///
+/// - `transaction`: The transaction object.
+///
+/// # Errors
+///
+/// Returns [`Err`] if `transaction` contains invalid numbers that can't be
+/// translated to a [`starknet_api::transaction::Transaction`] object.
+#[allow(clippy::too_many_lines)] // Added because there is a lot of repetition.
 pub fn convert_transaction(
     transaction: StarknetCoreTransaction,
 ) -> Result<StarknetApiTransaction, DatabaseError> {
@@ -42,9 +54,9 @@ pub fn convert_transaction(
         starknet_core::types::Transaction::Invoke(tx) => match tx {
             starknet_core::types::InvokeTransaction::V0(tx) => {
                 let invoke_tx = InvokeTransactionV0 {
-                    max_fee: Fee(tx.max_fee.to_string().parse().unwrap()),
+                    max_fee: Fee(tx.max_fee.to_string().parse()?),
                     signature: TransactionSignature(tx.signature),
-                    contract_address: ContractAddress(tx.contract_address.try_into().unwrap()),
+                    contract_address: ContractAddress(tx.contract_address.try_into()?),
                     entry_point_selector: EntryPointSelector(tx.entry_point_selector),
                     calldata: Calldata(tx.calldata.into()),
                 };
@@ -54,10 +66,10 @@ pub fn convert_transaction(
             }
             starknet_core::types::InvokeTransaction::V1(tx) => {
                 let invoke_tx = InvokeTransactionV1 {
-                    max_fee: Fee(tx.max_fee.to_string().parse().unwrap()),
+                    max_fee: Fee(tx.max_fee.to_string().parse()?),
                     signature: TransactionSignature(tx.signature),
                     nonce: Nonce(tx.nonce),
-                    sender_address: ContractAddress(tx.sender_address.try_into().unwrap()),
+                    sender_address: ContractAddress(tx.sender_address.try_into()?),
                     calldata: Calldata(tx.calldata.into()),
                 };
                 Ok(StarknetApiTransaction::Invoke(InvokeTransaction::V1(
@@ -83,18 +95,18 @@ pub fn convert_transaction(
                 resource_bounds.push(l1_resource);
                 resource_bounds.push(l2_resource);
                 let invoke_tx = InvokeTransactionV3 {
-                    resource_bounds: resource_bounds.try_into().unwrap(),
+                    resource_bounds: resource_bounds.try_into()?,
                     tip: Tip(tx.tip),
                     signature: TransactionSignature(tx.signature),
                     nonce: Nonce(tx.nonce),
-                    sender_address: ContractAddress(tx.sender_address.try_into().unwrap()),
+                    sender_address: ContractAddress(tx.sender_address.try_into()?),
                     calldata: Calldata(tx.calldata.into()),
                     nonce_data_availability_mode: match tx.nonce_data_availability_mode {
                         starknet_core::types::DataAvailabilityMode::L1 => {
                             starknet_api::data_availability::DataAvailabilityMode::L1
                         }
                         starknet_core::types::DataAvailabilityMode::L2 => {
-                            starknet_api::data_availability::DataAvailabilityMode::L1
+                            starknet_api::data_availability::DataAvailabilityMode::L2
                         }
                     },
                     fee_data_availability_mode: match tx.fee_data_availability_mode {
@@ -102,7 +114,7 @@ pub fn convert_transaction(
                             starknet_api::data_availability::DataAvailabilityMode::L1
                         }
                         starknet_core::types::DataAvailabilityMode::L2 => {
-                            starknet_api::data_availability::DataAvailabilityMode::L1
+                            starknet_api::data_availability::DataAvailabilityMode::L2
                         }
                     },
                     paymaster_data: PaymasterData(tx.paymaster_data),
@@ -117,7 +129,7 @@ pub fn convert_transaction(
             let l1handler_tx = L1HandlerTransaction {
                 version: TransactionVersion(tx.version),
                 nonce: Nonce(tx.nonce.into()),
-                contract_address: ContractAddress(tx.contract_address.try_into().unwrap()),
+                contract_address: ContractAddress(tx.contract_address.try_into()?),
                 entry_point_selector: EntryPointSelector(tx.entry_point_selector),
                 calldata: Calldata(tx.calldata.into()),
             };
@@ -126,11 +138,11 @@ pub fn convert_transaction(
         starknet_core::types::Transaction::Declare(tx) => match tx {
             starknet_core::types::DeclareTransaction::V0(tx) => {
                 let declare_tx = DeclareTransactionV0V1 {
-                    max_fee: Fee(tx.max_fee.to_string().parse().unwrap()),
+                    max_fee: Fee(tx.max_fee.to_string().parse()?),
                     signature: TransactionSignature(tx.signature),
                     nonce: Nonce::default(), // Starts at 0
                     class_hash: ClassHash(tx.class_hash),
-                    sender_address: ContractAddress(tx.sender_address.try_into().unwrap()),
+                    sender_address: ContractAddress(tx.sender_address.try_into()?),
                 };
                 Ok(StarknetApiTransaction::Declare(DeclareTransaction::V0(
                     declare_tx,
@@ -138,11 +150,11 @@ pub fn convert_transaction(
             }
             starknet_core::types::DeclareTransaction::V1(tx) => {
                 let declare_tx = DeclareTransactionV0V1 {
-                    max_fee: Fee(tx.max_fee.to_string().parse().unwrap()),
+                    max_fee: Fee(tx.max_fee.to_string().parse()?),
                     signature: TransactionSignature(tx.signature),
-                    nonce: Nonce(tx.nonce.into()),
+                    nonce: Nonce(tx.nonce),
                     class_hash: ClassHash(tx.class_hash),
-                    sender_address: ContractAddress(tx.sender_address.try_into().unwrap()),
+                    sender_address: ContractAddress(tx.sender_address.try_into()?),
                 };
                 Ok(StarknetApiTransaction::Declare(DeclareTransaction::V0(
                     declare_tx,
@@ -150,12 +162,12 @@ pub fn convert_transaction(
             }
             starknet_core::types::DeclareTransaction::V2(tx) => {
                 let declare_tx = DeclareTransactionV2 {
-                    max_fee: Fee(tx.max_fee.to_string().parse().unwrap()),
+                    max_fee: Fee(tx.max_fee.to_string().parse()?),
                     signature: TransactionSignature(tx.signature),
-                    nonce: Nonce(tx.nonce.into()),
+                    nonce: Nonce(tx.nonce),
                     class_hash: ClassHash(tx.class_hash),
                     compiled_class_hash: CompiledClassHash(tx.compiled_class_hash),
-                    sender_address: ContractAddress(tx.sender_address.try_into().unwrap()),
+                    sender_address: ContractAddress(tx.sender_address.try_into()?),
                 };
                 Ok(StarknetApiTransaction::Declare(DeclareTransaction::V2(
                     declare_tx,
@@ -180,19 +192,19 @@ pub fn convert_transaction(
                 resource_bounds.push(l1_resource);
                 resource_bounds.push(l2_resource);
                 let declare_tx = DeclareTransactionV3 {
-                    resource_bounds: resource_bounds.try_into().unwrap(),
+                    resource_bounds: resource_bounds.try_into()?,
                     tip: Tip(tx.tip),
                     signature: TransactionSignature(tx.signature),
-                    nonce: Nonce(tx.nonce.into()),
+                    nonce: Nonce(tx.nonce),
                     class_hash: ClassHash(tx.class_hash),
                     compiled_class_hash: CompiledClassHash(tx.compiled_class_hash),
-                    sender_address: ContractAddress(tx.sender_address.try_into().unwrap()),
+                    sender_address: ContractAddress(tx.sender_address.try_into()?),
                     nonce_data_availability_mode: match tx.nonce_data_availability_mode {
                         starknet_core::types::DataAvailabilityMode::L1 => {
                             starknet_api::data_availability::DataAvailabilityMode::L1
                         }
                         starknet_core::types::DataAvailabilityMode::L2 => {
-                            starknet_api::data_availability::DataAvailabilityMode::L1
+                            starknet_api::data_availability::DataAvailabilityMode::L2
                         }
                     },
                     fee_data_availability_mode: match tx.fee_data_availability_mode {
@@ -200,7 +212,7 @@ pub fn convert_transaction(
                             starknet_api::data_availability::DataAvailabilityMode::L1
                         }
                         starknet_core::types::DataAvailabilityMode::L2 => {
-                            starknet_api::data_availability::DataAvailabilityMode::L1
+                            starknet_api::data_availability::DataAvailabilityMode::L2
                         }
                     },
                     paymaster_data: PaymasterData(tx.paymaster_data),
@@ -223,9 +235,9 @@ pub fn convert_transaction(
         starknet_core::types::Transaction::DeployAccount(tx) => match tx {
             starknet_core::types::DeployAccountTransaction::V1(tx) => {
                 let deploy_account_tx = DeployAccountTransactionV1 {
-                    max_fee: Fee(tx.max_fee.to_string().parse().unwrap()),
+                    max_fee: Fee(tx.max_fee.to_string().parse()?),
                     signature: TransactionSignature(tx.signature),
-                    nonce: Nonce(tx.nonce.into()),
+                    nonce: Nonce(tx.nonce),
                     class_hash: ClassHash(tx.class_hash),
                     contract_address_salt: ContractAddressSalt(tx.contract_address_salt),
                     constructor_calldata: Calldata(tx.constructor_calldata.into()),
@@ -253,10 +265,10 @@ pub fn convert_transaction(
                 resource_bounds.push(l1_resource);
                 resource_bounds.push(l2_resource);
                 let deploy_account_tx = DeployAccountTransactionV3 {
-                    resource_bounds: resource_bounds.try_into().unwrap(),
+                    resource_bounds: resource_bounds.try_into()?,
                     tip: Tip(tx.tip),
                     signature: TransactionSignature(tx.signature),
-                    nonce: Nonce(tx.nonce.into()),
+                    nonce: Nonce(tx.nonce),
                     class_hash: ClassHash(tx.class_hash),
                     contract_address_salt: ContractAddressSalt(tx.contract_address_salt),
                     constructor_calldata: Calldata(tx.constructor_calldata.into()),
@@ -265,7 +277,7 @@ pub fn convert_transaction(
                             starknet_api::data_availability::DataAvailabilityMode::L1
                         }
                         starknet_core::types::DataAvailabilityMode::L2 => {
-                            starknet_api::data_availability::DataAvailabilityMode::L1
+                            starknet_api::data_availability::DataAvailabilityMode::L2
                         }
                     },
                     fee_data_availability_mode: match tx.fee_data_availability_mode {
@@ -273,7 +285,7 @@ pub fn convert_transaction(
                             starknet_api::data_availability::DataAvailabilityMode::L1
                         }
                         starknet_core::types::DataAvailabilityMode::L2 => {
-                            starknet_api::data_availability::DataAvailabilityMode::L1
+                            starknet_api::data_availability::DataAvailabilityMode::L2
                         }
                     },
                     paymaster_data: PaymasterData(tx.paymaster_data),
