@@ -9,8 +9,8 @@
 use std::{env, fs, io};
 
 use itertools::Itertools;
-use starknet_api::core::ClassHash as StarknetClassHash;
-use starknet_core::types::ContractClass;
+use starknet_api::core::{ClassHash as StarknetClassHash, ClassHash};
+use starknet_core::types::{ContractClass, Felt};
 use starknet_replay::block_number::BlockNumber;
 use starknet_replay::runner::replay_class_hash::ReplayClassHash;
 use starknet_replay::storage::rpc::RpcStorage;
@@ -28,7 +28,7 @@ fn read_test_file(filename: &str) -> io::Result<String> {
 fn test_contract_class_at_block() {
     let block_number = BlockNumber::new(632917);
     let class_hash = "029927C8AF6BCCF3F6FDA035981E765A7BDBF18A2DC0D630494F8758AA908E2B";
-    let class_hash: StarknetClassHash = StarknetClassHash(class_hash.try_into().unwrap());
+    let class_hash: StarknetClassHash = ClassHash(Felt::from_hex(class_hash).unwrap());
     let replay_class_hash = ReplayClassHash {
         block_number,
         class_hash,

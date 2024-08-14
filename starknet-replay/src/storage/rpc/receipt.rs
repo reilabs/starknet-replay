@@ -1,203 +1,252 @@
-//! This module is needed to deserialise all the transaction receipts returned
-//! with `starknet_getBlockWithReceipts` into
-//! [`starknet_api::transaction::TransactionReceipt`].
-
 use std::collections::HashMap;
 
-use starknet_api::block::{BlockHash, BlockNumber};
+use primitive_types::H160;
+use starknet_api::block::BlockHash;
+use starknet_api::core::{ContractAddress, EthAddress};
 use starknet_api::transaction::{
     Builtin,
     DeclareTransactionOutput,
+    DeployAccountTransactionOutput,
     DeployTransactionOutput,
+    Event,
+    EventContent,
+    EventData,
+    EventKey,
+    ExecutionResources,
+    Fee,
+    GasVector,
     InvokeTransactionOutput,
     L1HandlerTransactionOutput,
+    L2ToL1Payload,
+    MessageToL1,
+    TransactionExecutionStatus,
     TransactionHash,
     TransactionOutput,
-    TransactionReceipt,
+    TransactionReceipt as StarknetApiReceipt,
+};
+use starknet_core::types::{
+    ComputationResources,
+    ExecutionResult,
+    Felt,
+    MsgToL1,
+    TransactionReceipt as StarknetCoreReceipt,
 };
 
 use crate::error::DatabaseError;
 
-/// This function returns a [`starknet_api::transaction::TransactionReceipt`]
-/// from a serialised receipt.
-///
-/// # Arguments
-///
-/// - `block`: the block header where the receipt is included. It shall be of
-///   the format returned by `starknet_getBlockWithReceipts`.
-/// - `receipt`: the receipt in JSON format. It shall be of the format returned
-///   by `starknet_getBlockWithReceipts`.
-///
-/// # Errors
-///
-/// Returns [`Err`] if the JSON data is not in the correct format.
-#[allow(clippy::too_many_lines)] // Added because there is a lot of repetition.
-pub fn deserialize_receipt_json(
-    block: &serde_json::Value,
-    receipt: &serde_json::Value,
-) -> Result<TransactionReceipt, DatabaseError> {
-    let mut receipt = receipt.clone();
-    let block_number: BlockNumber = serde_json::from_value(block["block_number"].clone())?;
-    let block_hash: BlockHash = serde_json::from_value(block["block_hash"].clone())?;
-    let transaction_hash: TransactionHash =
-        serde_json::from_value(receipt["transaction_hash"].clone())?;
+fn generate_builtin_counter(computation_resources: &ComputationResources) -> HashMap<Builtin, u64> {
+    let mut builtin_instance_counter = HashMap::default();
+    builtin_instance_counter.insert(
+        starknet_api::transaction::Builtin::RangeCheck,
+        computation_resources
+            .range_check_builtin_applications
+            .unwrap_or_default(),
+    );
+    builtin_instance_counter.insert(
+        starknet_api::transaction::Builtin::Pedersen,
+        computation_resources
+            .pedersen_builtin_applications
+            .unwrap_or_default(),
+    );
+    builtin_instance_counter.insert(
+        starknet_api::transaction::Builtin::Poseidon,
+        computation_resources
+            .poseidon_builtin_applications
+            .unwrap_or_default(),
+    );
+    builtin_instance_counter.insert(
+        starknet_api::transaction::Builtin::EcOp,
+        computation_resources
+            .ec_op_builtin_applications
+            .unwrap_or_default(),
+    );
+    builtin_instance_counter.insert(
+        starknet_api::transaction::Builtin::Ecdsa,
+        computation_resources
+            .ecdsa_builtin_applications
+            .unwrap_or_default(),
+    );
+    builtin_instance_counter.insert(
+        starknet_api::transaction::Builtin::Bitwise,
+        computation_resources
+            .bitwise_builtin_applications
+            .unwrap_or_default(),
+    );
+    builtin_instance_counter.insert(
+        starknet_api::transaction::Builtin::Keccak,
+        computation_resources
+            .keccak_builtin_applications
+            .unwrap_or_default(),
+    );
+    builtin_instance_counter.insert(
+        starknet_api::transaction::Builtin::SegmentArena,
+        computation_resources
+            .segment_arena_builtin
+            .unwrap_or_default(),
+    );
+    builtin_instance_counter
+}
 
-    if let Some(actual_fee) = receipt.get_mut("actual_fee") {
-        let fee = actual_fee["amount"].clone();
-        receipt
-            .as_object_mut()
-            .ok_or(DatabaseError::Unknown(
-                "Failed to serialise transaction receipt as object.".to_string(),
-            ))?
-            .remove("actual_fee");
-        receipt["actual_fee"] = fee;
-    }
+fn generate_events(
+    events: Vec<starknet_core::types::Event>,
+) -> Vec<starknet_api::transaction::Event> {
+    events
+        .into_iter()
+        .map(|e| Event {
+            from_address: ContractAddress(e.from_address.try_into().unwrap()),
+            content: EventContent {
+                keys: e.keys.into_iter().map(|k| EventKey(k)).collect(),
+                data: EventData(e.data),
+            },
+        })
+        .collect()
+}
 
-    let mut builtin_instance_counter = HashMap::new();
-    add_builtin(
-        &mut builtin_instance_counter,
-        &mut receipt["execution_resources"],
-        "range_check_builtin_applications",
-    )?;
-    add_builtin(
-        &mut builtin_instance_counter,
-        &mut receipt["execution_resources"],
-        "pedersen_builtin_applications",
-    )?;
-    add_builtin(
-        &mut builtin_instance_counter,
-        &mut receipt["execution_resources"],
-        "poseidon_builtin_applications",
-    )?;
-    add_builtin(
-        &mut builtin_instance_counter,
-        &mut receipt["execution_resources"],
-        "ec_op_builtin_applications",
-    )?;
-    add_builtin(
-        &mut builtin_instance_counter,
-        &mut receipt["execution_resources"],
-        "ecdsa_builtin_applications",
-    )?;
-    add_builtin(
-        &mut builtin_instance_counter,
-        &mut receipt["execution_resources"],
-        "bitwise_builtin_applications",
-    )?;
-    add_builtin(
-        &mut builtin_instance_counter,
-        &mut receipt["execution_resources"],
-        "keccak_builtin_applications",
-    )?;
-    add_builtin(
-        &mut builtin_instance_counter,
-        &mut receipt["execution_resources"],
-        "segment_arena_builtin",
-    )?;
-    receipt["execution_resources"]["builtin_instance_counter"] =
-        serde_json::to_value(builtin_instance_counter)?;
+fn generate_messages(messages_sent: Vec<MsgToL1>) -> Vec<MessageToL1> {
+    messages_sent
+        .into_iter()
+        .map(|m| MessageToL1 {
+            from_address: ContractAddress(m.from_address.try_into().unwrap()),
+            to_address: {
+                let bytes = m.to_address.to_bytes_be();
+                let (_, h160_bytes) = bytes.split_at(12);
+                EthAddress(H160::from_slice(h160_bytes))
+            },
+            payload: L2ToL1Payload(m.payload),
+        })
+        .collect()
+}
 
-    if receipt["execution_resources"].get("memory_holes").is_none() {
-        receipt["execution_resources"]["memory_holes"] = serde_json::to_value(0)?;
-    }
-
-    if let Some(execution_resources) = receipt.get_mut("execution_resources") {
-        let mut l1_data_gas = execution_resources["data_availability"]["l1_data_gas"].clone();
-        if l1_data_gas.is_null() {
-            // Very old blocks report null
-            l1_data_gas = 0.into();
-        }
-        let mut l1_gas = execution_resources["data_availability"]["l1_gas"].clone();
-        if l1_gas.is_null() {
-            // Very old blocks report null
-            l1_gas = 0.into();
-        }
-        receipt["execution_resources"]
-            .as_object_mut()
-            .ok_or(DatabaseError::Unknown(
-                "Failed to serialise transaction receipt as object.".to_string(),
-            ))?
-            .remove("data_availability");
-        receipt["execution_resources"]["da_l1_gas_consumed"] = l1_gas;
-        receipt["execution_resources"]["da_l1_data_gas_consumed"] = l1_data_gas;
-    }
-
-    let receipt_type: String = serde_json::from_value(receipt["type"].clone())?;
-    match receipt_type.as_str() {
-        "INVOKE" => {
-            println!("{receipt:#?}");
-            let receipt: InvokeTransactionOutput = serde_json::from_value(receipt)?;
-            Ok(TransactionReceipt {
-                transaction_hash,
-                block_hash,
-                block_number,
-                output: TransactionOutput::Invoke(receipt),
-            })
-        }
-        "DEPLOY_ACCOUNT" => {
-            let receipt: DeployTransactionOutput = serde_json::from_value(receipt)?;
-            Ok(TransactionReceipt {
-                transaction_hash,
-                block_hash,
-                block_number,
-                output: TransactionOutput::Deploy(receipt),
-            })
-        }
-        "DECLARE" => {
-            let receipt: DeclareTransactionOutput = serde_json::from_value(receipt)?;
-            Ok(TransactionReceipt {
-                transaction_hash,
-                block_hash,
-                block_number,
-                output: TransactionOutput::Declare(receipt),
-            })
-        }
-        "L1_HANDLER" => {
-            let receipt: L1HandlerTransactionOutput = serde_json::from_value(receipt)?;
-            Ok(TransactionReceipt {
-                transaction_hash,
-                block_hash,
-                block_number,
-                output: TransactionOutput::L1Handler(receipt),
-            })
-        }
-        x => Err(DatabaseError::Unknown(format!(
-            "unimplemented transaction type deserialization: {x}"
-        ))),
+fn generate_execution_resources(
+    execution_resources: starknet_core::types::ExecutionResources,
+) -> ExecutionResources {
+    ExecutionResources {
+        steps: execution_resources.computation_resources.steps,
+        builtin_instance_counter: generate_builtin_counter(
+            &execution_resources.computation_resources,
+        ),
+        memory_holes: execution_resources
+            .computation_resources
+            .memory_holes
+            .unwrap_or_default(),
+        da_gas_consumed: GasVector {
+            l1_gas: 0,      // Where do I get this data?
+            l1_data_gas: 0, // Where do I get this data?
+        },
+        gas_consumed: GasVector {
+            l1_gas: execution_resources.data_resources.data_availability.l1_gas,
+            l1_data_gas: execution_resources
+                .data_resources
+                .data_availability
+                .l1_data_gas,
+        },
     }
 }
 
-/// This function formats the builtins for
-/// [`starknet_api::transaction::TransactionReceipt`].
-///
-/// It is needed because the builtins are in a different format when received
-/// from the RPC call.
-///
-/// # Arguments
-///
-/// - `map`: the map keeping track of the builtins called and the frequency.
-/// - `value`: the list of builtins from the RPC call.
-/// - `builtin_name`: the name of the builtin to add to `map`.
-///
-/// # Errors
-///
-/// Returns [`Err`] if the JSON data is not in the correct format or
-/// `builtin_name` is missing from `value`.
-fn add_builtin(
-    map: &mut HashMap<Builtin, u64>,
-    value: &mut serde_json::Value,
-    builtin_name: &str,
-) -> Result<(), DatabaseError> {
-    if let Some(builtin_calls) = value.get(builtin_name) {
-        let k = serde_json::from_value(builtin_name.into())?;
-        let v = serde_json::from_value(builtin_calls.clone())?;
-        map.insert(k, v);
+fn generate_execution_status(execution_result: ExecutionResult) -> TransactionExecutionStatus {
+    match execution_result {
+        starknet_core::types::ExecutionResult::Succeeded => {
+            starknet_api::transaction::TransactionExecutionStatus::Succeeded
+        }
+        starknet_core::types::ExecutionResult::Reverted { reason } => {
+            starknet_api::transaction::TransactionExecutionStatus::Reverted(
+                starknet_api::transaction::RevertedTransactionExecutionStatus {
+                    revert_reason: reason,
+                },
+            )
+        }
     }
-    value
-        .as_object_mut()
-        .ok_or(DatabaseError::Unknown(
-            "Failed to serialise transaction receipt as object.".to_string(),
-        ))?
-        .remove(builtin_name);
-    Ok(())
+}
+
+pub fn convert_receipt(
+    block_hash: &Felt,
+    block_number: &u64,
+    receipt: StarknetCoreReceipt,
+) -> Result<StarknetApiReceipt, DatabaseError> {
+    let block_hash = BlockHash(Felt::from_bytes_be(&block_hash.to_bytes_be().into()));
+    let block_number = starknet_api::block::BlockNumber(block_number.clone());
+    match receipt {
+        StarknetCoreReceipt::Invoke(receipt) => {
+            let tx_output = InvokeTransactionOutput {
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
+                messages_sent: generate_messages(receipt.messages_sent),
+                events: generate_events(receipt.events),
+                execution_status: generate_execution_status(receipt.execution_result),
+                execution_resources: generate_execution_resources(receipt.execution_resources),
+            };
+            let receipt = StarknetApiReceipt {
+                transaction_hash: TransactionHash(receipt.transaction_hash),
+                block_hash: block_hash.clone(),
+                block_number: block_number.clone(),
+                output: TransactionOutput::Invoke(tx_output),
+            };
+            Ok(receipt)
+        }
+        StarknetCoreReceipt::L1Handler(receipt) => {
+            let tx_output = L1HandlerTransactionOutput {
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
+                messages_sent: generate_messages(receipt.messages_sent),
+                events: generate_events(receipt.events),
+                execution_status: generate_execution_status(receipt.execution_result),
+                execution_resources: generate_execution_resources(receipt.execution_resources),
+            };
+            let receipt = StarknetApiReceipt {
+                transaction_hash: TransactionHash(receipt.transaction_hash),
+                block_hash: block_hash.clone(),
+                block_number: block_number.clone(),
+                output: TransactionOutput::L1Handler(tx_output),
+            };
+            Ok(receipt)
+        }
+        StarknetCoreReceipt::Declare(receipt) => {
+            let tx_output = DeclareTransactionOutput {
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
+                messages_sent: generate_messages(receipt.messages_sent),
+                events: generate_events(receipt.events),
+                execution_status: generate_execution_status(receipt.execution_result),
+                execution_resources: generate_execution_resources(receipt.execution_resources),
+            };
+            let receipt = StarknetApiReceipt {
+                transaction_hash: TransactionHash(receipt.transaction_hash),
+                block_hash: block_hash.clone(),
+                block_number: block_number.clone(),
+                output: TransactionOutput::Declare(tx_output),
+            };
+            Ok(receipt)
+        }
+        StarknetCoreReceipt::Deploy(receipt) => {
+            let tx_output = DeployTransactionOutput {
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
+                messages_sent: generate_messages(receipt.messages_sent),
+                events: generate_events(receipt.events),
+                execution_status: generate_execution_status(receipt.execution_result),
+                execution_resources: generate_execution_resources(receipt.execution_resources),
+                contract_address: ContractAddress(receipt.contract_address.try_into().unwrap()),
+            };
+            let receipt = StarknetApiReceipt {
+                transaction_hash: TransactionHash(receipt.transaction_hash),
+                block_hash: block_hash.clone(),
+                block_number: block_number.clone(),
+                output: TransactionOutput::Deploy(tx_output),
+            };
+            Ok(receipt)
+        }
+        StarknetCoreReceipt::DeployAccount(receipt) => {
+            let tx_output = DeployAccountTransactionOutput {
+                actual_fee: Fee(receipt.actual_fee.amount.to_string().parse().unwrap()),
+                messages_sent: generate_messages(receipt.messages_sent),
+                events: generate_events(receipt.events),
+                execution_status: generate_execution_status(receipt.execution_result),
+                execution_resources: generate_execution_resources(receipt.execution_resources),
+                contract_address: ContractAddress(receipt.contract_address.try_into().unwrap()),
+            };
+            let receipt = StarknetApiReceipt {
+                transaction_hash: TransactionHash(receipt.transaction_hash),
+                block_hash: block_hash.clone(),
+                block_number: block_number.clone(),
+                output: TransactionOutput::DeployAccount(tx_output),
+            };
+            Ok(receipt)
+        }
+    }
 }

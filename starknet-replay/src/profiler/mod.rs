@@ -140,7 +140,7 @@ impl SierraProfiler {
             self.casm_program
                 .debug_info
                 .sierra_statement_info
-                .partition_point(|x| x.code_offset <= pc)
+                .partition_point(|x| x.start_offset <= pc)
                 - 1,
         )
     }
@@ -171,7 +171,7 @@ impl SierraProfiler {
             .sierra_statement_info
             .last()
             .ok_or(ProfilerError::EmptyStatementList)?
-            .code_offset;
+            .end_offset;
         // The CASM program starts with a header of instructions to wrap the
         // real program. `real_pc_0` is the PC in the trace that points
         // to the same CASM instruction which is in the real PC=0 in the

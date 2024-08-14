@@ -126,12 +126,14 @@ pub fn process_transaction_traces(transaction_simulations: Vec<TransactionOutput
     let mut cumulative_visited_pcs = VisitedPcs::default();
     for simulation in transaction_simulations {
         let visited_pcs = simulation.1;
-
         if visited_pcs.is_empty() {
             continue;
         }
 
-        cumulative_visited_pcs.extend(visited_pcs.into_iter());
+        for (contract, pcs) in visited_pcs {
+            let key = cumulative_visited_pcs.entry(contract).or_insert(Vec::new());
+            key.extend(pcs.into_iter());
+        }
     }
     cumulative_visited_pcs
 }

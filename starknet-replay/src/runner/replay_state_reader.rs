@@ -6,9 +6,8 @@ use blockifier::execution::contract_class::ContractClass as BlockifierContractCl
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader, StateResult};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_core::types::ContractClass as StarknetContractClass;
+use starknet_core::types::{ContractClass as StarknetContractClass, Felt};
 
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::ReplayClassHash;
@@ -40,10 +39,10 @@ impl ReplayStateReader<'_> {
 }
 impl StateReader for ReplayStateReader<'_> {
     fn get_storage_at(
-        &mut self,
+        &self,
         contract_address: ContractAddress,
         key: StorageKey,
-    ) -> StateResult<StarkFelt> {
+    ) -> StateResult<Felt> {
         let storage_value = self
             .storage
             .starknet_get_storage_at(&self.block_number, &contract_address, &key)
@@ -53,7 +52,7 @@ impl StateReader for ReplayStateReader<'_> {
         Ok(storage_value)
     }
 
-    fn get_nonce_at(&mut self, contract_address: ContractAddress) -> StateResult<Nonce> {
+    fn get_nonce_at(&self, contract_address: ContractAddress) -> StateResult<Nonce> {
         let nonce = self
             .storage
             .starknet_get_nonce(&self.block_number, &contract_address)
@@ -63,7 +62,7 @@ impl StateReader for ReplayStateReader<'_> {
         Ok(nonce)
     }
 
-    fn get_class_hash_at(&mut self, contract_address: ContractAddress) -> StateResult<ClassHash> {
+    fn get_class_hash_at(&self, contract_address: ContractAddress) -> StateResult<ClassHash> {
         let class_hash = self
             .storage
             .starknet_get_class_hash_at(&self.block_number, &contract_address)
@@ -74,7 +73,7 @@ impl StateReader for ReplayStateReader<'_> {
     }
 
     fn get_compiled_contract_class(
-        &mut self,
+        &self,
         class_hash: ClassHash,
     ) -> StateResult<BlockifierContractClass> {
         let replay_class_hash = ReplayClassHash {
@@ -109,10 +108,7 @@ impl StateReader for ReplayStateReader<'_> {
         }
     }
 
-    fn get_compiled_class_hash(
-        &mut self,
-        _class_hash: ClassHash,
-    ) -> StateResult<CompiledClassHash> {
+    fn get_compiled_class_hash(&self, _class_hash: ClassHash) -> StateResult<CompiledClassHash> {
         todo!()
     }
 }

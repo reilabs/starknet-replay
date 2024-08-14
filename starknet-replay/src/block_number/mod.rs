@@ -3,6 +3,7 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
+use starknet_core::types::BlockId;
 
 /// `BlockNumber` is represented as a `u64` integer.
 #[derive(
@@ -25,5 +26,17 @@ impl BlockNumber {
 impl fmt::Display for BlockNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl From<BlockNumber> for BlockId {
+    fn from(block: BlockNumber) -> BlockId {
+        BlockId::Number(block.get())
+    }
+}
+
+impl From<&BlockNumber> for BlockId {
+    fn from(block: &BlockNumber) -> BlockId {
+        BlockId::Number(block.get())
     }
 }

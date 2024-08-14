@@ -1,5 +1,5 @@
 use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 use std::path::PathBuf;
 
 use super::replay_class_hash::TransactionOutput;
@@ -25,10 +25,10 @@ pub fn write_to_file(
         .append(true)
         .create(true)
         .open(filename)?;
-    let mut f = BufWriter::new(output_file);
-    for (trace, _) in traces {
-        let output = serde_json::to_string(&trace)?;
-        f.write_all(output.as_bytes())?;
+    let mut _f = BufWriter::new(output_file);
+    for (_trace, _) in traces {
+        //let output = serde_json::to_string(&trace)?;
+        //f.write_all(output.as_bytes())?;
     }
     Ok(())
 }

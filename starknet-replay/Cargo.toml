@@ -14,26 +14,25 @@ publish = false
 
 [dependencies]
 # All `cairo-lang-` crates must have the same version
-cairo-lang-starknet-classes = "2.6.0"
-cairo-lang-sierra-to-casm = "2.6.0"
-cairo-lang-runner = "2.6.0"
-cairo-lang-compiler = "2.6.0"
-cairo-lang-sierra = "2.6.0"
-cairo-lang-utils = "2.6.0"
-cairo-lang-sierra-generator = "2.6.0"
+cairo-lang-starknet-classes = "2.7.0-rc.1"
+cairo-lang-sierra-to-casm = "2.7.0-rc.1"
+cairo-lang-runner = "2.7.0-rc.1"
+cairo-lang-compiler = "2.7.0-rc.1"
+cairo-lang-sierra = "2.7.0-rc.1"
+cairo-lang-utils = "2.7.0-rc.1"
+cairo-lang-sierra-generator = "2.7.0-rc.1"
 # Some changes are required to `starkware-libs/blockifier`. These changes are
-# in the branch `extract_libfunc` of Reilabs' fork and need to be merged
-# into the main branch.
+# in the branch `extract_libfunc` of Reilabs fork and need to be merged
+# in main branch.
 # Hardcoding the commit hash for the time being.
-blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "fdb86caf85435cb42ae363c7b04b5620bc80c24a" }
+blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "5d7905668eb4cf4fe7b0b98f4863c83aeedbf907", features = ["full_visited_pcs"] }
+#blockifier = { path = "../../blockifier/crates/blockifier", features = ["full_visited_pcs"] } #"0.8.0-rc.0"
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
 # `next-release-devel` because it contains the fix for bug #551 related to
 # anchoring of labels when rotated. Issue #26.
 plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f8989af20931dd9e7e1f204d5254de3a8053" }
 flate2 = "1.0.25"
 rayon = "1.8.0"
-starknet_api = "0.10.0"
-starknet-core = "0.10.0"
 serde = "1.0.192"
 serde_json = "1.0.105"
 serde_with = "3.0.0"
@@ -43,6 +42,12 @@ jsonrpc = { version = "0.18.0", features = ["minreq_http"] }
 url = "2.5.2"
 hex = "0.4.3"
 once_cell = "1.17.1"
+tokio = { version = "1.27.0", features = ["full"] }
+# The versions of `starknet` dependencies must match the version used in blockifier.
+starknet_api = "0.13.0-rc.0"
+starknet-core = "0.11.0"
+starknet-providers = "0.11.0"
+primitive-types = "0.12.2"
 anyhow.workspace = true
 tracing.workspace = true
 itertools.workspace = true

@@ -88,7 +88,8 @@ impl SierraIdReplacer for DebugReplacer {
 
     fn replace_type_id(&self, id: &ConcreteTypeId) -> ConcreteTypeId {
         match self.lookup_intern_concrete_type(id) {
-            SierraGeneratorTypeLongId::CycleBreaker(ty) => todo!("{:?}", ty),
+            SierraGeneratorTypeLongId::Phantom(ty)
+            | SierraGeneratorTypeLongId::CycleBreaker(ty) => todo!("{:?}", ty),
             SierraGeneratorTypeLongId::Regular(long_id) => {
                 let mut long_id = long_id.as_ref().clone();
                 self.replace_generic_args(&mut long_id.generic_args);
