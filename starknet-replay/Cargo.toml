@@ -25,8 +25,8 @@ cairo-lang-sierra-generator = "2.7.0-rc.1"
 # in the branch `extract_libfunc` of Reilabs fork and need to be merged
 # in main branch.
 # Hardcoding the commit hash for the time being.
-blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "5d7905668eb4cf4fe7b0b98f4863c83aeedbf907", features = ["full_visited_pcs"] }
-#blockifier = { path = "../../blockifier/crates/blockifier", features = ["full_visited_pcs"] } #"0.8.0-rc.0"
+blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "3062b0cbc10f5562acc04bbd912afad284357082", features = ["vector_of_visited_program_counters"] }
+#blockifier = { path = "../../blockifier/crates/blockifier", features = ["vector_of_visited_program_counters"] } #"0.8.0-rc.0"
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
 # `next-release-devel` because it contains the fix for bug #551 related to
 # anchoring of labels when rotated. Issue #26.
