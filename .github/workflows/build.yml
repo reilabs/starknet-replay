@@ -31,6 +31,36 @@ jobs:
     - name: Run tests
       run: cargo test --locked
 
+  build_nightly:
+    name: Test Nightly
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "build-cache-nightly"
+        cache-all-crates: "true"
+        cache-directories: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+    - name: Install rust nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+    - name: Build
+      run: cargo build --locked
+    - name: Run tests
+      run: cargo test --locked
+
   clippy:
     name: Lint
     runs-on: ubuntu-latest
