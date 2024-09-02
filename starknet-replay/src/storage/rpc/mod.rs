@@ -46,6 +46,7 @@ use starknet_providers::jsonrpc::HttpTransport;
 use starknet_providers::{JsonRpcClient, Provider};
 use url::Url;
 
+use self::visited_pcs::VisitedPcsRaw;
 use crate::block_number::BlockNumber;
 use crate::contract_address::to_field_element;
 use crate::error::{DatabaseError, RunnerError};
@@ -60,6 +61,7 @@ pub mod class_info;
 pub mod contract_class;
 pub mod receipt;
 pub mod transaction;
+pub mod visited_pcs;
 
 /// These versioned constants are needed to replay transactions executed with
 /// older Starknet versions.
@@ -534,7 +536,7 @@ impl ReplayStorage for RpcStorage {
         };
         let starknet_version = work.header.starknet_version.clone();
         let versioned_constants = Self::versioned_constants(&starknet_version);
-        let mut state = CachedState::new(state_reader);
+        let mut state: CachedState<_, VisitedPcsRaw> = CachedState::new(state_reader);
         let block_context = BlockContext::new(
             block_info,
             chain_info,
@@ -549,7 +551,7 @@ impl ReplayStorage for RpcStorage {
 
         let mut transaction_result: Vec<_> = Vec::with_capacity(transactions.len());
         for transaction in transactions {
-            let mut tx_state = CachedState::<_>::create_transactional(&mut state);
+            let mut tx_state = CachedState::<_, _>::create_transactional(&mut state);
             // No fee is being calculated.
             let tx_info = transaction.execute(&mut tx_state, &block_context, charge_fee, validate);
             tx_state.to_state_diff()?;

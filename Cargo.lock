@@ -394,8 +394,8 @@ dependencies = [
 
 [[package]]
 name = "blockifier"
-version = "0.8.0-rc.0"
-source = "git+https://github.com/reilabs/blockifier.git?rev=b8f98da161a0de30223bfdc1f9fc22de01b1fc41#b8f98da161a0de30223bfdc1f9fc22de01b1fc41"
+version = "0.8.0-rc.1"
+source = "git+https://github.com/reilabs/blockifier.git?rev=04a22355b0c4e1efc1c6f98c92eeb98bf1751ba3#04a22355b0c4e1efc1c6f98c92eeb98bf1751ba3"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -418,6 +418,7 @@ dependencies = [
  "num-rational",
  "num-traits 0.2.19",
  "once_cell",
+ "paste",
  "phf",
  "serde",
  "serde_json",
