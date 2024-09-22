@@ -8,6 +8,7 @@ use blockifier::state::state_api::{StateReader, StateResult};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::state::StorageKey;
 use starknet_core::types::{ContractClass as StarknetContractClass, Felt};
+use tracing::info;
 
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::ReplayClassHash;
@@ -109,7 +110,34 @@ impl StateReader for ReplayStateReader<'_> {
         }
     }
 
-    fn get_compiled_class_hash(&self, _class_hash: ClassHash) -> StateResult<CompiledClassHash> {
-        todo!()
+    fn get_compiled_class_hash(&self, class_hash: ClassHash) -> StateResult<CompiledClassHash> {
+        let replay_class_hash = ReplayClassHash {
+            block_number: self.block_number,
+            class_hash,
+        };
+        let contract_class = self
+            .storage
+            .starknet_get_class(&replay_class_hash)
+            .map_err(|_| {
+                StateError::StateReadError("failed call to starknet_get_class".to_string())
+            })?;
+        match contract_class {
+            StarknetContractClass::Sierra(flattened_sierra_cc) => {
+                let compiled_class_hash = contract_class::get_sierra_compiled_class_hash(
+                    flattened_sierra_cc,
+                )
+                .map_err(|_| {
+                    StateError::StateReadError(
+                        "failed extraction of compiled class hash".to_string(),
+                    )
+                })?;
+                info!(
+                    "Compiled class hash for {:?} is {:?}",
+                    class_hash, compiled_class_hash
+                );
+                Ok(CompiledClassHash(compiled_class_hash))
+            }
+            StarknetContractClass::Legacy(_) => Ok(CompiledClassHash(Felt::ZERO)),
+        }
     }
 }
