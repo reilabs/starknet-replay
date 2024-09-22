@@ -8,7 +8,6 @@ use blockifier::state::state_api::{StateReader, StateResult};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::state::StorageKey;
 use starknet_core::types::{ContractClass as StarknetContractClass, Felt};
-use tracing::info;
 
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::ReplayClassHash;
@@ -131,10 +130,6 @@ impl StateReader for ReplayStateReader<'_> {
                         "failed extraction of compiled class hash".to_string(),
                     )
                 })?;
-                info!(
-                    "Compiled class hash for {:?} is {:?}",
-                    class_hash, compiled_class_hash
-                );
                 Ok(CompiledClassHash(compiled_class_hash))
             }
             StarknetContractClass::Legacy(_) => Ok(CompiledClassHash(Felt::ZERO)),

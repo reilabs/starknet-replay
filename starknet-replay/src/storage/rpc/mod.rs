@@ -41,9 +41,11 @@ use starknet_core::types::{
     Felt,
     MaybePendingBlockWithReceipts,
     MaybePendingBlockWithTxHashes,
+    StarknetError,
 };
 use starknet_providers::jsonrpc::HttpTransport;
-use starknet_providers::{JsonRpcClient, Provider};
+use starknet_providers::{JsonRpcClient, Provider, ProviderError};
+use tracing::info;
 use url::Url;
 
 use self::visited_pcs::VisitedPcsRaw;
@@ -281,10 +283,22 @@ impl RpcStorage {
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
     ) -> Result<Nonce, DatabaseError> {
+        info!(
+            "starknet_get_nonce {:?} {:?}",
+            block_number, contract_address
+        );
         let block_id: BlockId = block_number.into();
         let contract_address: Felt = to_field_element(contract_address);
-        let nonce: Felt = self.client.get_nonce(block_id, contract_address).await?;
-        Ok(Nonce(nonce))
+        let req = self.client.get_nonce(block_id, contract_address).await;
+        Ok(match req {
+            Ok(nonce) => Ok(Nonce(nonce)),
+            Err(err) => match err {
+                ProviderError::StarknetError(StarknetError::ContractNotFound) => {
+                    Ok(Nonce(Felt::ZERO))
+                }
+                _ => Err(err),
+            },
+        }?)
     }
 
     /// This function queries the class hash of a contract.
@@ -306,13 +320,25 @@ impl RpcStorage {
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
     ) -> Result<ClassHash, DatabaseError> {
+        info!(
+            "starknet_get_class_hash_at {:?} {:?}",
+            block_number, contract_address
+        );
         let block_id: BlockId = block_number.into();
         let contract_address: Felt = to_field_element(contract_address);
-        let class_hash: Felt = self
+        let req = self
             .client
             .get_class_hash_at(block_id, contract_address)
-            .await?;
-        Ok(ClassHash(class_hash))
+            .await;
+        Ok(match req {
+            Ok(class_hash) => Ok(ClassHash(class_hash)),
+            Err(err) => match err {
+                ProviderError::StarknetError(StarknetError::ContractNotFound) => {
+                    Ok(ClassHash(Felt::ZERO))
+                }
+                _ => Err(err),
+            },
+        }?)
     }
 
     /// This function queries the value of a storage key.
@@ -336,14 +362,24 @@ impl RpcStorage {
         contract_address: &ContractAddress,
         key: &StorageKey,
     ) -> Result<Felt, DatabaseError> {
+        info!(
+            "starknet_get_storage_at {:?} {:?} {:?}",
+            block_number, contract_address, key
+        );
         let block_id: BlockId = block_number.into();
         let contract_address: Felt = to_field_element(contract_address);
         let key: Felt = to_field_element(key);
-        let storage_value: Felt = self
+        let req = self
             .client
             .get_storage_at(contract_address, key, block_id)
-            .await?;
-        Ok(storage_value)
+            .await;
+        Ok(match req {
+            Ok(storage_value) => Ok(storage_value),
+            Err(err) => match err {
+                ProviderError::StarknetError(StarknetError::ContractNotFound) => Ok(Felt::ZERO),
+                _ => Err(err),
+            },
+        }?)
     }
 
     /// This function queries the chain id of the RPC endpoint.

@@ -29,7 +29,7 @@ use crate::storage::rpc::contract_class;
 /// Returns [`Err`] if:
 ///
 /// - Serialisation of `input` fails.
-/// - Compilation of Sierra into CASM fals.
+/// - Compilation of Sierra into CASM fails.
 pub fn decompress_sierra(
     input: FlattenedSierraClass,
 ) -> Result<BlockifierContractClass, DatabaseError> {
@@ -52,6 +52,19 @@ pub fn decompress_sierra(
     Ok(contract_class)
 }
 
+/// This function extracts the compiled class hash from
+/// [`starknet_core::types::FlattenedSierraClass`].
+///
+/// # Arguments
+///
+/// - `input`: The compressesed Sierra program.
+///
+/// # Errors
+///
+/// Returns [`Err`] if:
+///
+/// - Serialisation of `input` fails.
+/// - Compilation of Sierra into CASM fails.
 pub fn get_sierra_compiled_class_hash(input: FlattenedSierraClass) -> Result<Felt, DatabaseError> {
     let mut contract_class = serde_json::to_value(input)?;
     contract_class

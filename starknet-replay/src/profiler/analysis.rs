@@ -134,7 +134,7 @@ pub fn extract_libfuncs_weight(
         .iter()
         .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
     {
-        tracing::info!("  libfunc {concrete_name}: {weight}")
+        tracing::info!("  libfunc {concrete_name}: {weight}");
     }
 
     Ok(local_cumulative_libfuncs_weight)
