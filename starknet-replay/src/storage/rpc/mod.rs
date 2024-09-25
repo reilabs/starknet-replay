@@ -17,6 +17,7 @@ use blockifier::transaction::transaction_execution::Transaction as BlockifierTra
 use blockifier::transaction::transaction_types::TransactionType;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
+use moka::future::Cache;
 use once_cell::sync::Lazy;
 use starknet_api::block::{
     BlockHash,
@@ -110,6 +111,11 @@ pub struct RpcStorage {
     ///
     /// Unused but kept for reference.
     endpoint: Url,
+
+    cache_class: Cache<ReplayClassHash, ContractClass>,
+    cache_nonce: Cache<(BlockNumber, ContractAddress), Nonce>,
+    cache_class_hash: Cache<(BlockNumber, ContractAddress), ClassHash>,
+    cache_storage_value: Cache<(BlockNumber, ContractAddress, StorageKey), Felt>,
 }
 impl RpcStorage {
     /// Constructs a new `RpcStorage`.
@@ -119,7 +125,17 @@ impl RpcStorage {
     /// - `endpoint`: The Url of the Starknet RPC node.
     #[must_use]
     pub fn new(endpoint: Url) -> Self {
-        RpcStorage { endpoint }
+        let cache_class = Cache::new(1000);
+        let cache_nonce = Cache::new(1000);
+        let cache_class_hash = Cache::new(1000);
+        let cache_storage_value = Cache::new(1000);
+        RpcStorage {
+            endpoint,
+            cache_class,
+            cache_nonce,
+            cache_class_hash,
+            cache_storage_value,
+        }
     }
 
     /// This function generates a new client to perform an RPC request to the
@@ -157,13 +173,19 @@ impl RpcStorage {
         &self,
         class_hash_at_block: &ReplayClassHash,
     ) -> Result<ContractClass, DatabaseError> {
-        let block_id: BlockId = class_hash_at_block.block_number.into();
-        let class_hash: Felt = class_hash_at_block.class_hash.0;
-        let contract_class: ContractClass = self
-            .get_new_client()
-            .get_class(block_id, class_hash)
-            .await?;
-        Ok(contract_class)
+        let Some(contract_class) = self.cache_class.get(&class_hash_at_block).await else {
+            let block_id: BlockId = class_hash_at_block.block_number.into();
+            let class_hash: Felt = class_hash_at_block.class_hash.0;
+            let contract_class: ContractClass = self
+                .get_new_client()
+                .get_class(block_id, class_hash)
+                .await?;
+            self.cache_class
+                .insert(class_hash_at_block.clone(), contract_class.clone())
+                .await;
+            return Ok(contract_class);
+        };
+        return Ok(contract_class);
     }
 
     /// This function queries the block header.
@@ -312,21 +334,35 @@ impl RpcStorage {
             block_number,
             contract_address
         );
-        let block_id: BlockId = block_number.into();
-        let contract_address: Felt = to_field_element(contract_address);
-        let req = self
-            .get_new_client()
-            .get_nonce(block_id, contract_address)
-            .await;
-        Ok(match req {
-            Ok(nonce) => Ok(Nonce(nonce)),
-            Err(err) => match err {
-                ProviderError::StarknetError(StarknetError::ContractNotFound) => {
-                    Ok(Nonce(Felt::ZERO))
+        let Some(nonce) = self
+            .cache_nonce
+            .get(&(*block_number, *contract_address))
+            .await
+        else {
+            let block_id: BlockId = block_number.into();
+            let req = self
+                .get_new_client()
+                .get_nonce(block_id, to_field_element(contract_address))
+                .await;
+            return Ok(match req {
+                Ok(nonce) => {
+                    self.cache_nonce
+                        .insert((*block_number, *contract_address), Nonce(nonce))
+                        .await;
+                    Ok(Nonce(nonce))
                 }
-                _ => Err(err),
-            },
-        }?)
+                Err(err) => match err {
+                    ProviderError::StarknetError(StarknetError::ContractNotFound) => {
+                        self.cache_nonce
+                            .insert((*block_number, *contract_address), Nonce(Felt::ZERO))
+                            .await;
+                        Ok(Nonce(Felt::ZERO))
+                    }
+                    _ => Err(err),
+                },
+            }?);
+        };
+        return Ok(nonce);
     }
 
     /// This function queries the class hash of a contract.
@@ -353,21 +389,35 @@ impl RpcStorage {
             block_number,
             contract_address
         );
-        let block_id: BlockId = block_number.into();
-        let contract_address: Felt = to_field_element(contract_address);
-        let req = self
-            .get_new_client()
-            .get_class_hash_at(block_id, contract_address)
-            .await;
-        Ok(match req {
-            Ok(class_hash) => Ok(ClassHash(class_hash)),
-            Err(err) => match err {
-                ProviderError::StarknetError(StarknetError::ContractNotFound) => {
-                    Ok(ClassHash(Felt::ZERO))
+        let Some(class_hash) = self
+            .cache_class_hash
+            .get(&(*block_number, *contract_address))
+            .await
+        else {
+            let block_id: BlockId = block_number.into();
+            let req = self
+                .get_new_client()
+                .get_class_hash_at(block_id, to_field_element(contract_address))
+                .await;
+            return Ok(match req {
+                Ok(class_hash) => {
+                    self.cache_class_hash
+                        .insert((*block_number, *contract_address), ClassHash(class_hash))
+                        .await;
+                    Ok(ClassHash(class_hash))
                 }
-                _ => Err(err),
-            },
-        }?)
+                Err(err) => match err {
+                    ProviderError::StarknetError(StarknetError::ContractNotFound) => {
+                        self.cache_class_hash
+                            .insert((*block_number, *contract_address), ClassHash(Felt::ZERO))
+                            .await;
+                        Ok(ClassHash(Felt::ZERO))
+                    }
+                    _ => Err(err),
+                },
+            }?);
+        };
+        return Ok(class_hash);
     }
 
     /// This function queries the value of a storage key.
@@ -397,20 +447,39 @@ impl RpcStorage {
             contract_address,
             key
         );
-        let block_id: BlockId = block_number.into();
-        let contract_address: Felt = to_field_element(contract_address);
-        let key: Felt = to_field_element(key);
-        let req = self
-            .get_new_client()
-            .get_storage_at(contract_address, key, block_id)
-            .await;
-        Ok(match req {
-            Ok(storage_value) => Ok(storage_value),
-            Err(err) => match err {
-                ProviderError::StarknetError(StarknetError::ContractNotFound) => Ok(Felt::ZERO),
-                _ => Err(err),
-            },
-        }?)
+        let Some(storage_value) = self
+            .cache_storage_value
+            .get(&(*block_number, *contract_address, *key))
+            .await
+        else {
+            let block_id: BlockId = block_number.into();
+            let req = self
+                .get_new_client()
+                .get_storage_at(
+                    to_field_element(contract_address),
+                    to_field_element(key),
+                    block_id,
+                )
+                .await;
+            return Ok(match req {
+                Ok(storage_value) => {
+                    self.cache_storage_value
+                        .insert((*block_number, *contract_address, *key), storage_value)
+                        .await;
+                    Ok(storage_value)
+                }
+                Err(err) => match err {
+                    ProviderError::StarknetError(StarknetError::ContractNotFound) => {
+                        self.cache_storage_value
+                            .insert((*block_number, *contract_address, *key), Felt::ZERO)
+                            .await;
+                        Ok(Felt::ZERO)
+                    }
+                    _ => Err(err),
+                },
+            }?);
+        };
+        return Ok(storage_value);
     }
 
     /// This function queries the chain id of the RPC endpoint.
@@ -760,7 +829,7 @@ impl ReplayStorage for RpcStorage {
 
         let mut transaction_result: Vec<_> = Vec::with_capacity(transactions.len());
         for (idx, transaction) in transactions.iter().enumerate() {
-            let tx_type = Self::transaction_type(transaction);
+            let tx_type = Self::transaction_type(&transaction);
             let transaction_declared_deprecated_class_hash =
                 Self::transaction_declared_deprecated_class(transaction);
             let mut tx_state = CachedState::<_, _>::create_transactional(&mut state);

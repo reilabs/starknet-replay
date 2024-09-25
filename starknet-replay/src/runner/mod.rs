@@ -171,7 +171,7 @@ where
             |(storage, trace_out, sender), block| -> anyhow::Result<()> {
                 let block_transaction_traces = storage.execute_block(block, trace_out)?;
                 let block_number = BlockNumber::new(block.header.block_number.0);
-                info!("Simulation completed block {block_number}");
+                info!("Replay completed block {block_number}");
                 let visited_pcs = process_transaction_traces(block_transaction_traces);
                 sender.send(visited_pcs)?;
                 Ok(())
