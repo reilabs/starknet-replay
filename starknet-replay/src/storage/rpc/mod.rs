@@ -38,7 +38,7 @@ use starknet_api::core::{
 use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
-use starknet_api::transaction::{Transaction, TransactionReceipt};
+use starknet_api::transaction::{Transaction, TransactionExecutionStatus, TransactionReceipt};
 use starknet_api::{contract_address, felt, patricia_key};
 use starknet_core::types::{
     BlockId,
@@ -57,7 +57,7 @@ use starknet_core::types::{
 };
 use starknet_providers::jsonrpc::HttpTransport;
 use starknet_providers::{JsonRpcClient, Provider, ProviderError};
-use tracing::info;
+use tracing::{error, info, trace, warn};
 use url::Url;
 
 use self::visited_pcs::VisitedPcsRaw;
@@ -296,9 +296,10 @@ impl RpcStorage {
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
     ) -> Result<Nonce, DatabaseError> {
-        info!(
+        trace!(
             "starknet_get_nonce {:?} {:?}",
-            block_number, contract_address
+            block_number,
+            contract_address
         );
         let block_id: BlockId = block_number.into();
         let contract_address: Felt = to_field_element(contract_address);
@@ -333,9 +334,10 @@ impl RpcStorage {
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
     ) -> Result<ClassHash, DatabaseError> {
-        info!(
+        trace!(
             "starknet_get_class_hash_at {:?} {:?}",
-            block_number, contract_address
+            block_number,
+            contract_address
         );
         let block_id: BlockId = block_number.into();
         let contract_address: Felt = to_field_element(contract_address);
@@ -375,9 +377,11 @@ impl RpcStorage {
         contract_address: &ContractAddress,
         key: &StorageKey,
     ) -> Result<Felt, DatabaseError> {
-        info!(
+        trace!(
             "starknet_get_storage_at {:?} {:?} {:?}",
-            block_number, contract_address, key
+            block_number,
+            contract_address,
+            key
         );
         let block_id: BlockId = block_number.into();
         let contract_address: Felt = to_field_element(contract_address);
@@ -741,10 +745,10 @@ impl ReplayStorage for RpcStorage {
         )?;
 
         let mut transaction_result: Vec<_> = Vec::with_capacity(transactions.len());
-        for transaction in transactions {
-            let tx_type = Self::transaction_type(&transaction);
+        for (idx, transaction) in transactions.iter().enumerate() {
+            let tx_type = Self::transaction_type(transaction);
             let transaction_declared_deprecated_class_hash =
-                Self::transaction_declared_deprecated_class(&transaction);
+                Self::transaction_declared_deprecated_class(transaction);
             let mut tx_state = CachedState::<_, _>::create_transactional(&mut state);
             // No fee is being calculated.
             let tx_info = transaction.execute(&mut tx_state, &block_context, charge_fee, validate);
@@ -755,6 +759,26 @@ impl ReplayStorage for RpcStorage {
             match tx_info {
                 // TODO: This clone should be avoided for efficiency.
                 Ok(tx_info) => {
+                    let receipt = &work.receipts[idx];
+                    let tx_hash = receipt.transaction_hash;
+                    match (&tx_info.revert_error, receipt.output.execution_status()) {
+                        (None, TransactionExecutionStatus::Reverted(revert_error)) => {
+                            let revert_error = &revert_error.revert_reason;
+                            warn!(
+                                "Transaction replay succeeded, expected reverted. {tx_hash:?} | \
+                                 {revert_error}"
+                            );
+                        }
+                        (Some(revert_error), TransactionExecutionStatus::Succeeded) => {
+                            warn!(
+                                "Transaction replay reverted, expected succeess. {tx_hash:?} | \
+                                 {revert_error}"
+                            );
+                        }
+                        (Some(_), TransactionExecutionStatus::Reverted(_))
+                        | (None, TransactionExecutionStatus::Succeeded) => (),
+                    };
+
                     let visited_pcs: VisitedPcs = state
                         .visited_pcs
                         .clone()
@@ -769,12 +793,17 @@ impl ReplayStorage for RpcStorage {
                         .collect();
                     if let Some(filename) = trace_out {
                         write_to_file(filename, &tx_info, tx_type, Some(state_diff))?;
+                        info!("Saved transaction trace block {block_number}");
                     }
-                    tracing::info!("Saved transaction trace block {block_number}");
                     transaction_result.push((tx_info, visited_pcs));
                 }
                 Err(err) => {
-                    tracing::info!("Transaction failed {err:?}");
+                    let receipt = &work.receipts[idx];
+                    let tx_hash = receipt.transaction_hash;
+                    error!(
+                        "Interrupting {block_number} block replay. Transaction {tx_hash:?} \
+                         exception {err:?}"
+                    );
                     return Err(RunnerError::Unknown(err.to_string()));
                 }
             }
