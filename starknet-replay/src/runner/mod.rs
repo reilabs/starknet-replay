@@ -7,7 +7,6 @@ use std::sync::mpsc::channel;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use self::replay_class_hash::TransactionOutput;
-use self::report::write_to_file;
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::VisitedPcs;
 use crate::runner::replay_range::ReplayRange;
@@ -168,13 +167,9 @@ where
         .try_for_each_with(
             (storage, trace_out, sender),
             |(storage, trace_out, sender), block| -> anyhow::Result<()> {
-                let block_transaction_traces = storage.execute_block(block)?;
+                let block_transaction_traces = storage.execute_block(block, trace_out)?;
                 let block_number = BlockNumber::new(block.header.block_number.0);
                 tracing::info!("Simulation completed block {block_number}");
-                if let Some(filename) = trace_out {
-                    write_to_file(filename, &block_transaction_traces)?;
-                }
-                tracing::info!("Saved transaction trace block {block_number}");
                 let visited_pcs = process_transaction_traces(block_transaction_traces);
                 sender.send(visited_pcs)?;
                 Ok(())

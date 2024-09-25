@@ -3,13 +3,18 @@
 
 #![allow(clippy::module_name_repetitions)] // Added because of `ClassInfo`
 
+use std::collections::BTreeMap;
 use std::num::NonZeroU128;
+use std::path::PathBuf;
 
 use blockifier::blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
 use blockifier::bouncer::BouncerConfig;
 use blockifier::context::{BlockContext, ChainInfo};
 use blockifier::state::cached_state::CachedState;
+use blockifier::state::errors::StateError;
+use blockifier::state::state_api::StateReader;
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
+use blockifier::transaction::transaction_types::TransactionType;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
 use once_cell::sync::Lazy;
@@ -38,10 +43,17 @@ use starknet_api::{contract_address, felt, patricia_key};
 use starknet_core::types::{
     BlockId,
     ContractClass,
+    ContractStorageDiffItem,
+    DeclaredClassItem,
+    DeployedContractItem,
     Felt,
     MaybePendingBlockWithReceipts,
     MaybePendingBlockWithTxHashes,
+    NonceUpdate,
+    ReplacedClassItem,
     StarknetError,
+    StateDiff,
+    StorageEntry,
 };
 use starknet_providers::jsonrpc::HttpTransport;
 use starknet_providers::{JsonRpcClient, Provider, ProviderError};
@@ -55,6 +67,7 @@ use crate::error::{DatabaseError, RunnerError};
 use crate::runner::replay_block::ReplayBlock;
 use crate::runner::replay_class_hash::{ReplayClassHash, TransactionOutput, VisitedPcs};
 use crate::runner::replay_state_reader::ReplayStateReader;
+use crate::runner::report::write_to_file;
 use crate::storage::rpc::receipt::convert_receipt;
 use crate::storage::rpc::transaction::convert_transaction;
 use crate::storage::Storage as ReplayStorage;
@@ -481,6 +494,143 @@ impl RpcStorage {
             VersionedConstants::latest_constants()
         }
     }
+
+    /// Returns the [`starknet_api::core::ClassHash`] of a Declare transaction
+    /// of a Cairo0 contract.
+    ///
+    /// Returns `None` if it's not a Declare transaction or the contract is a
+    /// Sierra contract.
+    ///
+    /// # Arguments
+    ///
+    /// - `transaction`: the transaction object.
+    fn transaction_declared_deprecated_class(
+        transaction: &blockifier::transaction::transaction_execution::Transaction,
+    ) -> Option<ClassHash> {
+        match transaction {
+            BlockifierTransaction::AccountTransaction(
+                blockifier::transaction::account_transaction::AccountTransaction::Declare(tx),
+            ) => match tx.tx() {
+                starknet_api::transaction::DeclareTransaction::V0(_)
+                | starknet_api::transaction::DeclareTransaction::V1(_) => Some(tx.class_hash()),
+                starknet_api::transaction::DeclareTransaction::V2(_)
+                | starknet_api::transaction::DeclareTransaction::V3(_) => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Returns the blockchain state change after a transaction execution.
+    ///
+    /// # Arguments
+    ///
+    /// - `state`: the blockchain state object.
+    /// - `old_declared_contract`: new Cairo0 contract being declared, otherwise
+    ///   `None`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if the computation of state changes fails.
+    fn to_state_diff<S: StateReader, V: blockifier::state::visited_pcs::VisitedPcs>(
+        state: &mut CachedState<S, V>,
+        old_declared_contract: Option<ClassHash>,
+    ) -> Result<StateDiff, StateError> {
+        let state_diff = state.to_state_diff()?;
+
+        let mut deployed_contracts = Vec::new();
+        let mut replaced_classes = Vec::new();
+
+        // We need to check the previous class hash for a contract to decide if it's a
+        // deployed contract or a replaced class.
+        for (address, class_hash) in state_diff.class_hashes {
+            let previous_class_hash = state.state.get_class_hash_at(address)?;
+
+            if previous_class_hash.0 == Felt::ZERO {
+                deployed_contracts.push(DeployedContractItem {
+                    address: *address.0.key(),
+                    class_hash: class_hash.0,
+                });
+            } else {
+                replaced_classes.push(ReplacedClassItem {
+                    contract_address: *address.0.key(),
+                    class_hash: class_hash.0,
+                });
+            }
+        }
+
+        let mut diffs: BTreeMap<Felt, Vec<StorageEntry>> = BTreeMap::new();
+        state_diff
+            .storage
+            .into_iter()
+            .for_each(|((address, storage_key), storage_value)| {
+                let storage_entry = StorageEntry {
+                    key: storage_key.into(),
+                    value: storage_value,
+                };
+                diffs.entry(address.into()).or_default().push(storage_entry);
+            });
+
+        let storage_diffs: Vec<ContractStorageDiffItem> = diffs
+            .into_iter()
+            .map(|(address, storage_entries)| ContractStorageDiffItem {
+                address,
+                storage_entries,
+            })
+            .collect();
+
+        Ok(StateDiff {
+            storage_diffs,
+            deployed_contracts,
+            // This info is not present in the state diff, so we need to pass it separately.
+            deprecated_declared_classes: old_declared_contract
+                .into_iter()
+                .map(|class_hash| class_hash.0)
+                .collect(),
+            declared_classes: state_diff
+                .compiled_class_hashes
+                .into_iter()
+                .map(|(class_hash, compiled_class_hash)| DeclaredClassItem {
+                    class_hash: class_hash.0,
+                    compiled_class_hash: compiled_class_hash.0,
+                })
+                .collect(),
+            nonces: state_diff
+                .nonces
+                .into_iter()
+                .map(|(address, nonce)| NonceUpdate {
+                    contract_address: *address.0.key(),
+                    nonce: nonce.0,
+                })
+                .collect(),
+            replaced_classes,
+        })
+    }
+
+    /// Returns the
+    /// [`blockifier::transaction::transaction_types::TransactionType`] of a
+    /// transaction.
+    ///
+    /// # Arguments
+    ///
+    /// - `transaction`: the transaction object.
+    fn transaction_type(
+        transaction: &blockifier::transaction::transaction_execution::Transaction,
+    ) -> TransactionType {
+        match transaction {
+            BlockifierTransaction::AccountTransaction(tx) => match tx {
+                blockifier::transaction::account_transaction::AccountTransaction::Declare(_) => {
+                    TransactionType::Declare
+                }
+                blockifier::transaction::account_transaction::AccountTransaction::DeployAccount(
+                    _,
+                ) => TransactionType::DeployAccount,
+                blockifier::transaction::account_transaction::AccountTransaction::Invoke(_) => {
+                    TransactionType::InvokeFunction
+                }
+            },
+            BlockifierTransaction::L1HandlerTransaction(_) => TransactionType::L1Handler,
+        }
+    }
 }
 impl ReplayStorage for RpcStorage {
     fn get_most_recent_block_number(&self) -> Result<BlockNumber, DatabaseError> {
@@ -509,7 +659,12 @@ impl ReplayStorage for RpcStorage {
         Ok(transactions)
     }
 
-    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionOutput>, RunnerError> {
+    #[allow(clippy::too_many_lines)] // Added because it can't be meaningfully split further in smaller blocks.
+    fn execute_block(
+        &self,
+        work: &ReplayBlock,
+        trace_out: &Option<PathBuf>,
+    ) -> Result<Vec<TransactionOutput>, RunnerError> {
         let block_number = BlockNumber::new(work.header.block_number.0);
 
         let mut transactions: Vec<BlockifierTransaction> =
@@ -587,10 +742,14 @@ impl ReplayStorage for RpcStorage {
 
         let mut transaction_result: Vec<_> = Vec::with_capacity(transactions.len());
         for transaction in transactions {
+            let tx_type = Self::transaction_type(&transaction);
+            let transaction_declared_deprecated_class_hash =
+                Self::transaction_declared_deprecated_class(&transaction);
             let mut tx_state = CachedState::<_, _>::create_transactional(&mut state);
             // No fee is being calculated.
             let tx_info = transaction.execute(&mut tx_state, &block_context, charge_fee, validate);
-            tx_state.to_state_diff()?;
+            let state_diff =
+                Self::to_state_diff(&mut tx_state, transaction_declared_deprecated_class_hash)?;
             tx_state.commit();
             // TODO: Cache the storage changes for faster storage access.
             match tx_info {
@@ -608,6 +767,10 @@ impl ReplayStorage for RpcStorage {
                             (replay_class_hash, pcs.into_iter().collect())
                         })
                         .collect();
+                    if let Some(filename) = trace_out {
+                        write_to_file(filename, &tx_info, tx_type, Some(state_diff))?;
+                    }
+                    tracing::info!("Saved transaction trace block {block_number}");
                     transaction_result.push((tx_info, visited_pcs));
                 }
                 Err(err) => {

@@ -395,7 +395,7 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/reilabs/blockifier.git?rev=04a22355b0c4e1efc1c6f98c92eeb98bf1751ba3#04a22355b0c4e1efc1c6f98c92eeb98bf1751ba3"
+source = "git+https://github.com/reilabs/blockifier.git?rev=e3141f67338cbb03595f24984b615042877229e0#e3141f67338cbb03595f24984b615042877229e0"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -3764,6 +3764,7 @@ dependencies = [
  "cairo-lang-sierra-to-casm",
  "cairo-lang-starknet-classes",
  "cairo-lang-utils",
+ "cairo-vm",
  "flate2",
  "hex",
  "indoc",
