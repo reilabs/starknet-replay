@@ -782,6 +782,7 @@ impl ReplayStorage for RpcStorage {
                     let visited_pcs: VisitedPcs = state
                         .visited_pcs
                         .clone()
+                        .0
                         .into_iter()
                         .map(|(class_hash, pcs)| {
                             let replay_class_hash = ReplayClassHash {

@@ -1,17 +1,21 @@
-use std::collections::hash_map::{Entry, IntoIter, Iter};
+//! This module implements the [`blockifier::state::visited_pcs::VisitedPcs`]
+//! trait to allow full record of visited program counters during transaction
+//! execution. The default trait used by the blockifier is not enough because it
+//! saves all visited program counters in a set.
+
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 
 use blockifier::state::state_api::State;
 use blockifier::state::visited_pcs::VisitedPcs;
 use starknet_api::core::ClassHash;
 
+/// The hashmap of [`VisitedPcsRaw`] is a map from a
+/// [`starknet_api::core::ClassHash`] to a vector of visited program counters.
+/// The vector returned from each call to [`starknet_api::core::ClassHash`] is
+/// added to the nested vector.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct VisitedPcsRaw(HashMap<ClassHash, Vec<Vec<usize>>>);
-impl VisitedPcsRaw {
-    pub fn iter(&self) -> impl Iterator<Item = (&ClassHash, &Vec<Vec<usize>>)> {
-        self.into_iter()
-    }
-}
+pub struct VisitedPcsRaw(pub HashMap<ClassHash, Vec<Vec<usize>>>);
 impl VisitedPcs for VisitedPcsRaw {
     type Pcs = Vec<Vec<usize>>;
 
@@ -47,21 +51,5 @@ impl VisitedPcs for VisitedPcsRaw {
         for pc in pcs {
             state.add_visited_pcs(*class_hash, &pc);
         }
-    }
-}
-impl IntoIterator for VisitedPcsRaw {
-    type Item = (ClassHash, Vec<Vec<usize>>);
-    type IntoIter = IntoIter<ClassHash, Vec<Vec<usize>>>;
-
-    fn into_iter(self) -> IntoIter<ClassHash, Vec<Vec<usize>>> {
-        self.0.into_iter()
-    }
-}
-impl<'a> IntoIterator for &'a VisitedPcsRaw {
-    type Item = (&'a ClassHash, &'a Vec<Vec<usize>>);
-    type IntoIter = Iter<'a, ClassHash, Vec<Vec<usize>>>;
-
-    fn into_iter(self) -> Iter<'a, ClassHash, Vec<Vec<usize>>> {
-        self.0.iter()
     }
 }
