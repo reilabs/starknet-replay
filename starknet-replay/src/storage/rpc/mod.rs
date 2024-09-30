@@ -110,9 +110,6 @@ pub struct RpcStorage {
     ///
     /// Unused but kept for reference.
     endpoint: Url,
-
-    /// The client field sends RPC calls.
-    client: JsonRpcClient<HttpTransport>,
 }
 impl RpcStorage {
     /// Constructs a new `RpcStorage`.
@@ -122,8 +119,15 @@ impl RpcStorage {
     /// - `endpoint`: The Url of the Starknet RPC node.
     #[must_use]
     pub fn new(endpoint: Url) -> Self {
-        let client = JsonRpcClient::new(HttpTransport::new(endpoint.clone()));
-        RpcStorage { endpoint, client }
+        RpcStorage { endpoint }
+    }
+
+    /// This function generates a new client to perform an RPC request to the
+    /// endpoint.
+    ///
+    /// The client can't be shared across threads.
+    fn get_new_client(&self) -> JsonRpcClient<HttpTransport> {
+        JsonRpcClient::new(HttpTransport::new(self.endpoint.clone()))
     }
 
     /// This function queries the number of the most recent Starknet block.
@@ -134,7 +138,7 @@ impl RpcStorage {
     #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_block_number(&self) -> Result<BlockNumber, DatabaseError> {
-        let block_number: u64 = self.client.block_number().await?;
+        let block_number: u64 = self.get_new_client().block_number().await?;
         Ok(BlockNumber::new(block_number))
     }
 
@@ -155,7 +159,10 @@ impl RpcStorage {
     ) -> Result<ContractClass, DatabaseError> {
         let block_id: BlockId = class_hash_at_block.block_number.into();
         let class_hash: Felt = class_hash_at_block.class_hash.0;
-        let contract_class: ContractClass = self.client.get_class(block_id, class_hash).await?;
+        let contract_class: ContractClass = self
+            .get_new_client()
+            .get_class(block_id, class_hash)
+            .await?;
         Ok(contract_class)
     }
 
@@ -175,8 +182,10 @@ impl RpcStorage {
         block_number: &BlockNumber,
     ) -> Result<BlockHeader, DatabaseError> {
         let block_id: BlockId = block_number.into();
-        let block_header: MaybePendingBlockWithTxHashes =
-            self.client.get_block_with_tx_hashes(block_id).await?;
+        let block_header: MaybePendingBlockWithTxHashes = self
+            .get_new_client()
+            .get_block_with_tx_hashes(block_id)
+            .await?;
         match block_header {
             MaybePendingBlockWithTxHashes::Block(block_header) => {
                 let sequencer: StarkHash =
@@ -257,8 +266,10 @@ impl RpcStorage {
         block_number: &BlockNumber,
     ) -> Result<(Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
         let block_id: BlockId = block_number.into();
-        let txs_with_receipts: MaybePendingBlockWithReceipts =
-            self.client.get_block_with_receipts(block_id).await?;
+        let txs_with_receipts: MaybePendingBlockWithReceipts = self
+            .get_new_client()
+            .get_block_with_receipts(block_id)
+            .await?;
         match txs_with_receipts {
             MaybePendingBlockWithReceipts::Block(block) => {
                 let mut transactions: Vec<Transaction> =
@@ -303,7 +314,10 @@ impl RpcStorage {
         );
         let block_id: BlockId = block_number.into();
         let contract_address: Felt = to_field_element(contract_address);
-        let req = self.client.get_nonce(block_id, contract_address).await;
+        let req = self
+            .get_new_client()
+            .get_nonce(block_id, contract_address)
+            .await;
         Ok(match req {
             Ok(nonce) => Ok(Nonce(nonce)),
             Err(err) => match err {
@@ -342,7 +356,7 @@ impl RpcStorage {
         let block_id: BlockId = block_number.into();
         let contract_address: Felt = to_field_element(contract_address);
         let req = self
-            .client
+            .get_new_client()
             .get_class_hash_at(block_id, contract_address)
             .await;
         Ok(match req {
@@ -387,7 +401,7 @@ impl RpcStorage {
         let contract_address: Felt = to_field_element(contract_address);
         let key: Felt = to_field_element(key);
         let req = self
-            .client
+            .get_new_client()
             .get_storage_at(contract_address, key, block_id)
             .await;
         Ok(match req {
@@ -408,7 +422,7 @@ impl RpcStorage {
     #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_chain_id(&self) -> Result<ChainId, DatabaseError> {
-        let chain_id: Felt = self.client.chain_id().await?;
+        let chain_id: Felt = self.get_new_client().chain_id().await?;
         let chain_id = chain_id.to_hex_string();
         let chain_id: Vec<&str> = chain_id.split("0x").collect();
         let decoded_result = hex::decode(chain_id.last().ok_or(DatabaseError::InvalidHex())?)?;
