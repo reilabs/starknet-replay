@@ -18,63 +18,39 @@ use blockifier::transaction::transaction_types::TransactionType;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
 use once_cell::sync::Lazy;
-use starknet_api::block::{
-    BlockHash,
-    BlockHeader,
-    BlockTimestamp,
-    GasPrice,
-    GasPricePerToken,
-    StarknetVersion,
-};
-use starknet_api::core::{
-    ChainId,
-    ClassHash,
-    ContractAddress,
-    GlobalRoot,
-    Nonce,
-    PatriciaKey,
-    SequencerContractAddress,
-};
+use rpc_client::RpcClient;
+use starknet_api::block::{BlockHeader, StarknetVersion};
+use starknet_api::core::{ClassHash, ContractAddress, PatriciaKey};
 use starknet_api::data_availability::L1DataAvailabilityMode;
-use starknet_api::hash::StarkHash;
-use starknet_api::state::StorageKey;
 use starknet_api::transaction::{Transaction, TransactionExecutionStatus, TransactionReceipt};
 use starknet_api::{contract_address, felt, patricia_key};
 use starknet_core::types::{
-    BlockId,
     ContractClass,
     ContractStorageDiffItem,
     DeclaredClassItem,
     DeployedContractItem,
     Felt,
-    MaybePendingBlockWithReceipts,
-    MaybePendingBlockWithTxHashes,
     NonceUpdate,
     ReplacedClassItem,
-    StarknetError,
     StateDiff,
     StorageEntry,
 };
-use starknet_providers::jsonrpc::HttpTransport;
-use starknet_providers::{JsonRpcClient, Provider, ProviderError};
-use tracing::{error, info, trace, warn};
+use tracing::{error, info, warn};
 use url::Url;
 
 use self::visited_pcs::VisitedPcsRaw;
 use crate::block_number::BlockNumber;
-use crate::contract_address::to_field_element;
 use crate::error::{DatabaseError, RunnerError};
 use crate::runner::replay_block::ReplayBlock;
 use crate::runner::replay_class_hash::{ReplayClassHash, TransactionOutput, VisitedPcs};
 use crate::runner::replay_state_reader::ReplayStateReader;
 use crate::runner::report::write_to_file;
-use crate::storage::rpc::receipt::convert_receipt;
-use crate::storage::rpc::transaction::convert_transaction;
 use crate::storage::Storage as ReplayStorage;
 
 pub mod class_info;
 pub mod contract_class;
 pub mod receipt;
+pub mod rpc_client;
 pub mod transaction;
 pub mod visited_pcs;
 
@@ -109,7 +85,7 @@ pub struct RpcStorage {
     /// The endpoint of the Starknet RPC Node.
     ///
     /// Unused but kept for reference.
-    endpoint: Url,
+    rpc_client: RpcClient,
 }
 impl RpcStorage {
     /// Constructs a new `RpcStorage`.
@@ -119,316 +95,8 @@ impl RpcStorage {
     /// - `endpoint`: The Url of the Starknet RPC node.
     #[must_use]
     pub fn new(endpoint: Url) -> Self {
-        RpcStorage { endpoint }
-    }
-
-    /// This function generates a new client to perform an RPC request to the
-    /// endpoint.
-    ///
-    /// The client can't be shared across threads.
-    fn get_new_client(&self) -> JsonRpcClient<HttpTransport> {
-        JsonRpcClient::new(HttpTransport::new(self.endpoint.clone()))
-    }
-
-    /// This function queries the number of the most recent Starknet block.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the request fails.
-    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
-    #[tokio::main]
-    pub async fn starknet_block_number(&self) -> Result<BlockNumber, DatabaseError> {
-        let block_number: u64 = self.get_new_client().block_number().await?;
-        Ok(BlockNumber::new(block_number))
-    }
-
-    /// This function queries the contract class at a specific block.
-    ///
-    /// # Arguments
-    ///
-    /// - `class_hash_at_block`: class hash of the contract to be returned.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the request fails or the class hash doesn't exist.
-    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
-    #[tokio::main]
-    pub async fn starknet_get_class(
-        &self,
-        class_hash_at_block: &ReplayClassHash,
-    ) -> Result<ContractClass, DatabaseError> {
-        let block_id: BlockId = class_hash_at_block.block_number.into();
-        let class_hash: Felt = class_hash_at_block.class_hash.0;
-        let contract_class: ContractClass = self
-            .get_new_client()
-            .get_class(block_id, class_hash)
-            .await?;
-        Ok(contract_class)
-    }
-
-    /// This function queries the block header.
-    ///
-    /// # Arguments
-    ///
-    /// - `block_number`: the block number to be queried.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the request fails or the block number doesn't exist.
-    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
-    #[tokio::main]
-    pub async fn starknet_get_block_with_tx_hashes(
-        &self,
-        block_number: &BlockNumber,
-    ) -> Result<BlockHeader, DatabaseError> {
-        let block_id: BlockId = block_number.into();
-        let block_header: MaybePendingBlockWithTxHashes = self
-            .get_new_client()
-            .get_block_with_tx_hashes(block_id)
-            .await?;
-        match block_header {
-            MaybePendingBlockWithTxHashes::Block(block_header) => {
-                let sequencer: StarkHash =
-                    Felt::from_bytes_be(&block_header.sequencer_address.to_bytes_be());
-                let price_in_fri: u128 =
-                    block_header.l1_gas_price.price_in_fri.to_string().parse()?;
-                let price_in_wei: u128 =
-                    block_header.l1_gas_price.price_in_wei.to_string().parse()?;
-
-                let data_price_in_fri: u128 = block_header
-                    .l1_data_gas_price
-                    .price_in_fri
-                    .to_string()
-                    .parse()?;
-                let data_price_in_wei: u128 = block_header
-                    .l1_data_gas_price
-                    .price_in_wei
-                    .to_string()
-                    .parse()?;
-
-                let block_header: BlockHeader = BlockHeader {
-                    block_hash: BlockHash(Felt::from_bytes_be(
-                        &block_header.block_hash.to_bytes_be(),
-                    )),
-                    parent_hash: BlockHash(Felt::from_bytes_be(
-                        &block_header.parent_hash.to_bytes_be(),
-                    )),
-                    block_number: starknet_api::block::BlockNumber(block_header.block_number),
-                    l1_gas_price: GasPricePerToken {
-                        price_in_fri: GasPrice(price_in_fri),
-                        price_in_wei: GasPrice(price_in_wei),
-                    },
-                    l1_data_gas_price: GasPricePerToken {
-                        price_in_fri: GasPrice(data_price_in_fri),
-                        price_in_wei: GasPrice(data_price_in_wei),
-                    },
-                    state_root: GlobalRoot(Felt::from_bytes_be(
-                        &block_header.new_root.to_bytes_be(),
-                    )),
-                    sequencer: SequencerContractAddress(sequencer.try_into()?),
-                    timestamp: BlockTimestamp(block_header.timestamp),
-                    l1_da_mode: match block_header.l1_da_mode {
-                        starknet_core::types::L1DataAvailabilityMode::Blob => {
-                            L1DataAvailabilityMode::Blob
-                        }
-                        starknet_core::types::L1DataAvailabilityMode::Calldata => {
-                            L1DataAvailabilityMode::Calldata
-                        }
-                    },
-                    state_diff_commitment: None,
-                    transaction_commitment: None,
-                    event_commitment: None,
-                    n_transactions: block_header.transactions.len(),
-                    n_events: 0,
-                    starknet_version: StarknetVersion(block_header.starknet_version),
-                    state_diff_length: None,
-                    receipt_commitment: None,
-                };
-                Ok(block_header)
-            }
-            MaybePendingBlockWithTxHashes::PendingBlock(_) => unreachable!(),
-        }
-    }
-
-    /// This function queries the transactions and receipts in a block.
-    ///
-    /// # Arguments
-    ///
-    /// - `block_number`: the block number to be queried.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the request fails or the block number doesn't exist.
-    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
-    #[tokio::main]
-    pub async fn starknet_get_block_with_receipts(
-        &self,
-        block_number: &BlockNumber,
-    ) -> Result<(Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
-        let block_id: BlockId = block_number.into();
-        let txs_with_receipts: MaybePendingBlockWithReceipts = self
-            .get_new_client()
-            .get_block_with_receipts(block_id)
-            .await?;
-        match txs_with_receipts {
-            MaybePendingBlockWithReceipts::Block(block) => {
-                let mut transactions: Vec<Transaction> =
-                    Vec::with_capacity(block.transactions.len());
-                let mut receipts: Vec<TransactionReceipt> =
-                    Vec::with_capacity(block.transactions.len());
-
-                for tx in block.transactions {
-                    let transaction = convert_transaction(tx.transaction)?;
-                    let receipt =
-                        convert_receipt(&block.block_hash, &block.block_number, tx.receipt)?;
-                    transactions.push(transaction);
-                    receipts.push(receipt);
-                }
-                Ok((transactions, receipts))
-            }
-            MaybePendingBlockWithReceipts::PendingBlock(_) => unreachable!(),
-        }
-    }
-
-    /// This function queries the nonce of a contract.
-    ///
-    /// # Arguments
-    ///
-    /// - `block_number`: the block number at which to query the nonce.
-    /// - `contract_address`: the address of the contract.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the request fails or the block number doesn't exist.
-    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
-    #[tokio::main]
-    pub async fn starknet_get_nonce(
-        &self,
-        block_number: &BlockNumber,
-        contract_address: &ContractAddress,
-    ) -> Result<Nonce, DatabaseError> {
-        trace!(
-            "starknet_get_nonce {:?} {:?}",
-            block_number,
-            contract_address
-        );
-        let block_id: BlockId = block_number.into();
-        let contract_address: Felt = to_field_element(contract_address);
-        let req = self
-            .get_new_client()
-            .get_nonce(block_id, contract_address)
-            .await;
-        Ok(match req {
-            Ok(nonce) => Ok(Nonce(nonce)),
-            Err(err) => match err {
-                ProviderError::StarknetError(StarknetError::ContractNotFound) => {
-                    Ok(Nonce(Felt::ZERO))
-                }
-                _ => Err(err),
-            },
-        }?)
-    }
-
-    /// This function queries the class hash of a contract.
-    ///
-    /// Returns 0 if the class hash doesn't exist.
-    ///
-    /// # Arguments
-    ///
-    /// - `block_number`: the block number at which to query the class hash.
-    /// - `contract_address`: the address of the contract.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the request fails.
-    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
-    #[tokio::main]
-    pub async fn starknet_get_class_hash_at(
-        &self,
-        block_number: &BlockNumber,
-        contract_address: &ContractAddress,
-    ) -> Result<ClassHash, DatabaseError> {
-        trace!(
-            "starknet_get_class_hash_at {:?} {:?}",
-            block_number,
-            contract_address
-        );
-        let block_id: BlockId = block_number.into();
-        let contract_address: Felt = to_field_element(contract_address);
-        let req = self
-            .get_new_client()
-            .get_class_hash_at(block_id, contract_address)
-            .await;
-        Ok(match req {
-            Ok(class_hash) => Ok(ClassHash(class_hash)),
-            Err(err) => match err {
-                ProviderError::StarknetError(StarknetError::ContractNotFound) => {
-                    Ok(ClassHash(Felt::ZERO))
-                }
-                _ => Err(err),
-            },
-        }?)
-    }
-
-    /// This function queries the value of a storage key.
-    ///
-    /// Returns 0 if the storage key doesn't exist.
-    ///
-    /// # Arguments
-    ///
-    /// - `block_number`: the block number at which to query the storage key.
-    /// - `contract_address`: the address of the contract.
-    /// - `key`: the storage key to query.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the request fails.
-    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
-    #[tokio::main]
-    pub async fn starknet_get_storage_at(
-        &self,
-        block_number: &BlockNumber,
-        contract_address: &ContractAddress,
-        key: &StorageKey,
-    ) -> Result<Felt, DatabaseError> {
-        trace!(
-            "starknet_get_storage_at {:?} {:?} {:?}",
-            block_number,
-            contract_address,
-            key
-        );
-        let block_id: BlockId = block_number.into();
-        let contract_address: Felt = to_field_element(contract_address);
-        let key: Felt = to_field_element(key);
-        let req = self
-            .get_new_client()
-            .get_storage_at(contract_address, key, block_id)
-            .await;
-        Ok(match req {
-            Ok(storage_value) => Ok(storage_value),
-            Err(err) => match err {
-                ProviderError::StarknetError(StarknetError::ContractNotFound) => Ok(Felt::ZERO),
-                _ => Err(err),
-            },
-        }?)
-    }
-
-    /// This function queries the chain id of the RPC endpoint.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if the request fails or decoding hex values of the chain
-    /// id fails.
-    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
-    #[tokio::main]
-    pub async fn starknet_get_chain_id(&self) -> Result<ChainId, DatabaseError> {
-        let chain_id: Felt = self.get_new_client().chain_id().await?;
-        let chain_id = chain_id.to_hex_string();
-        let chain_id: Vec<&str> = chain_id.split("0x").collect();
-        let decoded_result = hex::decode(chain_id.last().ok_or(DatabaseError::InvalidHex())?)?;
-        let chain_id = std::str::from_utf8(&decoded_result)?;
-        let chain_id = ChainId::from(chain_id.to_string());
-        Ok(chain_id)
+        let rpc_client = RpcClient::new(endpoint);
+        RpcStorage { rpc_client }
     }
 
     /// Constructs the [`blockifier::context::ChainInfo`] struct for the
@@ -445,7 +113,7 @@ impl RpcStorage {
             contract_address!("0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d");
 
         // TODO: Allow different chains.
-        let chain_id = self.starknet_get_chain_id()?;
+        let chain_id = self.rpc_client.starknet_get_chain_id()?;
 
         Ok(ChainInfo {
             chain_id,
@@ -652,7 +320,7 @@ impl RpcStorage {
 }
 impl ReplayStorage for RpcStorage {
     fn get_most_recent_block_number(&self) -> Result<BlockNumber, DatabaseError> {
-        let block_number = self.starknet_block_number()?;
+        let block_number = self.rpc_client.starknet_block_number()?;
         Ok(block_number)
     }
 
@@ -660,12 +328,14 @@ impl ReplayStorage for RpcStorage {
         &self,
         replay_class_hash: &ReplayClassHash,
     ) -> Result<ContractClass, DatabaseError> {
-        let contract_class = self.starknet_get_class(replay_class_hash)?;
+        let contract_class = self.rpc_client.starknet_get_class(replay_class_hash)?;
         Ok(contract_class)
     }
 
     fn get_block_header(&self, block_number: BlockNumber) -> Result<BlockHeader, DatabaseError> {
-        let block_header = self.starknet_get_block_with_tx_hashes(&block_number)?;
+        let block_header = self
+            .rpc_client
+            .starknet_get_block_with_tx_hashes(&block_number)?;
         Ok(block_header)
     }
 
@@ -673,7 +343,9 @@ impl ReplayStorage for RpcStorage {
         &self,
         block_number: BlockNumber,
     ) -> Result<(Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
-        let transactions = self.starknet_get_block_with_receipts(&block_number)?;
+        let transactions = self
+            .rpc_client
+            .starknet_get_block_with_receipts(&block_number)?;
         Ok(transactions)
     }
 
@@ -723,7 +395,7 @@ impl ReplayStorage for RpcStorage {
         // When simulating transactions, the storage layer should match the data of the
         // parent block (i.e. before the transaction is executed)
         let block_number_minus_one = BlockNumber::new(work.header.block_number.0 - 1);
-        let state_reader = ReplayStateReader::new(self, block_number_minus_one);
+        let state_reader = ReplayStateReader::new(&self.rpc_client, block_number_minus_one);
         let charge_fee = true;
         let validate = true;
         let allow_use_kzg_data = true;
@@ -733,6 +405,7 @@ impl ReplayStorage for RpcStorage {
             let block_number_whose_hash_becomes_available =
                 BlockNumber::new(work.header.block_number.0 - 10);
             let block_hash = self
+                .rpc_client
                 .starknet_get_block_with_tx_hashes(&block_number_whose_hash_becomes_available)?
                 .block_hash;
 
@@ -830,8 +503,10 @@ impl ReplayStorage for RpcStorage {
 #[cfg(test)]
 mod tests {
 
+    use starknet_api::core::{ChainId, Nonce};
     use starknet_api::felt;
     use starknet_api::hash::StarkHash;
+    use starknet_api::state::StorageKey;
 
     use super::*;
 
@@ -844,7 +519,7 @@ mod tests {
     #[test]
     fn test_block_number() {
         let rpc_storage = build_rpc_storage();
-        let block_number = rpc_storage.starknet_block_number().unwrap();
+        let block_number = rpc_storage.rpc_client.starknet_block_number().unwrap();
         // Mainnet block is more than 600k at the moment.
         assert!(block_number.get() > 600_000);
     }
@@ -859,7 +534,10 @@ mod tests {
             block_number: BlockNumber::new(632_917),
             class_hash: ClassHash(class_hash),
         };
-        let contract_class = rpc_storage.starknet_get_class(&replay_class_hash).unwrap();
+        let contract_class = rpc_storage
+            .rpc_client
+            .starknet_get_class(&replay_class_hash)
+            .unwrap();
 
         match contract_class {
             ContractClass::Sierra(contract_class) => {
@@ -883,6 +561,7 @@ mod tests {
         let rpc_storage = build_rpc_storage();
         let block_number = BlockNumber::new(632_917);
         let block_header = rpc_storage
+            .rpc_client
             .starknet_get_block_with_tx_hashes(&block_number)
             .unwrap();
         assert_eq!(block_header.timestamp.0, 1_713_168_820);
@@ -893,6 +572,7 @@ mod tests {
         let rpc_storage = build_rpc_storage();
         let block_number = BlockNumber::new(632_917);
         rpc_storage
+            .rpc_client
             .starknet_get_block_with_receipts(&block_number)
             .unwrap();
     }
@@ -904,6 +584,7 @@ mod tests {
         let contract_address: ContractAddress =
             contract_address!("0x0710ce97d91835e049e5e76fbcb594065405744cf057b5b5f553282108983c53");
         let nonce = rpc_storage
+            .rpc_client
             .starknet_get_nonce(&block_number, &contract_address)
             .unwrap();
 
@@ -920,6 +601,7 @@ mod tests {
         let contract_address: ContractAddress =
             contract_address!("0x0710ce97d91835e049e5e76fbcb594065405744cf057b5b5f553282108983c53");
         let class_hash = rpc_storage
+            .rpc_client
             .starknet_get_class_hash_at(&block_number, &contract_address)
             .unwrap();
 
@@ -938,6 +620,7 @@ mod tests {
         let contract_address: ContractAddress =
             contract_address!("0x568f8c3532c549ad331a48d86d93b20064c3c16ac6bf396f041107cc6078707");
         let class_hash = rpc_storage
+            .rpc_client
             .starknet_get_class_hash_at(&block_number, &contract_address)
             .unwrap();
 
@@ -959,6 +642,7 @@ mod tests {
             "0x06ccc0ef4c95ff7991520b6a5c45f8e688a4ae7e32bd108ec5392261a42b5306"
         ));
         let storage_value = rpc_storage
+            .rpc_client
             .starknet_get_storage_at(&block_number, &contract_address, &storage_key)
             .unwrap();
 
@@ -970,7 +654,7 @@ mod tests {
     fn test_get_chain_id() {
         let rpc_storage = build_rpc_storage();
         let main_chain = ChainId::from("SN_MAIN".to_string());
-        let chain_id = rpc_storage.starknet_get_chain_id().unwrap();
+        let chain_id = rpc_storage.rpc_client.starknet_get_chain_id().unwrap();
         assert_eq!(chain_id, main_chain);
         assert_eq!(chain_id.as_hex(), main_chain.as_hex());
     }
