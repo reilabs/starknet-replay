@@ -7,6 +7,7 @@ use std::fs;
 
 use starknet_api::hash::StarkHash;
 use starknet_api::transaction::TransactionHash;
+use starknet_core::types::Felt;
 use starknet_replay::block_number::BlockNumber;
 use starknet_replay::profiler::analysis::extract_libfuncs_weight;
 use starknet_replay::profiler::replay_statistics::ReplayStatistics;
@@ -21,12 +22,11 @@ use url::Url;
 fn test_replay_blocks() {
     let block_number = 632917;
     let transaction_hash: StarkHash =
-        "0x0177C9365875CAA840EA8F03F97B0E3A8EE8851A8B952BF157B5DBD4FECCB060"
-            .try_into()
+        Felt::from_hex("0x0177C9365875CAA840EA8F03F97B0E3A8EE8851A8B952BF157B5DBD4FECCB060")
             .unwrap();
 
     let endpoint: Url = Url::parse("https://starknet-mainnet.public.blastapi.io/rpc/v0_7").unwrap();
-    let storage = RpcStorage::new(endpoint).unwrap();
+    let storage = RpcStorage::new(endpoint);
     let mut replay_work: Vec<ReplayBlock> = Vec::new();
 
     let block_number = BlockNumber::new(block_number);

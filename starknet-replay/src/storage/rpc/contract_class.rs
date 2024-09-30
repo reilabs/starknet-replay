@@ -12,7 +12,7 @@ use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractC
 use flate2::bufread;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_core::types::contract::legacy::{LegacyContractClass, LegacyProgram};
-use starknet_core::types::{CompressedLegacyContractClass, FlattenedSierraClass};
+use starknet_core::types::{CompressedLegacyContractClass, Felt, FlattenedSierraClass};
 
 use crate::error::DatabaseError;
 use crate::storage::rpc::contract_class;
@@ -29,7 +29,7 @@ use crate::storage::rpc::contract_class;
 /// Returns [`Err`] if:
 ///
 /// - Serialisation of `input` fails.
-/// - Compilation of Sierra into CASM fals.
+/// - Compilation of Sierra into CASM fails.
 pub fn decompress_sierra(
     input: FlattenedSierraClass,
 ) -> Result<BlockifierContractClass, DatabaseError> {
@@ -50,6 +50,32 @@ pub fn decompress_sierra(
     })?;
     let contract_class = BlockifierContractClass::V1(contract_class);
     Ok(contract_class)
+}
+
+/// This function extracts the compiled class hash from
+/// [`starknet_core::types::FlattenedSierraClass`].
+///
+/// # Arguments
+///
+/// - `input`: The compressesed Sierra program.
+///
+/// # Errors
+///
+/// Returns [`Err`] if:
+///
+/// - Serialisation of `input` fails.
+/// - Compilation of Sierra into CASM fails.
+pub fn get_sierra_compiled_class_hash(input: FlattenedSierraClass) -> Result<Felt, DatabaseError> {
+    let mut contract_class = serde_json::to_value(input)?;
+    contract_class
+        .as_object_mut()
+        .ok_or(DatabaseError::Unknown(
+            "Contract class is not an object".to_string(),
+        ))?
+        .remove("abi");
+    let sierra_cc: CairoContractClass = serde_json::from_value(contract_class)?;
+    let casm_definition = CasmContractClass::from_contract_class(sierra_cc, false, usize::MAX)?;
+    Ok(casm_definition.compiled_class_hash())
 }
 
 /// This function converts

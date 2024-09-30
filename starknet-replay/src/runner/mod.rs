@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use tracing::info;
 
 use self::replay_class_hash::TransactionOutput;
-use self::report::write_to_file;
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::VisitedPcs;
 use crate::runner::replay_range::ReplayRange;
@@ -130,7 +130,10 @@ pub fn process_transaction_traces(transaction_simulations: Vec<TransactionOutput
             continue;
         }
 
-        cumulative_visited_pcs.extend(visited_pcs.into_iter());
+        for (contract, pcs) in visited_pcs {
+            let key = cumulative_visited_pcs.entry(contract).or_insert(Vec::new());
+            key.extend(pcs.into_iter());
+        }
     }
     cumulative_visited_pcs
 }
@@ -159,19 +162,16 @@ pub fn replay_blocks<T>(
 where
     T: Storage + Sync + Send,
 {
+    info!("Starting transactions replay");
     let (sender, receiver) = channel();
     replay_work
         .par_iter()
         .try_for_each_with(
             (storage, trace_out, sender),
             |(storage, trace_out, sender), block| -> anyhow::Result<()> {
-                let block_transaction_traces = storage.execute_block(block)?;
+                let block_transaction_traces = storage.execute_block(block, trace_out)?;
                 let block_number = BlockNumber::new(block.header.block_number.0);
-                tracing::info!("Simulation completed block {block_number}");
-                if let Some(filename) = trace_out {
-                    write_to_file(filename, &block_transaction_traces)?;
-                }
-                tracing::info!("Saved transaction trace block {block_number}");
+                info!("Simulation completed block {block_number}");
                 let visited_pcs = process_transaction_traces(block_transaction_traces);
                 sender.send(visited_pcs)?;
                 Ok(())

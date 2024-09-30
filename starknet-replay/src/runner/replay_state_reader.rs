@@ -6,9 +6,8 @@ use blockifier::execution::contract_class::ContractClass as BlockifierContractCl
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader, StateResult};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_core::types::ContractClass as StarknetContractClass;
+use starknet_core::types::{ContractClass as StarknetContractClass, Felt};
 
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::ReplayClassHash;
@@ -31,6 +30,7 @@ impl ReplayStateReader<'_> {
     /// - `storage`: The object exposing RPC calls to query the blockchain
     ///   state.
     /// - `block_number`: The block number at which state is read.
+    #[must_use]
     pub fn new(storage: &RpcStorage, block_number: BlockNumber) -> ReplayStateReader<'_> {
         ReplayStateReader {
             storage,
@@ -40,41 +40,47 @@ impl ReplayStateReader<'_> {
 }
 impl StateReader for ReplayStateReader<'_> {
     fn get_storage_at(
-        &mut self,
+        &self,
         contract_address: ContractAddress,
         key: StorageKey,
-    ) -> StateResult<StarkFelt> {
+    ) -> StateResult<Felt> {
         let storage_value = self
             .storage
             .starknet_get_storage_at(&self.block_number, &contract_address, &key)
-            .map_err(|_| {
-                StateError::StateReadError("failed call to starknet_get_storage_at".to_string())
+            .map_err(|err| {
+                StateError::StateReadError(
+                    format!("failed call to starknet_get_storage_at {err}").to_string(),
+                )
             })?;
         Ok(storage_value)
     }
 
-    fn get_nonce_at(&mut self, contract_address: ContractAddress) -> StateResult<Nonce> {
+    fn get_nonce_at(&self, contract_address: ContractAddress) -> StateResult<Nonce> {
         let nonce = self
             .storage
             .starknet_get_nonce(&self.block_number, &contract_address)
-            .map_err(|_| {
-                StateError::StateReadError("failed call to starknet_get_nonce".to_string())
+            .map_err(|err| {
+                StateError::StateReadError(
+                    format!("failed call to starknet_get_nonce {err}").to_string(),
+                )
             })?;
         Ok(nonce)
     }
 
-    fn get_class_hash_at(&mut self, contract_address: ContractAddress) -> StateResult<ClassHash> {
+    fn get_class_hash_at(&self, contract_address: ContractAddress) -> StateResult<ClassHash> {
         let class_hash = self
             .storage
             .starknet_get_class_hash_at(&self.block_number, &contract_address)
-            .map_err(|_| {
-                StateError::StateReadError("failed call to starknet_get_class_hash_at".to_string())
+            .map_err(|err| {
+                StateError::StateReadError(
+                    format!("failed call to starknet_get_class_hash_at {err}").to_string(),
+                )
             })?;
         Ok(class_hash)
     }
 
     fn get_compiled_contract_class(
-        &mut self,
+        &self,
         class_hash: ClassHash,
     ) -> StateResult<BlockifierContractClass> {
         let replay_class_hash = ReplayClassHash {
@@ -84,24 +90,28 @@ impl StateReader for ReplayStateReader<'_> {
         let contract_class = self
             .storage
             .starknet_get_class(&replay_class_hash)
-            .map_err(|_| {
-                StateError::StateReadError("failed call to starknet_get_class".to_string())
+            .map_err(|err| {
+                StateError::StateReadError(
+                    format!("failed call to starknet_get_class {err}").to_string(),
+                )
             })?;
         match contract_class {
             StarknetContractClass::Sierra(flattened_sierra_cc) => {
                 let compiled_contract = contract_class::decompress_sierra(flattened_sierra_cc)
-                    .map_err(|_| {
+                    .map_err(|err| {
                         StateError::StateReadError(
-                            "failed extraction of BlockifierContractClass".to_string(),
+                            format!("failed extraction of BlockifierContractClass {err}")
+                                .to_string(),
                         )
                     })?;
                 Ok(compiled_contract)
             }
             StarknetContractClass::Legacy(flattened_casm_cc) => {
                 let compiled_contract = contract_class::decompress_casm(flattened_casm_cc)
-                    .map_err(|_| {
+                    .map_err(|err| {
                         StateError::StateReadError(
-                            "failed extraction of BlockifierContractClass".to_string(),
+                            format!("failed extraction of BlockifierContractClass {err}")
+                                .to_string(),
                         )
                     })?;
                 Ok(compiled_contract)
@@ -109,10 +119,32 @@ impl StateReader for ReplayStateReader<'_> {
         }
     }
 
-    fn get_compiled_class_hash(
-        &mut self,
-        _class_hash: ClassHash,
-    ) -> StateResult<CompiledClassHash> {
-        todo!()
+    fn get_compiled_class_hash(&self, class_hash: ClassHash) -> StateResult<CompiledClassHash> {
+        let replay_class_hash = ReplayClassHash {
+            block_number: self.block_number,
+            class_hash,
+        };
+        let contract_class = self
+            .storage
+            .starknet_get_class(&replay_class_hash)
+            .map_err(|err| {
+                StateError::StateReadError(
+                    format!("failed call to starknet_get_class {err}").to_string(),
+                )
+            })?;
+        match contract_class {
+            StarknetContractClass::Sierra(flattened_sierra_cc) => {
+                let compiled_class_hash = contract_class::get_sierra_compiled_class_hash(
+                    flattened_sierra_cc,
+                )
+                .map_err(|err| {
+                    StateError::StateReadError(
+                        format!("failed extraction of compiled class hash {err}").to_string(),
+                    )
+                })?;
+                Ok(CompiledClassHash(compiled_class_hash))
+            }
+            StarknetContractClass::Legacy(_) => Ok(CompiledClassHash(Felt::ZERO)),
+        }
     }
 }

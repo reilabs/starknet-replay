@@ -9,8 +9,8 @@ members = [
 [workspace.package]
 # Edition 2021 is chosen to support async.
 edition = "2021"
-# Version chosen only because 1.78.0 is the stable version when writing this Cargo.toml
-# If this version is changed, amend the version set in `build.yml`
+# Version 1.80.1 or higher is not compatible because it enforces check of `cfg` names and values. The dependency `blockifier` currently uses unknown values for `target_pointer_width`.
+# If this version is changed, amend the version set in `build.yml` and `rust-toolchain.toml`.
 rust-version = "1.78.0"
 license = "Apache-2.0"
 repository = "https://github.com/reilabs/starknet-replay"
@@ -20,4 +20,4 @@ readme = "README.md"
 [workspace.dependencies]
 anyhow = "1.0.75"
 tracing = "0.1.37"
-itertools = { version = "0.11.0", default-features = false }
+itertools = { version = "0.12.1", default-features = false }

@@ -41,6 +41,7 @@ use error::RunnerError;
 use runner::replay_block::ReplayBlock;
 
 pub mod block_number;
+pub mod contract_address;
 pub mod error;
 pub mod histogram;
 pub mod profiler;

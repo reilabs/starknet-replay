@@ -2,6 +2,8 @@
 //! and `starknet-replay`. Implementing this trait allows adding compatibility
 //! with a new `Starknet` node.
 
+use std::path::PathBuf;
+
 use starknet_api::block::BlockHeader;
 use starknet_api::transaction::{Transaction, TransactionReceipt};
 use starknet_core::types::ContractClass;
@@ -70,11 +72,16 @@ pub trait Storage {
     ///
     /// # Arguments
     ///
-    /// - `work`: The block to be re-executed
+    /// - `work`: The block to be re-executed.
+    /// - `trace_out`: The output file of the transaction trace.
     ///
     /// # Errors
     ///
     /// Returns [`Err`] if any transaction fails execution or if there is any
     /// error communicating with the storage layer.
-    fn execute_block(&self, work: &ReplayBlock) -> Result<Vec<TransactionOutput>, RunnerError>;
+    fn execute_block(
+        &self,
+        work: &ReplayBlock,
+        trace_out: &Option<PathBuf>,
+    ) -> Result<Vec<TransactionOutput>, RunnerError>;
 }

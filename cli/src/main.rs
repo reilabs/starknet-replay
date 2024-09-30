@@ -110,7 +110,7 @@ fn run(args: Args) -> anyhow::Result<()> {
     check_file(&txt_out, overwrite)?;
     check_file(&trace_out, overwrite)?;
 
-    let storage = RpcStorage::new(rpc_url)?;
+    let storage = RpcStorage::new(rpc_url);
 
     let replay_range = ReplayRange::new(start_block, end_block)?;
 
