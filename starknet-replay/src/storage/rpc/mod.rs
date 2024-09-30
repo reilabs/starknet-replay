@@ -131,7 +131,7 @@ impl RpcStorage {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails.
-    #[allow(clippy::missing_panics_doc)] // To avoid false positives caused by OK() statement.
+    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_block_number(&self) -> Result<BlockNumber, DatabaseError> {
         let block_number: u64 = self.client.block_number().await?;
@@ -147,7 +147,7 @@ impl RpcStorage {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails or the class hash doesn't exist.
-    #[allow(clippy::missing_panics_doc)] // To avoid false positives caused by OK() statement.
+    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_class(
         &self,
@@ -168,7 +168,7 @@ impl RpcStorage {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails or the block number doesn't exist.
-    #[allow(clippy::missing_panics_doc)] // To avoid false positives caused by OK() statement.
+    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_block_with_tx_hashes(
         &self,
@@ -250,7 +250,7 @@ impl RpcStorage {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails or the block number doesn't exist.
-    #[allow(clippy::missing_panics_doc)] // To avoid false positives caused by OK() statement.
+    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_block_with_receipts(
         &self,
@@ -289,7 +289,7 @@ impl RpcStorage {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails or the block number doesn't exist.
-    #[allow(clippy::missing_panics_doc)] // To avoid false positives caused by OK() statement.
+    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_nonce(
         &self,
@@ -327,7 +327,7 @@ impl RpcStorage {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails.
-    #[allow(clippy::missing_panics_doc)] // To avoid false positives caused by OK() statement.
+    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_class_hash_at(
         &self,
@@ -369,7 +369,7 @@ impl RpcStorage {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails.
-    #[allow(clippy::missing_panics_doc)] // To avoid false positives caused by OK() statement.
+    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_storage_at(
         &self,
@@ -405,7 +405,7 @@ impl RpcStorage {
     ///
     /// Returns [`Err`] if the request fails or decoding hex values of the chain
     /// id fails.
-    #[allow(clippy::missing_panics_doc)] // To avoid false positives caused by OK() statement.
+    #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_chain_id(&self) -> Result<ChainId, DatabaseError> {
         let chain_id: Felt = self.client.chain_id().await?;

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use tracing::info;
 
 use self::replay_class_hash::TransactionOutput;
 use crate::block_number::BlockNumber;
@@ -161,6 +162,7 @@ pub fn replay_blocks<T>(
 where
     T: Storage + Sync + Send,
 {
+    info!("Starting transactions replay");
     let (sender, receiver) = channel();
     replay_work
         .par_iter()
@@ -169,7 +171,7 @@ where
             |(storage, trace_out, sender), block| -> anyhow::Result<()> {
                 let block_transaction_traces = storage.execute_block(block, trace_out)?;
                 let block_number = BlockNumber::new(block.header.block_number.0);
-                tracing::info!("Simulation completed block {block_number}");
+                info!("Simulation completed block {block_number}");
                 let visited_pcs = process_transaction_traces(block_transaction_traces);
                 sender.send(visited_pcs)?;
                 Ok(())
