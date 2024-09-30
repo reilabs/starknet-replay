@@ -83,8 +83,6 @@ static VERSIONED_CONSTANTS_13_1: Lazy<VersionedConstants> = Lazy::new(|| {
 #[allow(dead_code)]
 pub struct RpcStorage {
     /// The endpoint of the Starknet RPC Node.
-    ///
-    /// Unused but kept for reference.
     rpc_client: RpcClient,
 }
 impl RpcStorage {
@@ -342,7 +340,7 @@ impl ReplayStorage for RpcStorage {
     fn get_transactions_and_receipts_for_block(
         &self,
         block_number: BlockNumber,
-    ) -> Result<(Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
+    ) -> Result<(BlockHeader, Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
         let transactions = self
             .rpc_client
             .starknet_get_block_with_receipts(&block_number)?;

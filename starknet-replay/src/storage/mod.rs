@@ -65,7 +65,7 @@ pub trait Storage {
     fn get_transactions_and_receipts_for_block(
         &self,
         block_number: BlockNumber,
-    ) -> Result<(Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError>;
+    ) -> Result<(BlockHeader, Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError>;
 
     /// Replays the list of transactions in a block and returns the list of
     /// transactions traces.

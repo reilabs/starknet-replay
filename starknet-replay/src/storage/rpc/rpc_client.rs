@@ -33,6 +33,7 @@ use starknet_core::types::{
 };
 use starknet_providers::jsonrpc::HttpTransport;
 use starknet_providers::{JsonRpcClient, Provider, ProviderError};
+use tokio::sync::OnceCell;
 use tracing::trace;
 use url::Url;
 
@@ -50,6 +51,17 @@ use crate::storage::rpc::transaction::convert_transaction;
 pub struct RpcClient {
     /// The endpoint of the Starknet RPC Node.
     endpoint: Url,
+
+    /// The chain id variable initialised with the first call to
+    /// [`RpcClient::starknet_get_chain_id`]. This is doable because it's not
+    /// possible to replay blocks from different chains.
+    chain_id: OnceCell<ChainId>,
+
+    /// The most recent block number available from the rpc server. It is
+    /// initialised in [`RpcClient::starknet_block_number`]. The assumption
+    /// is that the latest blocks generated after the replay is started are
+    /// ignored.
+    block_number: OnceCell<BlockNumber>,
 }
 impl RpcClient {
     /// Constructs a new `RpcStorage`.
@@ -59,7 +71,11 @@ impl RpcClient {
     /// - `endpoint`: The Url of the Starknet RPC node.
     #[must_use]
     pub fn new(endpoint: Url) -> Self {
-        RpcClient { endpoint }
+        RpcClient {
+            endpoint,
+            chain_id: OnceCell::new(),
+            block_number: OnceCell::new(),
+        }
     }
 
     /// This function generates a new client to perform an RPC request to the
@@ -78,8 +94,14 @@ impl RpcClient {
     #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_block_number(&self) -> Result<BlockNumber, DatabaseError> {
-        let block_number: u64 = self.get_new_client().block_number().await?;
-        Ok(BlockNumber::new(block_number))
+        let block_number: Result<&BlockNumber, DatabaseError> = self
+            .block_number
+            .get_or_try_init(|| async {
+                let block_number: u64 = self.get_new_client().block_number().await?;
+                Ok(BlockNumber::new(block_number))
+            })
+            .await;
+        Ok(block_number?).cloned()
     }
 
     /// This function queries the contract class at a specific block.
@@ -127,33 +149,21 @@ impl RpcClient {
             .get_block_with_tx_hashes(block_id)
             .await?;
         match block_header {
-            MaybePendingBlockWithTxHashes::Block(block_header) => {
+            MaybePendingBlockWithTxHashes::Block(block) => {
                 let sequencer: StarkHash =
-                    Felt::from_bytes_be(&block_header.sequencer_address.to_bytes_be());
-                let price_in_fri: u128 =
-                    block_header.l1_gas_price.price_in_fri.to_string().parse()?;
-                let price_in_wei: u128 =
-                    block_header.l1_gas_price.price_in_wei.to_string().parse()?;
+                    Felt::from_bytes_be(&block.sequencer_address.to_bytes_be());
+                let price_in_fri: u128 = block.l1_gas_price.price_in_fri.to_string().parse()?;
+                let price_in_wei: u128 = block.l1_gas_price.price_in_wei.to_string().parse()?;
 
-                let data_price_in_fri: u128 = block_header
-                    .l1_data_gas_price
-                    .price_in_fri
-                    .to_string()
-                    .parse()?;
-                let data_price_in_wei: u128 = block_header
-                    .l1_data_gas_price
-                    .price_in_wei
-                    .to_string()
-                    .parse()?;
+                let data_price_in_fri: u128 =
+                    block.l1_data_gas_price.price_in_fri.to_string().parse()?;
+                let data_price_in_wei: u128 =
+                    block.l1_data_gas_price.price_in_wei.to_string().parse()?;
 
                 let block_header: BlockHeader = BlockHeader {
-                    block_hash: BlockHash(Felt::from_bytes_be(
-                        &block_header.block_hash.to_bytes_be(),
-                    )),
-                    parent_hash: BlockHash(Felt::from_bytes_be(
-                        &block_header.parent_hash.to_bytes_be(),
-                    )),
-                    block_number: starknet_api::block::BlockNumber(block_header.block_number),
+                    block_hash: BlockHash(Felt::from_bytes_be(&block.block_hash.to_bytes_be())),
+                    parent_hash: BlockHash(Felt::from_bytes_be(&block.parent_hash.to_bytes_be())),
+                    block_number: starknet_api::block::BlockNumber(block.block_number),
                     l1_gas_price: GasPricePerToken {
                         price_in_fri: GasPrice(price_in_fri),
                         price_in_wei: GasPrice(price_in_wei),
@@ -162,12 +172,10 @@ impl RpcClient {
                         price_in_fri: GasPrice(data_price_in_fri),
                         price_in_wei: GasPrice(data_price_in_wei),
                     },
-                    state_root: GlobalRoot(Felt::from_bytes_be(
-                        &block_header.new_root.to_bytes_be(),
-                    )),
+                    state_root: GlobalRoot(Felt::from_bytes_be(&block.new_root.to_bytes_be())),
                     sequencer: SequencerContractAddress(sequencer.try_into()?),
-                    timestamp: BlockTimestamp(block_header.timestamp),
-                    l1_da_mode: match block_header.l1_da_mode {
+                    timestamp: BlockTimestamp(block.timestamp),
+                    l1_da_mode: match block.l1_da_mode {
                         starknet_core::types::L1DataAvailabilityMode::Blob => {
                             L1DataAvailabilityMode::Blob
                         }
@@ -178,9 +186,9 @@ impl RpcClient {
                     state_diff_commitment: None,
                     transaction_commitment: None,
                     event_commitment: None,
-                    n_transactions: block_header.transactions.len(),
+                    n_transactions: block.transactions.len(),
                     n_events: 0,
-                    starknet_version: StarknetVersion(block_header.starknet_version),
+                    starknet_version: StarknetVersion(block.starknet_version),
                     state_diff_length: None,
                     receipt_commitment: None,
                 };
@@ -204,7 +212,7 @@ impl RpcClient {
     pub async fn starknet_get_block_with_receipts(
         &self,
         block_number: &BlockNumber,
-    ) -> Result<(Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
+    ) -> Result<(BlockHeader, Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
         let block_id: BlockId = block_number.into();
         let txs_with_receipts: MaybePendingBlockWithReceipts = self
             .get_new_client()
@@ -212,6 +220,49 @@ impl RpcClient {
             .await?;
         match txs_with_receipts {
             MaybePendingBlockWithReceipts::Block(block) => {
+                let sequencer: StarkHash =
+                    Felt::from_bytes_be(&block.sequencer_address.to_bytes_be());
+                let price_in_fri: u128 = block.l1_gas_price.price_in_fri.to_string().parse()?;
+                let price_in_wei: u128 = block.l1_gas_price.price_in_wei.to_string().parse()?;
+
+                let data_price_in_fri: u128 =
+                    block.l1_data_gas_price.price_in_fri.to_string().parse()?;
+                let data_price_in_wei: u128 =
+                    block.l1_data_gas_price.price_in_wei.to_string().parse()?;
+
+                let block_header: BlockHeader = BlockHeader {
+                    block_hash: BlockHash(Felt::from_bytes_be(&block.block_hash.to_bytes_be())),
+                    parent_hash: BlockHash(Felt::from_bytes_be(&block.parent_hash.to_bytes_be())),
+                    block_number: starknet_api::block::BlockNumber(block.block_number),
+                    l1_gas_price: GasPricePerToken {
+                        price_in_fri: GasPrice(price_in_fri),
+                        price_in_wei: GasPrice(price_in_wei),
+                    },
+                    l1_data_gas_price: GasPricePerToken {
+                        price_in_fri: GasPrice(data_price_in_fri),
+                        price_in_wei: GasPrice(data_price_in_wei),
+                    },
+                    state_root: GlobalRoot(Felt::from_bytes_be(&block.new_root.to_bytes_be())),
+                    sequencer: SequencerContractAddress(sequencer.try_into()?),
+                    timestamp: BlockTimestamp(block.timestamp),
+                    l1_da_mode: match block.l1_da_mode {
+                        starknet_core::types::L1DataAvailabilityMode::Blob => {
+                            L1DataAvailabilityMode::Blob
+                        }
+                        starknet_core::types::L1DataAvailabilityMode::Calldata => {
+                            L1DataAvailabilityMode::Calldata
+                        }
+                    },
+                    state_diff_commitment: None,
+                    transaction_commitment: None,
+                    event_commitment: None,
+                    n_transactions: block.transactions.len(),
+                    n_events: 0,
+                    starknet_version: StarknetVersion(block.starknet_version),
+                    state_diff_length: None,
+                    receipt_commitment: None,
+                };
+
                 let mut transactions: Vec<Transaction> =
                     Vec::with_capacity(block.transactions.len());
                 let mut receipts: Vec<TransactionReceipt> =
@@ -224,7 +275,7 @@ impl RpcClient {
                     transactions.push(transaction);
                     receipts.push(receipt);
                 }
-                Ok((transactions, receipts))
+                Ok((block_header, transactions, receipts))
             }
             MaybePendingBlockWithReceipts::PendingBlock(_) => unreachable!(),
         }
@@ -362,12 +413,19 @@ impl RpcClient {
     #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
     pub async fn starknet_get_chain_id(&self) -> Result<ChainId, DatabaseError> {
-        let chain_id: Felt = self.get_new_client().chain_id().await?;
-        let chain_id = chain_id.to_hex_string();
-        let chain_id: Vec<&str> = chain_id.split("0x").collect();
-        let decoded_result = hex::decode(chain_id.last().ok_or(DatabaseError::InvalidHex())?)?;
-        let chain_id = std::str::from_utf8(&decoded_result)?;
-        let chain_id = ChainId::from(chain_id.to_string());
-        Ok(chain_id)
+        let chain_id: Result<&ChainId, DatabaseError> = self
+            .chain_id
+            .get_or_try_init(|| async {
+                let chain_id: Felt = self.get_new_client().chain_id().await?;
+                let chain_id = chain_id.to_hex_string();
+                let chain_id: Vec<&str> = chain_id.split("0x").collect();
+                let decoded_result =
+                    hex::decode(chain_id.last().ok_or(DatabaseError::InvalidHex())?)?;
+                let chain_id = std::str::from_utf8(&decoded_result)?;
+                let chain_id = ChainId::from(chain_id.to_string());
+                Ok(chain_id)
+            })
+            .await;
+        Ok(chain_id?).cloned()
     }
 }
