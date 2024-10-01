@@ -1,7 +1,5 @@
-//! This module uses the Starknet RPC protocol to query the data required to
-//! replay transactions from the Starknet blockchain.
-
-#![allow(clippy::module_name_repetitions)] // Added because of `ClassInfo`
+//! This module uses the Starknet RPC protocol to query the data from the
+//! Starknet RPC server.
 
 use starknet_api::block::{
     BlockHash,

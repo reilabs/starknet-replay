@@ -1,7 +1,9 @@
-//! This module uses the Starknet RPC protocol to query the data required to
-//! replay transactions from the Starknet blockchain.
+//! This module contains the implementation of the [`crate::storage::Storage`]
+//! trait to replay transactions using the RPC client interface.
 
-#![allow(clippy::module_name_repetitions)] // Added because of `ClassInfo`
+#![allow(clippy::module_name_repetitions)] // Added because of `generate_class_info` in `class_info.rs`, `convert_receipt`
+                                           // in `receipt.rs`, `convert_transaction` in `transaction.rs`,
+                                           // `VisitedPcsRaw` in `visited_pcs. rs`, `RpcStorage` in `mod.rs`
 
 use std::collections::BTreeMap;
 use std::num::NonZeroU128;
