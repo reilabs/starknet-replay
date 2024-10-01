@@ -52,10 +52,10 @@ where
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
-    if !serial {
-        replay_blocks_parallel(storage, trace_out, &replay_work)
-    } else {
+    if serial {
         replay_blocks_serial(storage, trace_out, &replay_work)
+    } else {
+        replay_blocks_parallel(storage, trace_out, &replay_work)
     }
 }
 

@@ -318,6 +318,56 @@ impl RpcStorage {
             BlockifierTransaction::L1HandlerTransaction(_) => TransactionType::L1Handler,
         }
     }
+
+    /// This function preprocesses the transactions to be executed by the
+    /// blockifier.
+    ///
+    /// # Arguments
+    ///
+    /// - `work`: the work object which contains the transactions to replay.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if the `work` object contains invalid transactions.
+    fn preprocess_transactions(
+        &self,
+        work: &ReplayBlock,
+    ) -> Result<Vec<BlockifierTransaction>, RunnerError> {
+        let mut transactions = Vec::with_capacity(work.transactions.len());
+        let block_number = BlockNumber::new(work.header.block_number.0);
+        for (transaction, receipt) in work.transactions.iter().zip(work.receipts.iter()) {
+            let tx = transaction;
+            let tx_hash = receipt.transaction_hash;
+            let class_info = class_info::generate_class_info(self, block_number, tx)?;
+
+            let paid_fee_on_l1 = match tx {
+                Transaction::L1Handler(_) => {
+                    Some(starknet_api::transaction::Fee(1_000_000_000_000))
+                }
+                _ => None,
+            };
+
+            let deployed_contract_address = match &receipt.output {
+                starknet_api::transaction::TransactionOutput::DeployAccount(receipt) => {
+                    Some(receipt.contract_address)
+                }
+                _ => None,
+            };
+
+            let only_query = false;
+            let transaction = BlockifierTransaction::from_api(
+                tx.to_owned(),
+                tx_hash,
+                class_info,
+                paid_fee_on_l1,
+                deployed_contract_address,
+                only_query,
+            )?;
+
+            transactions.push(transaction);
+        }
+        Ok(transactions)
+    }
 }
 impl ReplayStorage for RpcStorage {
     fn get_most_recent_block_number(&self) -> Result<BlockNumber, DatabaseError> {
@@ -357,40 +407,6 @@ impl ReplayStorage for RpcStorage {
         trace_out: &Option<PathBuf>,
     ) -> Result<Vec<TransactionOutput>, RunnerError> {
         let block_number = BlockNumber::new(work.header.block_number.0);
-
-        let mut transactions: Vec<BlockifierTransaction> =
-            Vec::with_capacity(work.transactions.len());
-        for (transaction, receipt) in work.transactions.iter().zip(work.receipts.iter()) {
-            let tx = transaction;
-            let tx_hash = receipt.transaction_hash;
-            let class_info = class_info::generate_class_info(self, block_number, tx)?;
-
-            let paid_fee_on_l1 = match tx {
-                Transaction::L1Handler(_) => {
-                    Some(starknet_api::transaction::Fee(1_000_000_000_000))
-                }
-                _ => None,
-            };
-
-            let deployed_contract_address = match &receipt.output {
-                starknet_api::transaction::TransactionOutput::DeployAccount(receipt) => {
-                    Some(receipt.contract_address)
-                }
-                _ => None,
-            };
-
-            let only_query = false;
-            let transaction = BlockifierTransaction::from_api(
-                tx.to_owned(),
-                tx_hash,
-                class_info,
-                paid_fee_on_l1,
-                deployed_contract_address,
-                only_query,
-            )?;
-
-            transactions.push(transaction);
-        }
 
         // Transactions are replayed with the call to `ExecutableTransaction::execute`.
         // When simulating transactions, the storage layer should match the data of the
@@ -434,8 +450,8 @@ impl ReplayStorage for RpcStorage {
             work.header.block_number,
         )?;
 
-        let mut transaction_result: Vec<_> = Vec::with_capacity(transactions.len());
-        for (idx, transaction) in transactions.iter().enumerate() {
+        let mut transaction_result: Vec<_> = Vec::with_capacity(work.transactions.len());
+        for (idx, transaction) in self.preprocess_transactions(work)?.iter().enumerate() {
             let tx_type = Self::transaction_type(transaction);
             let transaction_declared_deprecated_class_hash =
                 Self::transaction_declared_deprecated_class(transaction);
