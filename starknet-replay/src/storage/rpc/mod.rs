@@ -402,9 +402,11 @@ impl ReplayStorage for RpcStorage {
         let old_block_number_and_hash = if work.header.block_number.0 >= 10 {
             let block_number_whose_hash_becomes_available =
                 BlockNumber::new(work.header.block_number.0 - 10);
+            // TODO: in case of multiple blocks replay, the block hash is already queried
+            // when the vector of `ReplayBlock` is generated. This data could be reused in a
+            // shared variabled.
             let block_hash = self
-                .rpc_client
-                .starknet_get_block_with_tx_hashes(&block_number_whose_hash_becomes_available)?
+                .get_block_header(block_number_whose_hash_becomes_available)?
                 .block_hash;
 
             Some(BlockNumberHashPair::new(
