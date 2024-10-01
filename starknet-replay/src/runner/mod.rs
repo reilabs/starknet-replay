@@ -42,6 +42,7 @@ pub fn run_replay<T>(
     replay_range: &ReplayRange,
     trace_out: &Option<PathBuf>,
     storage: &T,
+    serial: bool,
 ) -> Result<VisitedPcs, RunnerError>
 where
     T: Storage + Sync + Send,
@@ -51,7 +52,11 @@ where
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
-    replay_blocks(storage, trace_out, &replay_work)
+    if !serial {
+        replay_blocks_parallel(storage, trace_out, &replay_work)
+    } else {
+        replay_blocks_serial(storage, trace_out, &replay_work)
+    }
 }
 
 /// Generates the list of transactions to be replayed.
@@ -137,23 +142,25 @@ pub fn process_transaction_traces(transaction_simulations: Vec<TransactionOutput
     cumulative_visited_pcs
 }
 
-/// Re-executes the list of transactions in `replay_work` and return the
+/// Re-executes the list of blocks in `replay_work` in parallel and returns the
 /// statistics on libfunc usage.
 ///
-/// `replay_work` contains the list of transactions to replay grouped by block.
+/// With parallel replay, initial state is always queried from the RPC server.
+/// The consequence is that initial state of block `n+1` may be different from
+/// final state of block `n`. This has many causes expecially for old blocks.
 ///
 /// # Arguments
 ///
 /// - `storage`: The object to query the starknet blockchain using the RPC
 ///   protocol.
 /// - `trace_out`: The output file of the transaction traces.
-/// - `replay_work`: The list of blocks to be replayed.
+/// - `replay_work`: The list of transactions to replay grouped by block.
 ///
 /// # Errors
 ///
 /// Returns [`Err`] if the function `execute_block` fails to replay any
 /// transaction.
-pub fn replay_blocks<T>(
+pub fn replay_blocks_parallel<T>(
     storage: &T,
     trace_out: &Option<PathBuf>,
     replay_work: &[ReplayBlock],
@@ -161,7 +168,7 @@ pub fn replay_blocks<T>(
 where
     T: Storage + Sync + Send,
 {
-    info!("Starting transactions replay");
+    info!("Starting parallel blocks replay");
     let (sender, receiver) = channel();
     replay_work
         .par_iter()
@@ -170,7 +177,7 @@ where
             |(storage, trace_out, sender), block| -> anyhow::Result<()> {
                 let block_transaction_traces = storage.execute_block(block, trace_out)?;
                 let block_number = BlockNumber::new(block.header.block_number.0);
-                info!("Simulation completed block {block_number}");
+                info!("Replay completed block {block_number}");
                 let visited_pcs = process_transaction_traces(block_transaction_traces);
                 sender.send(visited_pcs)?;
                 Ok(())
@@ -182,6 +189,45 @@ where
 
     let mut cumulative_visited_pcs = VisitedPcs::default();
     for visited_pcs in res {
+        cumulative_visited_pcs.extend(visited_pcs.into_iter());
+    }
+
+    Ok(cumulative_visited_pcs)
+}
+
+/// Serially re-executes the list of blocks in `replay_work` and returns the
+/// statistics on libfunc usage.
+///
+/// Serial replay is slower than parallel, however it ensures state consistency
+/// between initial state of block `n+1` and final state of block `n`.
+///
+/// # Arguments
+///
+/// - `storage`: The object to query the starknet blockchain using the RPC
+///   protocol.
+/// - `trace_out`: The output file of the transaction traces.
+/// - `replay_work`: The list of transactions to replay grouped by block.
+///
+/// # Errors
+///
+/// Returns [`Err`] if the function `execute_block` fails to replay any
+/// transaction.
+pub fn replay_blocks_serial<T>(
+    storage: &T,
+    trace_out: &Option<PathBuf>,
+    replay_work: &[ReplayBlock],
+) -> Result<VisitedPcs, RunnerError>
+where
+    T: Storage + Sync + Send,
+{
+    info!("Starting serial blocks replay");
+
+    let mut cumulative_visited_pcs = VisitedPcs::default();
+    for block in replay_work {
+        let block_transaction_traces = storage.execute_block(block, trace_out)?;
+        let block_number = BlockNumber::new(block.header.block_number.0);
+        info!("Replay completed block {block_number}");
+        let visited_pcs = process_transaction_traces(block_transaction_traces);
         cumulative_visited_pcs.extend(visited_pcs.into_iter());
     }
 

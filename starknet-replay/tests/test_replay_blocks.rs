@@ -12,7 +12,7 @@ use starknet_replay::block_number::BlockNumber;
 use starknet_replay::profiler::analysis::extract_libfuncs_weight;
 use starknet_replay::profiler::replay_statistics::ReplayStatistics;
 use starknet_replay::runner::replay_block::ReplayBlock;
-use starknet_replay::runner::replay_blocks;
+use starknet_replay::runner::replay_blocks_parallel;
 use starknet_replay::storage::rpc::RpcStorage;
 use starknet_replay::storage::Storage;
 use test_log::test;
@@ -47,7 +47,7 @@ fn test_replay_blocks() {
     replay_work.push(replay_block);
 
     let trace_out = None;
-    let visited_pcs = replay_blocks(&storage, &trace_out, &replay_work).unwrap();
+    let visited_pcs = replay_blocks_parallel(&storage, &trace_out, &replay_work).unwrap();
 
     let libfunc_stats = extract_libfuncs_weight(&visited_pcs, &storage).unwrap();
 

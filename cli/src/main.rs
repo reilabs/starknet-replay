@@ -105,6 +105,7 @@ fn run(args: Args) -> anyhow::Result<()> {
     let txt_out = args.txt_out;
     let trace_out = args.trace_out;
     let overwrite = args.overwrite;
+    let serial = args.serial;
 
     check_file(&svg_path, overwrite)?;
     check_file(&txt_out, overwrite)?;
@@ -117,7 +118,7 @@ fn run(args: Args) -> anyhow::Result<()> {
     tracing::info!(%start_block, %end_block, "Re-executing blocks");
     let start_time = std::time::Instant::now();
 
-    let visited_pcs = run_replay(&replay_range, &trace_out, &storage)?;
+    let visited_pcs = run_replay(&replay_range, &trace_out, &storage, serial)?;
 
     let elapsed = start_time.elapsed();
     tracing::info!(?elapsed, "Finished");

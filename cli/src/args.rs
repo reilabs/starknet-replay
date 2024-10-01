@@ -45,4 +45,13 @@ pub struct Args {
     /// exists.
     #[arg(long)]
     pub overwrite: bool,
+
+    /// Set to perform serial replay of blocks.
+    ///
+    /// Slower, but forces initial state of block `n+1` consistent with final
+    /// state of block `n`. This is not ensured with parallel replay because
+    /// the final state may differ with the final state on the official
+    /// blockchain.
+    #[arg(long)]
+    pub serial: bool,
 }
