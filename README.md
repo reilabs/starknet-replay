@@ -44,9 +44,11 @@ histogram in the file named `"histogram.svg"`.
 
 ## Limitations
 
-- Libfunc frequency results haven't been checked yet.
-- Log of transaction traces to JSON requires a lot of memory allocation. It
-  still needs to be optimised.
+Libfunc frequency results haven't been checked yet.
+
+## Requirements
+
+This crate is compatible with Rust 1.78. Both x86 and ARM are supported.
 
 ## Useful links
 
