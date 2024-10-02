@@ -1,14 +1,14 @@
 # Starknet Replay
 
 `starknet-replay` is a CLI application to replay Starknet transactions. The
-state of the blockchain is queried using the Starknet RPC protocol.
-It also reports the frequency with which each `libfunc` has been called when
-replaying the transactions.
+state of the blockchain is queried using the Starknet RPC protocol. It also
+reports the frequency with which each `libfunc` has been called when replaying
+the transactions.
 
-It's possible to export the histogram of the most frequently used libfuncs
-by number of calls. The data plotted in the histogram is filtered to only
-include the libfuncs that amount to 80% of the total calls in the replay. This
-helps readability and visual analysis.
+It's possible to export the histogram of the most frequently used libfuncs by
+number of calls. The data plotted in the histogram is filtered to only include
+the libfuncs that amount to 80% of the total calls in the replay. This helps
+readability and visual analysis.
 
 Only `INVOKE` transactions of Sierra contracts are used for this report because
 only Sierra contracts use libfuncs and only `INVOKE` transactions execute Sierra
@@ -44,9 +44,14 @@ histogram in the file named `"histogram.svg"`.
 
 ## Limitations
 
-- Libfunc frequency results haven't been checked yet.
-- Log of transaction traces to JSON requires a lot of memory allocation. It
-  still needs to be optimised.
+Libfunc frequency results haven't been checked yet.
+
+## Requirements
+
+This crate is compatible with Rust 1.78. Both x86 and ARM are supported.
+
+`blockifier` dependency is not compatible with Rust 1.81+. `pathfinder_simp`
+dependency is not compatible with Rust 1.83+ on ARM.
 
 ## Useful links
 

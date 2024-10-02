@@ -31,7 +31,7 @@ fn test_replay_blocks() {
 
     let block_number = BlockNumber::new(block_number);
 
-    let (transactions, receipts) = storage
+    let (block_header, transactions, receipts) = storage
         .get_transactions_and_receipts_for_block(block_number)
         .unwrap();
 
@@ -43,8 +43,7 @@ fn test_replay_blocks() {
     let transactions = vec![transactions.get(index).unwrap().clone()];
     let receipts = vec![receipts.get(index).unwrap().clone()];
 
-    let header = storage.get_block_header(block_number).unwrap();
-    let replay_block = ReplayBlock::new(header, transactions, receipts).unwrap();
+    let replay_block = ReplayBlock::new(block_header, transactions, receipts).unwrap();
     replay_work.push(replay_block);
 
     let trace_out = None;

@@ -99,7 +99,7 @@ where
     for block_number in start_block.get()..=last_block.get() {
         let block_number = BlockNumber::new(block_number);
 
-        let (transactions, receipts) =
+        let (block_header, transactions, receipts) =
             storage.get_transactions_and_receipts_for_block(block_number)?;
 
         let transactions_to_process = transactions.len();
@@ -107,8 +107,7 @@ where
             "{transactions_to_process} transactions to process in block {block_number:?}"
         );
 
-        let header = storage.get_block_header(block_number)?;
-        let replay_block = ReplayBlock::new(header, transactions, receipts)?;
+        let replay_block = ReplayBlock::new(block_header, transactions, receipts)?;
         replay_blocks.push(replay_block);
     }
 

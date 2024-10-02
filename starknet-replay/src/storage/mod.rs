@@ -15,6 +15,10 @@ use crate::{ReplayBlock, RunnerError};
 
 pub mod rpc;
 
+/// The type [`BlockWithReceipts`] bundles together all the block data: block
+/// header, transaction data and receipt data.
+pub type BlockWithReceipts = (BlockHeader, Vec<Transaction>, Vec<TransactionReceipt>);
+
 pub trait Storage {
     /// Returns the most recent block number available in the storage.
     ///
@@ -65,7 +69,7 @@ pub trait Storage {
     fn get_transactions_and_receipts_for_block(
         &self,
         block_number: BlockNumber,
-    ) -> Result<(Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError>;
+    ) -> Result<BlockWithReceipts, DatabaseError>;
 
     /// Replays the list of transactions in a block and returns the list of
     /// transactions traces.
