@@ -41,6 +41,7 @@ use crate::error::DatabaseError;
 use crate::runner::replay_class_hash::ReplayClassHash;
 use crate::storage::rpc::receipt::convert_receipt;
 use crate::storage::rpc::transaction::convert_transaction;
+use crate::storage::BlockWithReceipts;
 
 /// This structure partially implements a Starknet RPC client.
 ///
@@ -158,7 +159,7 @@ impl RpcClient {
                 let data_price_in_wei: u128 =
                     block.l1_data_gas_price.price_in_wei.to_string().parse()?;
 
-                let block_header: BlockHeader = BlockHeader {
+                let block_header = BlockHeader {
                     block_hash: BlockHash(Felt::from_bytes_be(&block.block_hash.to_bytes_be())),
                     parent_hash: BlockHash(Felt::from_bytes_be(&block.parent_hash.to_bytes_be())),
                     block_number: starknet_api::block::BlockNumber(block.block_number),
@@ -210,7 +211,7 @@ impl RpcClient {
     pub async fn starknet_get_block_with_receipts(
         &self,
         block_number: &BlockNumber,
-    ) -> Result<(BlockHeader, Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
+    ) -> Result<BlockWithReceipts, DatabaseError> {
         let block_id: BlockId = block_number.into();
         let txs_with_receipts: MaybePendingBlockWithReceipts = self
             .get_new_client()
@@ -228,7 +229,7 @@ impl RpcClient {
                 let data_price_in_wei: u128 =
                     block.l1_data_gas_price.price_in_wei.to_string().parse()?;
 
-                let block_header: BlockHeader = BlockHeader {
+                let block_header = BlockHeader {
                     block_hash: BlockHash(Felt::from_bytes_be(&block.block_hash.to_bytes_be())),
                     parent_hash: BlockHash(Felt::from_bytes_be(&block.parent_hash.to_bytes_be())),
                     block_number: starknet_api::block::BlockNumber(block.block_number),

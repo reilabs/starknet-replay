@@ -24,7 +24,7 @@ use rpc_client::RpcClient;
 use starknet_api::block::{BlockHeader, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, PatriciaKey};
 use starknet_api::data_availability::L1DataAvailabilityMode;
-use starknet_api::transaction::{Transaction, TransactionExecutionStatus, TransactionReceipt};
+use starknet_api::transaction::{Transaction, TransactionExecutionStatus};
 use starknet_api::{contract_address, felt, patricia_key};
 use starknet_core::types::{
     ContractClass,
@@ -41,6 +41,7 @@ use tracing::{error, info, warn};
 use url::Url;
 
 use self::visited_pcs::VisitedPcsRaw;
+use super::BlockWithReceipts;
 use crate::block_number::BlockNumber;
 use crate::error::{DatabaseError, RunnerError};
 use crate::runner::replay_block::ReplayBlock;
@@ -342,7 +343,7 @@ impl ReplayStorage for RpcStorage {
     fn get_transactions_and_receipts_for_block(
         &self,
         block_number: BlockNumber,
-    ) -> Result<(BlockHeader, Vec<Transaction>, Vec<TransactionReceipt>), DatabaseError> {
+    ) -> Result<BlockWithReceipts, DatabaseError> {
         let transactions = self
             .rpc_client
             .starknet_get_block_with_receipts(&block_number)?;
