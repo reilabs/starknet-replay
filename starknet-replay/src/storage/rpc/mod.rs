@@ -20,7 +20,7 @@ use blockifier::transaction::transaction_types::TransactionType;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
 use once_cell::sync::Lazy;
-use rpc_client::RpcClient;
+use permanent_state::PermanentState;
 use starknet_api::block::{BlockHeader, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, PatriciaKey};
 use starknet_api::data_availability::L1DataAvailabilityMode;
@@ -37,7 +37,7 @@ use starknet_core::types::{
     StateDiff,
     StorageEntry,
 };
-use tracing::{error, info, warn};
+use tracing::{error, info, trace, warn};
 use url::Url;
 
 use self::visited_pcs::VisitedPcsRaw;
@@ -52,6 +52,7 @@ use crate::storage::Storage as ReplayStorage;
 
 pub mod class_info;
 pub mod contract_class;
+pub mod permanent_state;
 pub mod receipt;
 pub mod rpc_client;
 pub mod transaction;
@@ -79,14 +80,13 @@ static VERSIONED_CONSTANTS_13_1: Lazy<VersionedConstants> = Lazy::new(|| {
     .expect("Versioned constants JSON file is malformed")
 });
 
-/// This structure partially implements a Starknet RPC client.
+/// This structure partially implements the trait [`crate::storage::Storage`]
+/// using the RPC protocol to query blockchain data.
 ///
-/// The RPC calls included are those needed to replay transactions.
 /// Clone is not derived because it's not supported by Client.
-#[allow(dead_code)]
 pub struct RpcStorage {
-    /// The endpoint of the Starknet RPC Node.
-    rpc_client: RpcClient,
+    /// The state object holding blockchain data
+    permanent_state: PermanentState,
 }
 impl RpcStorage {
     /// Constructs a new `RpcStorage`.
@@ -94,10 +94,13 @@ impl RpcStorage {
     /// # Arguments
     ///
     /// - `endpoint`: The Url of the Starknet RPC node.
+    /// - `read_from_state`: When `true`, the storage changes at the end of a
+    ///   block replay are saved and used for the following block. Set `true`
+    ///   only for serial replay to avoid replay failures.
     #[must_use]
-    pub fn new(endpoint: Url) -> Self {
-        let rpc_client = RpcClient::new(endpoint);
-        RpcStorage { rpc_client }
+    pub fn new(endpoint: Url, read_from_state: bool) -> Self {
+        let permanent_state = PermanentState::new(endpoint, read_from_state);
+        RpcStorage { permanent_state }
     }
 
     /// Constructs the [`blockifier::context::ChainInfo`] struct for the
@@ -113,8 +116,7 @@ impl RpcStorage {
         let strk_fee_token_address =
             contract_address!("0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d");
 
-        // TODO: Allow different chains.
-        let chain_id = self.rpc_client.starknet_get_chain_id()?;
+        let chain_id = self.permanent_state.starknet_get_chain_id()?;
 
         Ok(ChainInfo {
             chain_id,
@@ -219,10 +221,13 @@ impl RpcStorage {
     ///
     /// Returns [`Err`] if the computation of state changes fails.
     fn to_state_diff<S: StateReader, V: blockifier::state::visited_pcs::VisitedPcs>(
+        &self,
         state: &mut CachedState<S, V>,
         old_declared_contract: Option<ClassHash>,
     ) -> Result<StateDiff, StateError> {
         let state_diff = state.to_state_diff()?;
+
+        self.permanent_state.update(&state_diff);
 
         let mut deployed_contracts = Vec::new();
         let mut replaced_classes = Vec::new();
@@ -371,7 +376,7 @@ impl RpcStorage {
 }
 impl ReplayStorage for RpcStorage {
     fn get_most_recent_block_number(&self) -> Result<BlockNumber, DatabaseError> {
-        let block_number = self.rpc_client.starknet_block_number()?;
+        let block_number = self.permanent_state.starknet_block_number()?;
         Ok(block_number)
     }
 
@@ -379,13 +384,13 @@ impl ReplayStorage for RpcStorage {
         &self,
         replay_class_hash: &ReplayClassHash,
     ) -> Result<ContractClass, DatabaseError> {
-        let contract_class = self.rpc_client.starknet_get_class(replay_class_hash)?;
+        let contract_class = self.permanent_state.starknet_get_class(replay_class_hash)?;
         Ok(contract_class)
     }
 
     fn get_block_header(&self, block_number: BlockNumber) -> Result<BlockHeader, DatabaseError> {
         let block_header = self
-            .rpc_client
+            .permanent_state
             .starknet_get_block_with_tx_hashes(&block_number)?;
         Ok(block_header)
     }
@@ -395,7 +400,7 @@ impl ReplayStorage for RpcStorage {
         block_number: BlockNumber,
     ) -> Result<BlockWithReceipts, DatabaseError> {
         let transactions = self
-            .rpc_client
+            .permanent_state
             .starknet_get_block_with_receipts(&block_number)?;
         Ok(transactions)
     }
@@ -407,12 +412,14 @@ impl ReplayStorage for RpcStorage {
         trace_out: &Option<PathBuf>,
     ) -> Result<Vec<TransactionOutput>, RunnerError> {
         let block_number = BlockNumber::new(work.header.block_number.0);
+        info!("Replay started block {block_number}");
 
         // Transactions are replayed with the call to `ExecutableTransaction::execute`.
         // When simulating transactions, the storage layer should match the data of the
         // parent block (i.e. before the transaction is executed)
         let block_number_minus_one = BlockNumber::new(work.header.block_number.0 - 1);
-        let state_reader = ReplayStateReader::new(&self.rpc_client, block_number_minus_one);
+        // rpc_client --> permanent_state --> state_reader --> state
+        let state_reader = ReplayStateReader::new(&self.permanent_state, block_number_minus_one);
         let charge_fee = true;
         let validate = true;
         let allow_use_kzg_data = true;
@@ -455,12 +462,10 @@ impl ReplayStorage for RpcStorage {
             let tx_type = Self::transaction_type(transaction);
             let transaction_declared_deprecated_class_hash =
                 Self::transaction_declared_deprecated_class(transaction);
-            let mut tx_state = CachedState::<_, _>::create_transactional(&mut state);
             // No fee is being calculated.
-            let tx_info = transaction.execute(&mut tx_state, &block_context, charge_fee, validate);
+            let tx_info = transaction.execute(&mut state, &block_context, charge_fee, validate);
             let state_diff =
-                Self::to_state_diff(&mut tx_state, transaction_declared_deprecated_class_hash)?;
-            tx_state.commit();
+                self.to_state_diff(&mut state, transaction_declared_deprecated_class_hash)?;
             // TODO: Cache the storage changes for faster storage access.
             match tx_info {
                 // TODO: This clone should be avoided for efficiency.
@@ -500,7 +505,7 @@ impl ReplayStorage for RpcStorage {
                         .collect();
                     if let Some(filename) = trace_out {
                         write_to_file(filename, &tx_info, tx_type, Some(state_diff))?;
-                        info!("Saved transaction trace block {block_number}");
+                        trace!("Saved transaction trace block {block_number} | hash {tx_hash:?}");
                     }
                     transaction_result.push((tx_info, visited_pcs));
                 }
@@ -532,13 +537,14 @@ mod tests {
     fn build_rpc_storage() -> RpcStorage {
         let endpoint: Url =
             Url::parse("https://starknet-mainnet.public.blastapi.io/rpc/v0_7").unwrap();
-        RpcStorage::new(endpoint)
+        let read_from_state = false;
+        RpcStorage::new(endpoint, read_from_state)
     }
 
     #[test]
     fn test_block_number() {
         let rpc_storage = build_rpc_storage();
-        let block_number = rpc_storage.rpc_client.starknet_block_number().unwrap();
+        let block_number = rpc_storage.permanent_state.starknet_block_number().unwrap();
         // Mainnet block is more than 600k at the moment.
         assert!(block_number.get() > 600_000);
     }
@@ -554,7 +560,7 @@ mod tests {
             class_hash: ClassHash(class_hash),
         };
         let contract_class = rpc_storage
-            .rpc_client
+            .permanent_state
             .starknet_get_class(&replay_class_hash)
             .unwrap();
 
@@ -580,7 +586,7 @@ mod tests {
         let rpc_storage = build_rpc_storage();
         let block_number = BlockNumber::new(632_917);
         let block_header = rpc_storage
-            .rpc_client
+            .permanent_state
             .starknet_get_block_with_tx_hashes(&block_number)
             .unwrap();
         assert_eq!(block_header.timestamp.0, 1_713_168_820);
@@ -591,7 +597,7 @@ mod tests {
         let rpc_storage = build_rpc_storage();
         let block_number = BlockNumber::new(632_917);
         rpc_storage
-            .rpc_client
+            .permanent_state
             .starknet_get_block_with_receipts(&block_number)
             .unwrap();
     }
@@ -603,7 +609,7 @@ mod tests {
         let contract_address: ContractAddress =
             contract_address!("0x0710ce97d91835e049e5e76fbcb594065405744cf057b5b5f553282108983c53");
         let nonce = rpc_storage
-            .rpc_client
+            .permanent_state
             .starknet_get_nonce(&block_number, &contract_address)
             .unwrap();
 
@@ -620,7 +626,7 @@ mod tests {
         let contract_address: ContractAddress =
             contract_address!("0x0710ce97d91835e049e5e76fbcb594065405744cf057b5b5f553282108983c53");
         let class_hash = rpc_storage
-            .rpc_client
+            .permanent_state
             .starknet_get_class_hash_at(&block_number, &contract_address)
             .unwrap();
 
@@ -639,7 +645,7 @@ mod tests {
         let contract_address: ContractAddress =
             contract_address!("0x568f8c3532c549ad331a48d86d93b20064c3c16ac6bf396f041107cc6078707");
         let class_hash = rpc_storage
-            .rpc_client
+            .permanent_state
             .starknet_get_class_hash_at(&block_number, &contract_address)
             .unwrap();
 
@@ -661,7 +667,7 @@ mod tests {
             "0x06ccc0ef4c95ff7991520b6a5c45f8e688a4ae7e32bd108ec5392261a42b5306"
         ));
         let storage_value = rpc_storage
-            .rpc_client
+            .permanent_state
             .starknet_get_storage_at(&block_number, &contract_address, &storage_key)
             .unwrap();
 
@@ -673,7 +679,7 @@ mod tests {
     fn test_get_chain_id() {
         let rpc_storage = build_rpc_storage();
         let main_chain = ChainId::from("SN_MAIN".to_string());
-        let chain_id = rpc_storage.rpc_client.starknet_get_chain_id().unwrap();
+        let chain_id = rpc_storage.permanent_state.starknet_get_chain_id().unwrap();
         assert_eq!(chain_id, main_chain);
         assert_eq!(chain_id.as_hex(), main_chain.as_hex());
     }
