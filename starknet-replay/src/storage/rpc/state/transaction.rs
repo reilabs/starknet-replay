@@ -1,3 +1,6 @@
+//! This module contains the functions to generate the transaction data from
+//! the RPC response.
+
 use starknet_api::core::{
     ClassHash,
     CompiledClassHash,
@@ -33,7 +36,7 @@ use starknet_api::transaction::{
 };
 use starknet_core::types::{ResourceBoundsMapping, Transaction as StarknetCoreTransaction};
 
-use crate::error::DatabaseError;
+use crate::error::RpcClientError;
 
 /// This function converts [`starknet_core::types::ResourceBoundsMapping`] into
 /// the equivalent type in crate [`starknet_api`].
@@ -96,7 +99,7 @@ fn convert_data_availability_mode(
 /// translated to a [`starknet_api::transaction::Transaction`] object.
 fn convert_invoke_transaction(
     tx: starknet_core::types::InvokeTransaction,
-) -> Result<StarknetApiTransaction, DatabaseError> {
+) -> Result<StarknetApiTransaction, RpcClientError> {
     match tx {
         starknet_core::types::InvokeTransaction::V0(tx) => {
             let invoke_tx = InvokeTransactionV0 {
@@ -159,7 +162,7 @@ fn convert_invoke_transaction(
 /// translated to a [`starknet_api::transaction::Transaction`] object.
 fn convert_l1_handler_transaction(
     tx: starknet_core::types::L1HandlerTransaction,
-) -> Result<StarknetApiTransaction, DatabaseError> {
+) -> Result<StarknetApiTransaction, RpcClientError> {
     let l1handler_tx = L1HandlerTransaction {
         version: TransactionVersion(tx.version),
         nonce: Nonce(tx.nonce.into()),
@@ -183,7 +186,7 @@ fn convert_l1_handler_transaction(
 /// translated to a [`starknet_api::transaction::Transaction`] object.
 fn convert_declare_transaction(
     tx: starknet_core::types::DeclareTransaction,
-) -> Result<StarknetApiTransaction, DatabaseError> {
+) -> Result<StarknetApiTransaction, RpcClientError> {
     match tx {
         starknet_core::types::DeclareTransaction::V0(tx) => {
             let declare_tx = DeclareTransactionV0V1 {
@@ -278,7 +281,7 @@ fn convert_deploy_transaction(
 /// translated to a [`starknet_api::transaction::Transaction`] object.
 fn convert_deploy_account_transaction(
     tx: starknet_core::types::DeployAccountTransaction,
-) -> Result<StarknetApiTransaction, DatabaseError> {
+) -> Result<StarknetApiTransaction, RpcClientError> {
     match tx {
         starknet_core::types::DeployAccountTransaction::V1(tx) => {
             let deploy_account_tx = DeployAccountTransactionV1 {
@@ -329,7 +332,7 @@ fn convert_deploy_account_transaction(
 /// Returns [`Err`] if `transaction` contains invalid numbers.
 pub fn convert_transaction(
     tx: StarknetCoreTransaction,
-) -> Result<StarknetApiTransaction, DatabaseError> {
+) -> Result<StarknetApiTransaction, RpcClientError> {
     match tx {
         StarknetCoreTransaction::Invoke(tx) => convert_invoke_transaction(tx),
         StarknetCoreTransaction::L1Handler(tx) => convert_l1_handler_transaction(tx),

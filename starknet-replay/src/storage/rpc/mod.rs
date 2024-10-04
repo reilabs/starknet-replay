@@ -20,7 +20,6 @@ use blockifier::transaction::transaction_types::TransactionType;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
 use once_cell::sync::Lazy;
-use permanent_state::PermanentState;
 use starknet_api::block::{BlockHeader, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, PatriciaKey};
 use starknet_api::data_availability::L1DataAvailabilityMode;
@@ -37,6 +36,8 @@ use starknet_core::types::{
     StateDiff,
     StorageEntry,
 };
+use state::permanent_state::PermanentState;
+use state::replay_state_reader::ReplayStateReader;
 use tracing::{error, info, trace, warn};
 use url::Url;
 
@@ -46,16 +47,12 @@ use crate::block_number::BlockNumber;
 use crate::error::{DatabaseError, RunnerError};
 use crate::runner::replay_block::ReplayBlock;
 use crate::runner::replay_class_hash::{ReplayClassHash, TransactionOutput, VisitedPcs};
-use crate::runner::replay_state_reader::ReplayStateReader;
 use crate::runner::report::write_to_file;
 use crate::storage::Storage as ReplayStorage;
 
 pub mod class_info;
 pub mod contract_class;
-pub mod permanent_state;
-pub mod receipt;
-pub mod rpc_client;
-pub mod transaction;
+pub mod state;
 pub mod visited_pcs;
 
 /// These versioned constants are needed to replay transactions executed with

@@ -9,16 +9,17 @@ use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::state::StorageKey;
 use starknet_core::types::{ContractClass as StarknetContractClass, Felt};
 
+use super::permanent_state::PermanentState;
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::ReplayClassHash;
 use crate::storage::rpc::contract_class;
-use crate::storage::rpc::permanent_state::PermanentState;
 
 /// This structure is used by [`blockifier`] to access blockchain data during
 /// transaction replay.
 pub struct ReplayStateReader<'a> {
-    /// The reference to [`crate::storage::rpc::PermanentState`] to query the
-    /// blockchain state.
+    /// The reference to
+    /// [`crate::storage::rpc::state::permanent_state::PermanentState`] to
+    /// query the blockchain state.
     permanent_state: &'a PermanentState,
 
     /// The block number used to query the state.

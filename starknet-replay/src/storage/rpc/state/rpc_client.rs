@@ -34,12 +34,12 @@ use tokio::sync::OnceCell;
 use tracing::trace;
 use url::Url;
 
+use super::receipt::convert_receipt;
+use super::transaction::convert_transaction;
 use crate::block_number::BlockNumber;
 use crate::contract_address::to_field_element;
-use crate::error::DatabaseError;
+use crate::error::RpcClientError;
 use crate::runner::replay_class_hash::ReplayClassHash;
-use crate::storage::rpc::receipt::convert_receipt;
-use crate::storage::rpc::transaction::convert_transaction;
 use crate::storage::BlockWithReceipts;
 
 /// This structure partially implements a Starknet RPC client.
@@ -91,7 +91,7 @@ impl RpcClient {
     /// Returns [`Err`] if the request fails.
     #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
-    pub async fn starknet_block_number(&self) -> Result<BlockNumber, ProviderError> {
+    pub async fn starknet_block_number(&self) -> Result<BlockNumber, RpcClientError> {
         let block_number: Result<&BlockNumber, ProviderError> = self
             .block_number
             .get_or_try_init(|| async {
@@ -116,7 +116,7 @@ impl RpcClient {
     pub async fn starknet_get_class(
         &self,
         class_hash_at_block: &ReplayClassHash,
-    ) -> Result<ContractClass, ProviderError> {
+    ) -> Result<ContractClass, RpcClientError> {
         let block_id: BlockId = class_hash_at_block.block_number.into();
         let class_hash: Felt = class_hash_at_block.class_hash.0;
         let contract_class: ContractClass = self
@@ -140,7 +140,7 @@ impl RpcClient {
     pub async fn starknet_get_block_with_tx_hashes(
         &self,
         block_number: &BlockNumber,
-    ) -> Result<BlockHeader, DatabaseError> {
+    ) -> Result<BlockHeader, RpcClientError> {
         let block_id: BlockId = block_number.into();
         let block_header: MaybePendingBlockWithTxHashes = self
             .get_new_client()
@@ -210,7 +210,7 @@ impl RpcClient {
     pub async fn starknet_get_block_with_receipts(
         &self,
         block_number: &BlockNumber,
-    ) -> Result<BlockWithReceipts, DatabaseError> {
+    ) -> Result<BlockWithReceipts, RpcClientError> {
         let block_id: BlockId = block_number.into();
         let txs_with_receipts: MaybePendingBlockWithReceipts = self
             .get_new_client()
@@ -293,7 +293,7 @@ impl RpcClient {
         &self,
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
-    ) -> Result<Nonce, ProviderError> {
+    ) -> Result<Nonce, RpcClientError> {
         trace!(
             "starknet_get_nonce {:?} {:?}",
             block_number,
@@ -305,7 +305,7 @@ impl RpcClient {
             .get_new_client()
             .get_nonce(block_id, contract_address)
             .await;
-        match req {
+        Ok(match req {
             Ok(nonce) => Ok(Nonce(nonce)),
             Err(err) => match err {
                 ProviderError::StarknetError(StarknetError::ContractNotFound) => {
@@ -313,7 +313,7 @@ impl RpcClient {
                 }
                 _ => Err(err),
             },
-        }
+        }?)
     }
 
     /// This function queries the class hash of a contract.
@@ -334,7 +334,7 @@ impl RpcClient {
         &self,
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
-    ) -> Result<ClassHash, ProviderError> {
+    ) -> Result<ClassHash, RpcClientError> {
         trace!(
             "starknet_get_class_hash_at {:?} {:?}",
             block_number,
@@ -346,7 +346,7 @@ impl RpcClient {
             .get_new_client()
             .get_class_hash_at(block_id, contract_address)
             .await;
-        match req {
+        Ok(match req {
             Ok(class_hash) => Ok(ClassHash(class_hash)),
             Err(err) => match err {
                 ProviderError::StarknetError(StarknetError::ContractNotFound) => {
@@ -354,7 +354,7 @@ impl RpcClient {
                 }
                 _ => Err(err),
             },
-        }
+        }?)
     }
 
     /// This function queries the value of a storage key.
@@ -377,7 +377,7 @@ impl RpcClient {
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
         key: &StorageKey,
-    ) -> Result<Felt, ProviderError> {
+    ) -> Result<Felt, RpcClientError> {
         trace!(
             "starknet_get_storage_at {:?} {:?} {:?}",
             block_number,
@@ -391,13 +391,13 @@ impl RpcClient {
             .get_new_client()
             .get_storage_at(contract_address, key, block_id)
             .await;
-        match req {
+        Ok(match req {
             Ok(storage_value) => Ok(storage_value),
             Err(err) => match err {
                 ProviderError::StarknetError(StarknetError::ContractNotFound) => Ok(Felt::ZERO),
                 _ => Err(err),
             },
-        }
+        }?)
     }
 
     /// This function queries the chain id of the RPC endpoint.
@@ -408,15 +408,15 @@ impl RpcClient {
     /// id fails.
     #[allow(clippy::missing_panics_doc)] // Needed because `tokio::main` calls `unwrap()`
     #[tokio::main]
-    pub async fn starknet_get_chain_id(&self) -> Result<ChainId, DatabaseError> {
-        let chain_id: Result<&ChainId, DatabaseError> = self
+    pub async fn starknet_get_chain_id(&self) -> Result<ChainId, RpcClientError> {
+        let chain_id: Result<&ChainId, RpcClientError> = self
             .chain_id
             .get_or_try_init(|| async {
                 let chain_id: Felt = self.get_new_client().chain_id().await?;
                 let chain_id = chain_id.to_hex_string();
                 let chain_id: Vec<&str> = chain_id.split("0x").collect();
                 let decoded_result =
-                    hex::decode(chain_id.last().ok_or(DatabaseError::InvalidHex())?)?;
+                    hex::decode(chain_id.last().ok_or(RpcClientError::InvalidHex())?)?;
                 let chain_id = std::str::from_utf8(&decoded_result)?;
                 let chain_id = ChainId::from(chain_id.to_string());
                 Ok(chain_id)

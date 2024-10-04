@@ -1,3 +1,6 @@
+//! This module contains the functions to generate the transaction receipt from
+//! the RPC response.
+
 use std::collections::HashMap;
 
 use primitive_types::H160;
@@ -32,7 +35,7 @@ use starknet_core::types::{
     TransactionReceipt as StarknetCoreReceipt,
 };
 
-use crate::error::DatabaseError;
+use crate::error::RpcClientError;
 
 /// This function generates a hashmap of builtins usage in a transaction.
 ///
@@ -108,11 +111,11 @@ fn generate_builtin_counter(computation_resources: &ComputationResources) -> Has
 /// [`starknet_api::core::ContractAddress`].
 fn generate_events(
     input: Vec<starknet_core::types::Event>,
-) -> Result<Vec<starknet_api::transaction::Event>, DatabaseError> {
+) -> Result<Vec<starknet_api::transaction::Event>, RpcClientError> {
     let mut events: Vec<starknet_api::transaction::Event> = Vec::with_capacity(input.len());
     input
         .into_iter()
-        .try_for_each(|e| -> Result<(), DatabaseError> {
+        .try_for_each(|e| -> Result<(), RpcClientError> {
             events.push(Event {
                 from_address: ContractAddress(e.from_address.try_into()?),
                 content: EventContent {
@@ -137,11 +140,11 @@ fn generate_events(
 ///
 /// Returns [`Err`] if a [`starknet_core::types::Felt`] address is not a valid
 /// [`starknet_api::core::ContractAddress`].
-fn generate_messages(input: Vec<MsgToL1>) -> Result<Vec<MessageToL1>, DatabaseError> {
+fn generate_messages(input: Vec<MsgToL1>) -> Result<Vec<MessageToL1>, RpcClientError> {
     let mut messages: Vec<MessageToL1> = Vec::with_capacity(input.len());
     input
         .into_iter()
-        .try_for_each(|m| -> Result<(), DatabaseError> {
+        .try_for_each(|m| -> Result<(), RpcClientError> {
             messages.push(MessageToL1 {
                 from_address: ContractAddress(m.from_address.try_into()?),
                 to_address: {
@@ -227,7 +230,7 @@ pub fn convert_receipt(
     block_hash: &Felt,
     block_number: &u64,
     receipt: StarknetCoreReceipt,
-) -> Result<StarknetApiReceipt, DatabaseError> {
+) -> Result<StarknetApiReceipt, RpcClientError> {
     let block_hash = BlockHash(Felt::from_bytes_be(&block_hash.to_bytes_be()));
     let block_number = starknet_api::block::BlockNumber(*block_number);
     match receipt {

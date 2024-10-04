@@ -17,7 +17,6 @@ use crate::{ReplayBlock, RunnerError};
 pub mod replay_block;
 pub mod replay_class_hash;
 pub mod replay_range;
-pub mod replay_state_reader;
 pub mod report;
 
 /// Replays transactions as indicated by `replay_range` and extracts the list of

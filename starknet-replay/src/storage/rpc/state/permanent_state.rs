@@ -8,12 +8,11 @@ use starknet_api::block::BlockHeader;
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, Nonce};
 use starknet_api::state::StorageKey;
 use starknet_core::types::{ContractClass, Felt};
-use starknet_providers::ProviderError;
 use url::Url;
 
 use super::rpc_client::RpcClient;
 use crate::block_number::BlockNumber;
-use crate::error::DatabaseError;
+use crate::error::PermanentStateError;
 use crate::runner::replay_class_hash::ReplayClassHash;
 use crate::storage::BlockWithReceipts;
 
@@ -61,6 +60,12 @@ impl PermanentState {
     /// Updates the local state with the data in the `state_diff`.
     ///
     /// When `read_from_state` is `false`, `state` is not updated.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the [`std::sync::RwLock`] is poisoned. It's best to panic
+    /// instead of handling the error because it implies data is corrupted.
+    #[allow(clippy::unwrap_used)]
     pub fn update(&self, state_diff: &StateMaps) {
         if self.read_from_state {
             self.state.write().unwrap().extend(state_diff);
@@ -72,8 +77,8 @@ impl PermanentState {
     /// # Errors
     ///
     /// Returns [`Err`] if the RPC request fails.
-    pub fn starknet_block_number(&self) -> Result<BlockNumber, ProviderError> {
-        self.rpc_client.starknet_block_number()
+    pub fn starknet_block_number(&self) -> Result<BlockNumber, PermanentStateError> {
+        Ok(self.rpc_client.starknet_block_number()?)
     }
 
     /// This function queries the contract class at a specific block.
@@ -88,8 +93,8 @@ impl PermanentState {
     pub fn starknet_get_class(
         &self,
         class_hash_at_block: &ReplayClassHash,
-    ) -> Result<ContractClass, ProviderError> {
-        self.rpc_client.starknet_get_class(class_hash_at_block)
+    ) -> Result<ContractClass, PermanentStateError> {
+        Ok(self.rpc_client.starknet_get_class(class_hash_at_block)?)
     }
 
     /// This function queries the block header.
@@ -104,9 +109,10 @@ impl PermanentState {
     pub fn starknet_get_block_with_tx_hashes(
         &self,
         block_number: &BlockNumber,
-    ) -> Result<BlockHeader, DatabaseError> {
-        self.rpc_client
-            .starknet_get_block_with_tx_hashes(block_number)
+    ) -> Result<BlockHeader, PermanentStateError> {
+        Ok(self
+            .rpc_client
+            .starknet_get_block_with_tx_hashes(block_number)?)
     }
 
     /// This function queries the transactions and receipts in a block.
@@ -121,9 +127,10 @@ impl PermanentState {
     pub fn starknet_get_block_with_receipts(
         &self,
         block_number: &BlockNumber,
-    ) -> Result<BlockWithReceipts, DatabaseError> {
-        self.rpc_client
-            .starknet_get_block_with_receipts(block_number)
+    ) -> Result<BlockWithReceipts, PermanentStateError> {
+        Ok(self
+            .rpc_client
+            .starknet_get_block_with_receipts(block_number)?)
     }
 
     /// This function queries the nonce of a contract.
@@ -139,16 +146,22 @@ impl PermanentState {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails or the block number doesn't exist.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the [`std::sync::RwLock`] is poisoned. It's best to panic
+    /// instead of handling the error because it implies data is corrupted.
+    #[allow(clippy::unwrap_used)]
     pub fn starknet_get_nonce(
         &self,
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
-    ) -> Result<Nonce, ProviderError> {
+    ) -> Result<Nonce, PermanentStateError> {
         match self.state.read().unwrap().nonces.get(contract_address) {
             Some(nonce) => Ok(*nonce),
-            None => self
+            None => Ok(self
                 .rpc_client
-                .starknet_get_nonce(block_number, contract_address),
+                .starknet_get_nonce(block_number, contract_address)?),
         }
     }
 
@@ -165,11 +178,17 @@ impl PermanentState {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the [`std::sync::RwLock`] is poisoned. It's best to panic
+    /// instead of handling the error because it implies data is corrupted.
+    #[allow(clippy::unwrap_used)]
     pub fn starknet_get_class_hash_at(
         &self,
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
-    ) -> Result<ClassHash, ProviderError> {
+    ) -> Result<ClassHash, PermanentStateError> {
         match self
             .state
             .read()
@@ -178,9 +197,9 @@ impl PermanentState {
             .get(contract_address)
         {
             Some(class_hash) => Ok(*class_hash),
-            None => self
+            None => Ok(self
                 .rpc_client
-                .starknet_get_class_hash_at(block_number, contract_address),
+                .starknet_get_class_hash_at(block_number, contract_address)?),
         }
     }
 
@@ -198,12 +217,18 @@ impl PermanentState {
     /// # Errors
     ///
     /// Returns [`Err`] if the request fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the [`std::sync::RwLock`] is poisoned. It's best to panic
+    /// instead of handling the error because it implies data is corrupted.
+    #[allow(clippy::unwrap_used)]
     pub fn starknet_get_storage_at(
         &self,
         block_number: &BlockNumber,
         contract_address: &ContractAddress,
         key: &StorageKey,
-    ) -> Result<Felt, ProviderError> {
+    ) -> Result<Felt, PermanentStateError> {
         match self
             .state
             .read()
@@ -212,9 +237,11 @@ impl PermanentState {
             .get(&(*contract_address, *key))
         {
             Some(value) => Ok(*value),
-            None => self
-                .rpc_client
-                .starknet_get_storage_at(block_number, contract_address, key),
+            None => {
+                Ok(self
+                    .rpc_client
+                    .starknet_get_storage_at(block_number, contract_address, key)?)
+            }
         }
     }
 
@@ -224,7 +251,7 @@ impl PermanentState {
     ///
     /// Returns [`Err`] if the request fails or decoding hex values of the chain
     /// id fails.
-    pub fn starknet_get_chain_id(&self) -> Result<ChainId, DatabaseError> {
-        self.rpc_client.starknet_get_chain_id()
+    pub fn starknet_get_chain_id(&self) -> Result<ChainId, PermanentStateError> {
+        Ok(self.rpc_client.starknet_get_chain_id()?)
     }
 }
