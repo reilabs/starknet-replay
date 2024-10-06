@@ -53,5 +53,5 @@ pub struct Args {
     /// replay because the final state may differ with the final state
     /// fetched from the chain.
     #[arg(long)]
-    pub serial: bool,
+    pub serial_replay: bool,
 }

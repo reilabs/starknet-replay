@@ -29,6 +29,8 @@ pub mod report;
 ///   transactions.
 /// - `storage`: The object to query the starknet blockchain using the RPC
 ///   protocol.
+/// - `serial_replay`: Set to true to do serial blocks replay instead of
+///   parallel.
 ///
 /// # Errors
 ///
@@ -41,7 +43,7 @@ pub fn run_replay<T>(
     replay_range: &ReplayRange,
     trace_out: &Option<PathBuf>,
     storage: &T,
-    serial: bool,
+    serial_replay: bool,
 ) -> Result<VisitedPcs, RunnerError>
 where
     T: Storage + Sync + Send,
@@ -51,7 +53,7 @@ where
 
     // Iterate through each block in `replay_work` and replay all the
     // transactions
-    if serial {
+    if serial_replay {
         replay_blocks_serial(storage, trace_out, &replay_work)
     } else {
         replay_blocks_parallel(storage, trace_out, &replay_work)
