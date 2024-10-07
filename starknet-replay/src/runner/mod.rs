@@ -22,6 +22,13 @@ pub mod report;
 /// Replays transactions as indicated by `replay_range` and extracts the list of
 /// visited program counters.
 ///
+/// Parallel replay always queries initial block state from the RPC server. The
+/// consequence is that initial state of block `n+1` may be different from final
+/// state of block `n`. This mismatch of state has many causes expecially for
+/// old blocks.
+/// Serial replay is slower than parallel, however it ensures state consistency
+/// between initial state of block `n+1` and final state of block `n`.
+///
 /// # Arguments
 ///
 /// - `replay_range`: The range of blocks to be replayed.
