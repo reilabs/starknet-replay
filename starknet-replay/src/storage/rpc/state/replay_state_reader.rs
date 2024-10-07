@@ -9,16 +9,18 @@ use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::state::StorageKey;
 use starknet_core::types::{ContractClass as StarknetContractClass, Felt};
 
+use super::permanent_state::PermanentState;
 use crate::block_number::BlockNumber;
 use crate::runner::replay_class_hash::ReplayClassHash;
 use crate::storage::rpc::contract_class;
-use crate::storage::rpc::rpc_client::RpcClient;
 
 /// This structure is used by [`blockifier`] to access blockchain data during
 /// transaction replay.
 pub struct ReplayStateReader<'a> {
-    /// The reference to [`crate::storage::rpc::RpcStorage`] to make RPC calls.
-    rpc_client: &'a RpcClient,
+    /// The reference to
+    /// [`crate::storage::rpc::state::permanent_state::PermanentState`] to
+    /// query the blockchain state.
+    permanent_state: &'a PermanentState,
 
     /// The block number used to query the state.
     block_number: BlockNumber,
@@ -28,13 +30,16 @@ impl ReplayStateReader<'_> {
     ///
     /// # Arguments
     ///
-    /// - `storage`: The object exposing RPC calls to query the blockchain
-    ///   state.
+    /// - `permanent_state`: The object exposing the connection to the
+    ///   blockchain state.
     /// - `block_number`: The block number at which state is read.
     #[must_use]
-    pub fn new(rpc_client: &RpcClient, block_number: BlockNumber) -> ReplayStateReader<'_> {
+    pub fn new(
+        permanent_state: &PermanentState,
+        block_number: BlockNumber,
+    ) -> ReplayStateReader<'_> {
         ReplayStateReader {
-            rpc_client,
+            permanent_state,
             block_number,
         }
     }
@@ -46,7 +51,7 @@ impl StateReader for ReplayStateReader<'_> {
         key: StorageKey,
     ) -> StateResult<Felt> {
         let storage_value = self
-            .rpc_client
+            .permanent_state
             .starknet_get_storage_at(&self.block_number, &contract_address, &key)
             .map_err(|err| {
                 StateError::StateReadError(
@@ -58,7 +63,7 @@ impl StateReader for ReplayStateReader<'_> {
 
     fn get_nonce_at(&self, contract_address: ContractAddress) -> StateResult<Nonce> {
         let nonce = self
-            .rpc_client
+            .permanent_state
             .starknet_get_nonce(&self.block_number, &contract_address)
             .map_err(|err| {
                 StateError::StateReadError(
@@ -70,7 +75,7 @@ impl StateReader for ReplayStateReader<'_> {
 
     fn get_class_hash_at(&self, contract_address: ContractAddress) -> StateResult<ClassHash> {
         let class_hash = self
-            .rpc_client
+            .permanent_state
             .starknet_get_class_hash_at(&self.block_number, &contract_address)
             .map_err(|err| {
                 StateError::StateReadError(
@@ -89,7 +94,7 @@ impl StateReader for ReplayStateReader<'_> {
             class_hash,
         };
         let contract_class = self
-            .rpc_client
+            .permanent_state
             .starknet_get_class(&replay_class_hash)
             .map_err(|err| {
                 StateError::StateReadError(
@@ -126,7 +131,7 @@ impl StateReader for ReplayStateReader<'_> {
             class_hash,
         };
         let contract_class = self
-            .rpc_client
+            .permanent_state
             .starknet_get_class(&replay_class_hash)
             .map_err(|err| {
                 StateError::StateReadError(

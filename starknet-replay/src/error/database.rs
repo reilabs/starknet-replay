@@ -1,13 +1,11 @@
 //! This file contains the enum `Error` for all the errors returned by the
 //! module `storage`.
 
-use std::str::Utf8Error;
-
 use blockifier::execution::errors::ContractClassError;
 use cairo_lang_starknet_classes::casm_contract_class::StarknetSierraCompilationError;
-use hex::FromHexError;
-use starknet_providers::ProviderError;
 use thiserror::Error;
+
+use super::PermanentStateError;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -18,25 +16,6 @@ pub enum Error {
     /// `Serde` variant is used for errors reported by the crate [`serde_json`].
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
-
-    /// `Starknet` variant is used for errors reported by the crate
-    /// [`starknet_api`]
-    #[error(transparent)]
-    Starknet(#[from] starknet_api::StarknetApiError),
-
-    /// `DecodeHex` variant is used for errors reported by the crate [`hex`]
-    /// used to convert from hex to ASCII string.
-    #[error(transparent)]
-    DecodeHex(#[from] FromHexError),
-
-    /// `InvalidHex` variant is used for strings not matching a hex number.
-    #[error("Chain id returned from RPC endpoint is not valid hex number.")]
-    InvalidHex(),
-
-    /// `DecodeBytes` variant is used for errors arising from converting a slice
-    /// of bytes into a [`String`].
-    #[error(transparent)]
-    DecodeBytes(#[from] Utf8Error),
 
     /// `SierraCompiler` variant is for errors reported when compiling Sierra
     /// contracts to CASM.
@@ -53,13 +32,10 @@ pub enum Error {
     #[error(transparent)]
     ClassInfoInvalid(#[from] ContractClassError),
 
-    /// The `RpcResponse` variant is for errors generated when waiting for the
-    /// RPC response.
+    /// The `PermanentState` variant is for errors generated from the
+    /// [`crate::storage::rpc::state::permanent_state::PermanentState`] methods.
     #[error(transparent)]
-    RpcResponse(#[from] ProviderError),
-
-    #[error(transparent)]
-    ParseInt(#[from] std::num::ParseIntError),
+    PermanentState(#[from] PermanentStateError),
 
     /// The `Unknown` variant is for any other uncategorised error.
     #[error("Unknown Error: {0:?}")]

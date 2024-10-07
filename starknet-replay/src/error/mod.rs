@@ -21,12 +21,16 @@ use thiserror::Error;
 // `pub` for ease of access.
 pub use self::database::Error as DatabaseError;
 pub use self::histogram::Error as HistogramError;
+pub use self::permanent_state::Error as PermanentStateError;
 pub use self::profiler::Error as ProfilerError;
+pub use self::rpc_client::Error as RpcClientError;
 pub use self::runner::Error as RunnerError;
 
 mod database;
 mod histogram;
+mod permanent_state;
 mod profiler;
+mod rpc_client;
 mod runner;
 
 #[derive(Debug, Error)]

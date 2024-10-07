@@ -45,4 +45,13 @@ pub struct Args {
     /// exists.
     #[arg(long)]
     pub overwrite: bool,
+
+    /// Set to perform serial replay of blocks.
+    ///
+    /// Slower, but forces the initial state of block `n+1` to be consistent
+    /// with the final state of block `n`. This is not ensured with parallel
+    /// replay because the final state may differ with the final state
+    /// fetched from the chain.
+    #[arg(long)]
+    pub serial_replay: bool,
 }
