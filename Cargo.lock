@@ -3757,6 +3757,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "blockifier",
+ "cairo-lang-casm",
  "cairo-lang-compiler",
  "cairo-lang-runner",
  "cairo-lang-sierra",
@@ -3777,6 +3778,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "smol_str",
  "starknet-core",
  "starknet-providers",
  "starknet_api",

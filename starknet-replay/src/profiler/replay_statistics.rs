@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::ops::{Div, Mul};
 
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 
 /// The struct to hold a list of libfunc names with their related call
@@ -13,9 +12,6 @@ use itertools::Itertools;
 pub struct ReplayStatistics {
     /// This field contains the association between libfunc name (key) and
     /// number of calls (value).
-    ///
-    /// Storing as [`HashMap`] instead of [`OrderedHashMap`] for ease of
-    /// comparison because order doesn't matter.
     pub concrete_libfunc: HashMap<String, usize>,
 }
 
@@ -57,8 +53,8 @@ impl ReplayStatistics {
     ///
     /// - `input`: Input map of libfuncs.
     #[must_use]
-    pub fn add_statistics(mut self, input: &OrderedHashMap<impl ToString, usize>) -> Self {
-        for (name, frequency) in input.iter() {
+    pub fn add_statistics(mut self, input: &HashMap<impl ToString, usize>) -> Self {
+        for (name, frequency) in input {
             self.update(&name.to_string(), *frequency);
         }
         self
@@ -153,7 +149,7 @@ impl ReplayStatistics {
                 break;
             }
         }
-        let ordered_libfuncs: OrderedHashMap<String, usize> = self
+        let ordered_libfuncs: HashMap<String, usize> = self
             .concrete_libfunc
             .iter()
             .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
