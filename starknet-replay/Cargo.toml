@@ -19,6 +19,7 @@ cairo-vm = "1.0.0-rc5"
 # All `cairo-lang-` crates must have the same version
 cairo-lang-starknet-classes = "2.7.0-rc.1"
 cairo-lang-sierra-to-casm = "2.7.0-rc.1"
+cairo-lang-casm = "2.7.0-rc.1"
 cairo-lang-runner = "2.7.0-rc.1"
 cairo-lang-compiler = "2.7.0-rc.1"
 cairo-lang-sierra = "2.7.0-rc.1"
@@ -47,6 +48,7 @@ hex = "0.4.3"
 once_cell = "1.17.1"
 tokio = { version = "1.27.0", features = ["full"] }
 primitive-types = "0.12.2"
+smol_str = "0.2.2"
 anyhow.workspace = true
 tracing.workspace = true
 itertools.workspace = true

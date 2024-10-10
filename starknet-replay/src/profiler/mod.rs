@@ -5,11 +5,13 @@
 
 #![allow(clippy::module_name_repetitions)] // Added because of `SierraProfiler`
 
-use cairo_lang_runner::profiling::{user_function_idx_by_sierra_statement_idx, ProfilingInfo};
-use cairo_lang_runner::{ProfilingInfoCollectionConfig, RunnerError as CairoError};
-use cairo_lang_sierra::extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType};
-use cairo_lang_sierra::program::{GenStatement, Program, StatementIdx};
-use cairo_lang_sierra::program_registry::ProgramRegistry;
+use std::fmt::{self, Display, Formatter};
+
+use cairo_lang_casm::assembler::InstructionRepr;
+use cairo_lang_casm::instructions::Instruction;
+use cairo_lang_runner::profiling::ProfilingInfo;
+use cairo_lang_runner::RunnerError as CairoError;
+use cairo_lang_sierra::program::{Program, Statement, StatementIdx};
 use cairo_lang_sierra_to_casm::compiler::{compile, CairoProgram, SierraToCasmConfig};
 use cairo_lang_sierra_to_casm::metadata::{
     calc_metadata,
@@ -19,7 +21,7 @@ use cairo_lang_sierra_to_casm::metadata::{
     MetadataError,
 };
 use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
-use itertools::chain;
+use tracing::trace;
 
 use crate::error::ProfilerError;
 
@@ -28,11 +30,29 @@ pub mod replace_ids;
 pub mod replay_statistics;
 pub mod report;
 
-/// The default maximum depth for a stack trace.
-///
-/// This number has been determined to be large enough to handle the contracts
-/// on Starknet via empirical testing.
-const MAX_STACK_TRACE_DEPTH_DEFAULT: usize = 10000;
+#[derive(Debug, Eq, PartialEq)]
+pub struct ProgramProfiler {
+    sierra_statement: Statement,
+    casm_instruction: Instruction,
+    memory: InstructionRepr,
+    pc: usize,
+    statement_idx: usize,
+    instruction_idx: usize,
+}
+impl Display for ProgramProfiler {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Sierra {} | CASM {} | Memory {:?} | PC {} | Statement Idx {} | Instruction Idx {}",
+            self.sierra_statement,
+            self.casm_instruction.to_string().replace('\n', " "),
+            self.memory.encode(),
+            self.pc,
+            self.statement_idx,
+            self.instruction_idx
+        )
+    }
+}
 
 /// Creates the metadata required for a lowering a Sierra program to CASM.
 ///
@@ -78,16 +98,12 @@ fn create_metadata(
 /// [`SierraProfiler#method.collect_profiling_info`].
 pub struct SierraProfiler {
     /// The sierra program.
-    sierra_program: Program,
-
-    /// Program registry for the Sierra program.
-    sierra_program_registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    pub sierra_program: Program,
 
     /// The casm program matching the Sierra code.
-    casm_program: CairoProgram,
+    pub casm_program: CairoProgram,
 
-    /// Whether to run the profiler when running using this runner.
-    pub run_profiler: Option<ProfilingInfoCollectionConfig>,
+    pub commands: Vec<ProgramProfiler>,
 }
 impl SierraProfiler {
     /// Generates a new [`SierraProfiler`] object.
@@ -103,16 +119,12 @@ impl SierraProfiler {
     /// - The call to `create_metadata` fails
     /// - The generation of `[sierra_program_registry`] fails
     pub fn new(sierra_program: Program) -> Result<Self, ProfilerError> {
-        // `run_profiler` and `metadata_config` are set as per default values
-        // preventing the user from choosing `None` as in the original
-        // `SierraCasmRunner`. This is to ensure the profiler is always run with
-        // the same configuration.
-        let run_profiler = Some(ProfilingInfoCollectionConfig::default());
+        // `metadata_config` is set as per default values preventing the user from
+        // choosing `None` as in the original `SierraCasmRunner`. This is to
+        // ensure the profiler is always run with the same configuration.
         let metadata_config = Some(MetadataComputationConfig::default());
         let gas_usage_check = metadata_config.is_some();
         let metadata = create_metadata(&sierra_program, metadata_config)?;
-        let sierra_program_registry =
-            ProgramRegistry::<CoreType, CoreLibfunc>::new(&sierra_program)?;
         let casm_program = compile(
             &sierra_program,
             &metadata,
@@ -122,27 +134,42 @@ impl SierraProfiler {
             },
         )?;
 
+        let mut commands: Vec<ProgramProfiler> = Vec::new();
+        let mut last_pc: usize = 1;
+
+        casm_program
+            .instructions
+            .iter()
+            .enumerate()
+            .for_each(|(instruction_idx, instruction)| {
+                for (statement_idx, _) in casm_program
+                    .debug_info
+                    .sierra_statement_info
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, s)| s.instruction_idx == instruction_idx)
+                {
+                    let sierra_statement = &sierra_program.statements[statement_idx];
+                    let casm_instruction = instruction;
+                    let command = ProgramProfiler {
+                        sierra_statement: sierra_statement.clone(),
+                        casm_instruction: casm_instruction.clone(),
+                        memory: casm_instruction.assemble(),
+                        pc: last_pc,
+                        statement_idx,
+                        instruction_idx,
+                    };
+                    trace!("{}", command);
+                    commands.push(command);
+                }
+                last_pc += instruction.assemble().encode().len();
+            });
+
         Ok(Self {
             sierra_program,
-            sierra_program_registry,
             casm_program,
-            run_profiler,
+            commands,
         })
-    }
-
-    /// Returns the index of the Sierra statement at `pc`.
-    // TODO: To be refactored. Issue #5.
-    fn sierra_statement_index_by_pc(&self, pc: usize) -> StatementIdx {
-        // The `-1` here can't cause an underflow as the first statement is
-        // always at offset 0, so it is always on the left side of the
-        // partition, and thus the partition index is >0.
-        StatementIdx(
-            self.casm_program
-                .debug_info
-                .sierra_statement_info
-                .partition_point(|x| x.start_offset <= pc)
-                - 1,
-        )
     }
 
     /// Collects profiling info of the current run using the trace.
@@ -162,128 +189,17 @@ impl SierraProfiler {
     /// - `pcs` is empty.
     /// - The CASM program has no Sierra statements.
     /// - Sierra statement not found.
-    // TODO: To be refactored. Issue #5.
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> Result<ProfilingInfo, ProfilerError> {
-        let sierra_len = self.casm_program.debug_info.sierra_statement_info.len();
-        let bytecode_len = self
-            .casm_program
-            .debug_info
-            .sierra_statement_info
-            .last()
-            .ok_or(ProfilerError::EmptyStatementList)?
-            .end_offset;
-        // The CASM program starts with a header of instructions to wrap the
-        // real program. `real_pc_0` is the PC in the trace that points
-        // to the same CASM instruction which is in the real PC=0 in the
-        // original CASM program. That is, all trace's PCs need to be
-        // subtracted by `real_pc_0` to get the real PC they point to in
-        // the original CASM program.
-        // This is the same as the PC of the last trace entry plus 1, as the
-        // header is built to have a `ret` last instruction, which must
-        // be the last in the trace of any execution. The first
-        // instruction after that is the first instruction in the
-        // original CASM program.
-        let real_pc_0 = pcs.last().ok_or(ProfilerError::EmptyProgramCounterList)? + 1;
-
-        // The function stack trace of the current function, excluding the
-        // current function (that is, the stack of the caller).
-        // Represented as a vector of indices of the functions in the
-        // stack (indices of the functions according to the list in the
-        // sierra program). Limited to depth `max_stack_trace_depth`.
-        // Note `function_stack_depth` tracks the real depth, even if >=
-        // `max_stack_trace_depth`.
-        let mut function_stack = Vec::new();
-        // Tracks the depth of the function stack, without limit. This is
-        // usually equal to `function_stack.len()`, but if the actual
-        // stack is deeper than `max_stack_trace_depth`, this remains
-        // reliable while `function_stack` does not.
-        let mut function_stack_depth = 0;
-        let mut cur_weight = 0;
-        // The key is a function stack trace (see `function_stack`, but
-        // including the current function).
-        // The value is the weight of the stack trace so far, not including the
-        // pending weight being tracked at the time.
-        let mut stack_trace_weights = UnorderedHashMap::default();
-        // let mut _end_of_program_reached = false;
-        // The total weight of each Sierra statement.
-        // Note the header and footer (CASM instructions added for running the
-        // program by the runner). The header is not counted, and the
-        // footer is, but then the relevant entry is removed.
+        let stack_trace_weights = UnorderedHashMap::default();
         let mut sierra_statement_weights = UnorderedHashMap::default();
-        for step in pcs {
-            // Skip the header.
-            if *step < real_pc_0 {
-                continue;
-            }
-            let real_pc = step - real_pc_0;
-            // Skip the footer.
-            if real_pc == bytecode_len {
-                continue;
-            }
-
-            cur_weight += 1;
-
-            // TODO(yuval): Maintain a map of pc to sierra statement index (only
-            // for PCs we saw), to save lookups.
-            let sierra_statement_idx = self.sierra_statement_index_by_pc(real_pc);
-            let user_function_idx = user_function_idx_by_sierra_statement_idx(
-                &self.sierra_program,
-                sierra_statement_idx,
-            );
-
-            *sierra_statement_weights
-                .entry(sierra_statement_idx)
-                .or_insert(0) += 1;
-
-            let Some(gen_statement) = self.sierra_program.statements.get(sierra_statement_idx.0)
-            else {
-                return Err(ProfilerError::SierraStatementNotFound(
-                    sierra_statement_idx.0,
-                ));
-            };
-
-            match gen_statement {
-                GenStatement::Invocation(invocation) => {
-                    let libfunc_found = self
-                        .sierra_program_registry
-                        .get_libfunc(&invocation.libfunc_id);
-                    if matches!(libfunc_found, Ok(CoreConcreteLibfunc::FunctionCall(_))) {
-                        // Push to the stack.
-                        if function_stack_depth < MAX_STACK_TRACE_DEPTH_DEFAULT {
-                            function_stack.push((user_function_idx, cur_weight));
-                            cur_weight = 0;
-                        } else {
-                            tracing::info!("Exceeding depth");
-                        }
-                        function_stack_depth += 1;
-                    }
-                }
-                GenStatement::Return(_) => {
-                    // Pop from the stack.
-                    if function_stack_depth <= MAX_STACK_TRACE_DEPTH_DEFAULT {
-                        // The current stack trace, including the current
-                        // function.
-                        let cur_stack: Vec<_> =
-                            chain!(function_stack.iter().map(|f| f.0), [user_function_idx])
-                                .collect();
-                        *stack_trace_weights.entry(cur_stack).or_insert(0) += cur_weight;
-
-                        let Some(popped) = function_stack.pop() else {
-                            // End of the program. Not valid for Starknet
-                            // contracts.
-                            continue;
-                        };
-                        cur_weight += popped.1;
-                    } else {
-                        tracing::info!("Exceeding depth");
-                    }
-                    function_stack_depth -= 1;
-                }
+        for pc in pcs {
+            let statements: Vec<&ProgramProfiler> =
+                self.commands.iter().filter(|c| c.pc == *pc).collect();
+            for statement in statements {
+                let statement_idx = StatementIdx(statement.statement_idx);
+                *sierra_statement_weights.entry(statement_idx).or_insert(0) += 1;
             }
         }
-
-        // Remove the footer.
-        sierra_statement_weights.remove(&StatementIdx(sierra_len));
 
         Ok(ProfilingInfo {
             sierra_statement_weights,
