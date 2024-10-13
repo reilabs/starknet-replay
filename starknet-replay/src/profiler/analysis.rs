@@ -189,15 +189,7 @@ mod tests {
         let sierra_program_json_file = "/test_data/sierra_add_program.json";
         let sierra_program = read_sierra_program(sierra_program_json_file);
 
-        let sierra_profiler: SierraProfiler = SierraProfiler::new(sierra_program.clone()).unwrap();
-
-        // To get the list of sierra statements associated with specific CASM
-        // instruction, filter the `sierra_statement_info` for the statements
-        // with matching instruction_idx (0 based), then get the index of the elements
-        // returned. These indices correspond to the Sierra statement index of the given
-        // instruction index.
-
-        // How to get the CASM instruction from the pc?
+        let sierra_profiler = SierraProfiler::new(sierra_program.clone()).unwrap();
 
         let concrete_libfunc_weights =
             internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
