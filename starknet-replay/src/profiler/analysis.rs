@@ -315,7 +315,7 @@ mod tests {
 
         // Load calldata
         let calldata_start = runner.vm.add_memory_segment();
-        let calldata_end = runner.vm.load_data(calldata_start, &args.to_vec()).unwrap();
+        let calldata_end = runner.vm.load_data(calldata_start, args).unwrap();
 
         // Create entrypoint_args
 

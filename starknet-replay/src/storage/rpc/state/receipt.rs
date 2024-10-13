@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use primitive_types::H160;
 use starknet_api::block::BlockHash;
 use starknet_api::core::{ContractAddress, EthAddress};
+use starknet_api::execution_resources::{Builtin, ExecutionResources, GasVector};
 use starknet_api::transaction::{
-    Builtin,
     DeclareTransactionOutput,
     DeployAccountTransactionOutput,
     DeployTransactionOutput,
@@ -15,9 +15,7 @@ use starknet_api::transaction::{
     EventContent,
     EventData,
     EventKey,
-    ExecutionResources,
     Fee,
-    GasVector,
     InvokeTransactionOutput,
     L1HandlerTransactionOutput,
     L2ToL1Payload,
@@ -40,7 +38,7 @@ use crate::error::RpcClientError;
 /// This function generates a hashmap of builtins usage in a transaction.
 ///
 /// It is needed to generate the object
-/// [`starknet_api::transaction::ExecutionResources`].
+/// [`starknet_api::execution_resources::ExecutionResources`].
 ///
 /// # Arguments
 ///
@@ -48,49 +46,49 @@ use crate::error::RpcClientError;
 fn generate_builtin_counter(computation_resources: &ComputationResources) -> HashMap<Builtin, u64> {
     let mut builtin_instance_counter = HashMap::default();
     builtin_instance_counter.insert(
-        starknet_api::transaction::Builtin::RangeCheck,
+        starknet_api::execution_resources::Builtin::RangeCheck,
         computation_resources
             .range_check_builtin_applications
             .unwrap_or_default(),
     );
     builtin_instance_counter.insert(
-        starknet_api::transaction::Builtin::Pedersen,
+        starknet_api::execution_resources::Builtin::Pedersen,
         computation_resources
             .pedersen_builtin_applications
             .unwrap_or_default(),
     );
     builtin_instance_counter.insert(
-        starknet_api::transaction::Builtin::Poseidon,
+        starknet_api::execution_resources::Builtin::Poseidon,
         computation_resources
             .poseidon_builtin_applications
             .unwrap_or_default(),
     );
     builtin_instance_counter.insert(
-        starknet_api::transaction::Builtin::EcOp,
+        starknet_api::execution_resources::Builtin::EcOp,
         computation_resources
             .ec_op_builtin_applications
             .unwrap_or_default(),
     );
     builtin_instance_counter.insert(
-        starknet_api::transaction::Builtin::Ecdsa,
+        starknet_api::execution_resources::Builtin::Ecdsa,
         computation_resources
             .ecdsa_builtin_applications
             .unwrap_or_default(),
     );
     builtin_instance_counter.insert(
-        starknet_api::transaction::Builtin::Bitwise,
+        starknet_api::execution_resources::Builtin::Bitwise,
         computation_resources
             .bitwise_builtin_applications
             .unwrap_or_default(),
     );
     builtin_instance_counter.insert(
-        starknet_api::transaction::Builtin::Keccak,
+        starknet_api::execution_resources::Builtin::Keccak,
         computation_resources
             .keccak_builtin_applications
             .unwrap_or_default(),
     );
     builtin_instance_counter.insert(
-        starknet_api::transaction::Builtin::SegmentArena,
+        starknet_api::execution_resources::Builtin::SegmentArena,
         computation_resources
             .segment_arena_builtin
             .unwrap_or_default(),
@@ -160,7 +158,7 @@ fn generate_messages(input: Vec<MsgToL1>) -> Result<Vec<MessageToL1>, RpcClientE
 }
 
 /// This function converts [`starknet_core::types::ExecutionResources`] into
-/// [`starknet_api::transaction::ExecutionResources`].
+/// [`starknet_api::execution_resources::ExecutionResources`].
 ///
 /// # Arguments
 ///
@@ -178,15 +176,26 @@ fn generate_execution_resources(
             .memory_holes
             .unwrap_or_default(),
         da_gas_consumed: GasVector {
-            l1_gas: 0,      // Where do I get this data?
-            l1_data_gas: 0, // Where do I get this data?
-        },
-        gas_consumed: GasVector {
-            l1_gas: execution_resources.data_resources.data_availability.l1_gas,
+            l1_gas: execution_resources
+                .data_resources
+                .data_availability
+                .l1_gas
+                .into(),
             l1_data_gas: execution_resources
                 .data_resources
                 .data_availability
-                .l1_data_gas,
+                .l1_data_gas
+                .into(),
+            l2_gas: 0_u32.into(), // Not available in the RPC 0.7 protocol.
+        },
+        gas_consumed: GasVector {
+            l1_gas: 0_u32.into(), // Not available in the RPC 0.7 protocol.
+            l1_data_gas: execution_resources
+                .data_resources
+                .data_availability
+                .l1_data_gas
+                .into(),
+            l2_gas: 0_u32.into(), // Not available in the RPC 0.7 protocol.
         },
     }
 }

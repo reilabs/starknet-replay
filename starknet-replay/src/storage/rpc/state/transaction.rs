@@ -1,6 +1,7 @@
 //! This module contains the functions to generate the transaction data from
 //! the RPC response.
 
+use starknet_api::block::GasPrice;
 use starknet_api::core::{
     ClassHash,
     CompiledClassHash,
@@ -8,8 +9,10 @@ use starknet_api::core::{
     EntryPointSelector,
     Nonce,
 };
+use starknet_api::execution_resources::GasAmount;
 use starknet_api::transaction::{
     AccountDeploymentData,
+    AllResourceBounds,
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
@@ -27,12 +30,12 @@ use starknet_api::transaction::{
     InvokeTransactionV3,
     L1HandlerTransaction,
     PaymasterData,
-    Resource,
     ResourceBounds,
     Tip,
     Transaction as StarknetApiTransaction,
     TransactionSignature,
     TransactionVersion,
+    ValidResourceBounds,
 };
 use starknet_core::types::{ResourceBoundsMapping, Transaction as StarknetCoreTransaction};
 
@@ -44,27 +47,32 @@ use crate::error::RpcClientError;
 /// # Arguments
 ///
 /// - `resource_bounds_mapping`: The input object.
-fn convert_resource_bounds(
-    resource_bounds_mapping: &ResourceBoundsMapping,
-) -> Vec<(Resource, ResourceBounds)> {
-    let mut resource_bounds = Vec::new();
-    let l1_resource = (
-        Resource::L1Gas,
-        ResourceBounds {
-            max_amount: resource_bounds_mapping.l1_gas.max_amount,
-            max_price_per_unit: resource_bounds_mapping.l1_gas.max_price_per_unit,
-        },
-    );
-    let l2_resource = (
-        Resource::L2Gas,
-        ResourceBounds {
-            max_amount: resource_bounds_mapping.l2_gas.max_amount,
-            max_price_per_unit: resource_bounds_mapping.l2_gas.max_price_per_unit,
-        },
-    );
-    resource_bounds.push(l1_resource);
-    resource_bounds.push(l2_resource);
-    resource_bounds
+fn convert_resource_bounds(resource_bounds_mapping: &ResourceBoundsMapping) -> ValidResourceBounds {
+    let l1_resource = ResourceBounds {
+        max_amount: resource_bounds_mapping.l1_gas.max_amount.into(),
+        max_price_per_unit: resource_bounds_mapping.l1_gas.max_price_per_unit.into(),
+    };
+
+    if resource_bounds_mapping.l2_gas.max_amount == 0 {
+        return ValidResourceBounds::L1Gas(l1_resource);
+    }
+
+    let l2_resource = ResourceBounds {
+        max_amount: resource_bounds_mapping.l2_gas.max_amount.into(),
+        max_price_per_unit: resource_bounds_mapping.l2_gas.max_price_per_unit.into(),
+    };
+
+    // Not available in the RPC 0.7 protocol.
+    let l1_data_resource = ResourceBounds {
+        max_amount: GasAmount::default(),
+        max_price_per_unit: GasPrice::default(),
+    };
+
+    ValidResourceBounds::AllResources(AllResourceBounds {
+        l1_gas: l1_resource,
+        l2_gas: l2_resource,
+        l1_data_gas: l1_data_resource,
+    })
 }
 
 /// This function converts [`starknet_core::types::DataAvailabilityMode`] into
@@ -127,7 +135,7 @@ fn convert_invoke_transaction(
         }
         starknet_core::types::InvokeTransaction::V3(tx) => {
             let invoke_tx = InvokeTransactionV3 {
-                resource_bounds: convert_resource_bounds(&tx.resource_bounds).try_into()?,
+                resource_bounds: convert_resource_bounds(&tx.resource_bounds),
                 tip: Tip(tx.tip),
                 signature: TransactionSignature(tx.signature),
                 nonce: Nonce(tx.nonce),
@@ -227,7 +235,7 @@ fn convert_declare_transaction(
         }
         starknet_core::types::DeclareTransaction::V3(tx) => {
             let declare_tx = DeclareTransactionV3 {
-                resource_bounds: convert_resource_bounds(&tx.resource_bounds).try_into()?,
+                resource_bounds: convert_resource_bounds(&tx.resource_bounds),
                 tip: Tip(tx.tip),
                 signature: TransactionSignature(tx.signature),
                 nonce: Nonce(tx.nonce),
@@ -298,7 +306,7 @@ fn convert_deploy_account_transaction(
         }
         starknet_core::types::DeployAccountTransaction::V3(tx) => {
             let deploy_account_tx = DeployAccountTransactionV3 {
-                resource_bounds: convert_resource_bounds(&tx.resource_bounds).try_into()?,
+                resource_bounds: convert_resource_bounds(&tx.resource_bounds),
                 tip: Tip(tx.tip),
                 signature: TransactionSignature(tx.signature),
                 nonce: Nonce(tx.nonce),

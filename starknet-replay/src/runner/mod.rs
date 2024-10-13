@@ -184,7 +184,8 @@ where
             (storage, trace_out, sender),
             |(storage, trace_out, sender), block| -> anyhow::Result<()> {
                 let block_transaction_traces = storage.execute_block(block, trace_out)?;
-                let block_number = BlockNumber::new(block.header.block_number.0);
+                let block_number =
+                    BlockNumber::new(block.header.block_header_without_hash.block_number.0);
                 info!("Replay completed block {block_number}");
                 let visited_pcs = process_transaction_traces(block_transaction_traces);
                 sender.send(visited_pcs)?;
@@ -233,7 +234,7 @@ where
     let mut cumulative_visited_pcs = VisitedPcs::default();
     for block in replay_work {
         let block_transaction_traces = storage.execute_block(block, trace_out)?;
-        let block_number = BlockNumber::new(block.header.block_number.0);
+        let block_number = BlockNumber::new(block.header.block_header_without_hash.block_number.0);
         info!("Replay completed block {block_number}");
         let visited_pcs = process_transaction_traces(block_transaction_traces);
         cumulative_visited_pcs.extend(visited_pcs.into_iter());
