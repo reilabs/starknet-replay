@@ -33,7 +33,7 @@ pub mod report;
 /// This structure contains the correspondance between Sierra statement, CASM
 /// instruction and memory opcode.
 #[derive(Debug, Eq, PartialEq)]
-pub struct ProgramProfiler {
+pub struct CompiledStatement {
     /// The Sierra statement
     sierra_statement: Statement,
 
@@ -53,7 +53,7 @@ pub struct ProgramProfiler {
     /// The CASM instruction index (starting from 1)
     instruction_idx: usize,
 }
-impl Display for ProgramProfiler {
+impl Display for CompiledStatement {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
@@ -113,7 +113,7 @@ pub struct SierraProfiler {
 
     /// The vector containing the whole program with correspondance between
     /// Sierra, CASM and memory.
-    pub commands: Vec<ProgramProfiler>,
+    pub commands: Vec<CompiledStatement>,
 }
 impl SierraProfiler {
     /// Generates a new [`SierraProfiler`] object.
@@ -144,7 +144,7 @@ impl SierraProfiler {
             },
         )?;
 
-        let mut commands: Vec<ProgramProfiler> = Vec::new();
+        let mut commands: Vec<CompiledStatement> = Vec::new();
         let mut last_pc: usize = 1;
 
         casm_program
@@ -161,7 +161,7 @@ impl SierraProfiler {
                 {
                     let sierra_statement = &sierra_program.statements[statement_idx];
                     let casm_instruction = instruction;
-                    let command = ProgramProfiler {
+                    let command = CompiledStatement {
                         sierra_statement: sierra_statement.clone(),
                         casm_instruction: casm_instruction.clone(),
                         memory: casm_instruction.assemble(),
@@ -192,7 +192,7 @@ impl SierraProfiler {
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> HashMap<StatementIdx, usize> {
         let mut sierra_statement_weights = HashMap::default();
         for pc in pcs {
-            let statements: Vec<&ProgramProfiler> =
+            let statements: Vec<&CompiledStatement> =
                 self.commands.iter().filter(|c| c.pc == *pc).collect();
             for statement in statements {
                 let statement_idx = StatementIdx(statement.statement_idx);
