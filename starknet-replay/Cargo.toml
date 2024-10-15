@@ -17,14 +17,14 @@ publish = false
 # Ensure cairo-vm matches the version used by blockifier
 cairo-vm = "1.0.0-rc5"
 # All `cairo-lang-` crates must have the same version
-cairo-lang-starknet-classes = "2.7.0-rc.1"
-cairo-lang-sierra-to-casm = "2.7.0-rc.1"
-cairo-lang-casm = "2.7.0-rc.1"
-cairo-lang-runner = "2.7.0-rc.1"
-cairo-lang-compiler = "2.7.0-rc.1"
-cairo-lang-sierra = "2.7.0-rc.1"
-cairo-lang-utils = "2.7.0-rc.1"
-cairo-lang-sierra-generator = "2.7.0-rc.1"
+cairo-lang-starknet-classes = "2.7.0-rc.3"
+cairo-lang-sierra-to-casm = "2.7.0-rc.3"
+cairo-lang-casm = "2.7.0-rc.3"
+cairo-lang-runner = "2.7.0-rc.3"
+cairo-lang-compiler = "2.7.0-rc.3"
+cairo-lang-sierra = "2.7.0-rc.3"
+cairo-lang-utils = "2.7.0-rc.3"
+cairo-lang-sierra-generator = "2.7.0-rc.3"
 # Some changes are required to `starkware-libs/blockifier`. These changes are
 # in the branch `extract_libfunc` of Reilabs' fork and need to be merged
 # into the main branch.
@@ -54,6 +54,10 @@ tracing.workspace = true
 itertools.workspace = true
 
 [dev-dependencies]
+# All `cairo-lang-` crates must have the same version
+# When the version is updated, change the tag in the Makefile to download the correct corelib version for testing.
+cairo-lang-starknet = "2.7.0-rc.3"
+ctor = "0.2.8"
 indoc = "2.0.5"
 rand = "0.8.4"
 rand_chacha = "0.3.1"
