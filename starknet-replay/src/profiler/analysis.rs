@@ -123,14 +123,18 @@ pub fn extract_libfuncs_weight(
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+    use std::process::Command;
     use std::{env, fs, io};
 
+    use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
+    use cairo_lang_starknet::compile::compile_path;
     use itertools::Itertools;
     use smol_str::ToSmolStr;
 
     use super::*;
 
-    fn read_test_file(filename: &str) -> io::Result<String> {
+    fn read_file_to_string(filename: &str) -> io::Result<String> {
         let out_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
         let sierra_program_json_file = [out_dir.as_str(), filename].iter().join("");
         let sierra_program_json_file = sierra_program_json_file.as_str();
@@ -138,8 +142,8 @@ mod tests {
     }
 
     fn read_sierra_compressed_program(filename: &str) -> Program {
-        let sierra_program_json =
-            read_test_file(filename).unwrap_or_else(|_| panic!("Unable to read file {filename}"));
+        let sierra_program_json = read_file_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to read file {filename}"));
         let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
             .unwrap_or_else(|_| panic!("Unable to parse {filename} to json"));
         let contract_class: ContractClass = serde_json::from_value(sierra_program_json)
@@ -150,8 +154,8 @@ mod tests {
     }
 
     fn read_sierra_program(filename: &str) -> Program {
-        let sierra_program_test_json =
-            read_test_file(filename).unwrap_or_else(|_| panic!("Unable to read file {filename}"));
+        let sierra_program_test_json = read_file_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to read file {filename}"));
         let sierra_program_test_json: serde_json::Value =
             serde_json::from_str(&sierra_program_test_json)
                 .unwrap_or_else(|_| panic!("Unable to parse {filename} to json"));
@@ -159,9 +163,59 @@ mod tests {
             .unwrap_or_else(|_| panic!("Unable to parse {filename} to Program"))
     }
 
-    fn check_libfunc(statistics: &HashMap<SmolStr, usize>, name: &str, frequency: usize) {
+    fn assert_libfunc_frequency(
+        statistics: &HashMap<SmolStr, usize>,
+        name: &str,
+        frequency: usize,
+    ) {
         let value = statistics.get(&name.to_smolstr()).unwrap();
-        assert_eq!(*value, frequency);
+        assert_eq!(
+            *value, frequency,
+            "Frequency for {}. Expected {}, found {}",
+            name, frequency, *value
+        );
+    }
+
+    // This function uses `ctor` because it must be called only once before starting
+    // unit testing to download corelib.
+    #[ctor::ctor]
+    fn download_corelib() {
+        let project_root_path = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let corelib_directory = [project_root_path.as_str(), "/corelib"].iter().join("");
+        if !fs::exists(corelib_directory).unwrap() {
+            Command::new("make")
+                .current_dir(project_root_path)
+                .args(["deps"])
+                .status()
+                .unwrap();
+        }
+    }
+
+    fn compile_cairo_program(filename: &str) -> Program {
+        let absolute_path = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let filename = [absolute_path.as_str(), filename].iter().join("");
+        let file_path = Path::new(&filename);
+        compile_cairo_project_at_path(
+            file_path,
+            CompilerConfig {
+                replace_ids: true,
+                ..CompilerConfig::default()
+            },
+        )
+        .unwrap()
+    }
+
+    fn compile_cairo_contract(filename: &str) -> Program {
+        let absolute_path = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let filename = [absolute_path.as_str(), filename].iter().join("");
+        let file_path = Path::new(&filename);
+        let config = CompilerConfig {
+            replace_ids: true,
+            ..CompilerConfig::default()
+        };
+        let contract_path = None;
+        let contract_class = compile_path(file_path, contract_path, config).unwrap();
+        contract_class.extract_sierra_program().unwrap()
     }
 
     #[test]
@@ -186,8 +240,8 @@ mod tests {
 
         let visited_pcs: Vec<usize> = vec![1, 4, 6, 8, 3];
 
-        let sierra_program_json_file = "/test_data/sierra_add_program.json";
-        let sierra_program = read_sierra_program(sierra_program_json_file);
+        let sierra_program_json_file = "/test_data/sierra_add_program.cairo";
+        let sierra_program = compile_cairo_program(sierra_program_json_file);
 
         let sierra_profiler = SierraProfiler::new(sierra_program.clone()).unwrap();
 
@@ -195,18 +249,18 @@ mod tests {
             internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
 
         assert_eq!(concrete_libfunc_weights.len(), 4);
-        check_libfunc(&concrete_libfunc_weights, "store_temp<felt252>", 2);
-        check_libfunc(
+        assert_libfunc_frequency(&concrete_libfunc_weights, "store_temp<felt252>", 2);
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 2>>",
             1,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 3>>",
             1,
         );
-        check_libfunc(&concrete_libfunc_weights, "felt252_add", 1);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_add", 1);
     }
 
     #[test]
@@ -241,8 +295,8 @@ mod tests {
             67, 68, 70, 71, 72, 74, 75, 77,
         ];
 
-        let sierra_program_json_file = "/test_data/sierra_add_contract.json";
-        let sierra_program = read_sierra_compressed_program(sierra_program_json_file);
+        let sierra_program_json_file = "/test_data/sierra_add_contract.cairo";
+        let sierra_program = compile_cairo_contract(sierra_program_json_file);
 
         let sierra_profiler: SierraProfiler = SierraProfiler::new(sierra_program.clone()).unwrap();
 
@@ -250,48 +304,48 @@ mod tests {
             internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
 
         assert_eq!(concrete_libfunc_weights.len(), 30);
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 7>>",
             1,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 11>>",
             1,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 13>>",
             1,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 49>>",
             1,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 17>>",
             1,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 19>>",
             1,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 23>>",
             1,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "const_as_immediate<Const<felt252, 31>>",
             1,
         );
-        check_libfunc(&concrete_libfunc_weights, "felt252_add", 7);
-        check_libfunc(&concrete_libfunc_weights, "store_temp<felt252>", 8);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_add", 7);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "store_temp<felt252>", 8);
     }
 
     #[test]
@@ -1012,8 +1066,8 @@ mod tests {
             58, 60, 62, 63, 64, 65, 66, 68, 69, 70,
         ];
 
-        let sierra_program_json_file = "/test_data/sierra_dict.json";
-        let sierra_program = read_sierra_compressed_program(sierra_program_json_file);
+        let sierra_program_json_file = "/test_data/sierra_dict.cairo";
+        let sierra_program = compile_cairo_contract(sierra_program_json_file);
 
         let sierra_profiler: SierraProfiler = SierraProfiler::new(sierra_program.clone()).unwrap();
 
@@ -1021,28 +1075,28 @@ mod tests {
             internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
 
         assert_eq!(concrete_libfunc_weights.len(), 45);
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "drop<SquashedFelt252Dict<u8>>",
             100,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "felt252_dict_entry_finalize<u8>",
             100,
         );
-        check_libfunc(&concrete_libfunc_weights, "felt252_dict_entry_get<u8>", 100);
-        check_libfunc(&concrete_libfunc_weights, "felt252_dict_squash<u8>", 100);
-        check_libfunc(
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_dict_entry_get<u8>", 100);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_dict_squash<u8>", 100);
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "store_temp<Felt252Dict<u8>>",
-            100,
+            200,
         );
-        check_libfunc(
+        assert_libfunc_frequency(
             &concrete_libfunc_weights,
             "store_temp<SquashedFelt252Dict<u8>>",
             100,
         );
-        check_libfunc(&concrete_libfunc_weights, "felt252_dict_new<u8>", 1);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_dict_new<u8>", 100);
     }
 }
