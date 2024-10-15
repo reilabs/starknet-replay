@@ -22,3 +22,6 @@ rust-toolchain.toml
 
 # Mac OS DS_Store file
 .DS_Store
+
+# The corelib folder used to compile Cairo programs during testing
+starknet-replay/corelib
