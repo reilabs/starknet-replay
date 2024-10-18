@@ -20,7 +20,6 @@ use cairo_lang_sierra_to_casm::metadata::{
     MetadataComputationConfig,
     MetadataError,
 };
-use smol_str::SmolStr;
 use tracing::trace;
 
 use crate::error::ProfilerError;
@@ -225,13 +224,13 @@ impl SierraProfiler {
     pub fn unpack_profiling_info(
         &self,
         statements: &HashMap<StatementIdx, usize>,
-    ) -> HashMap<SmolStr, usize> {
-        let mut libfunc_weights = HashMap::<SmolStr, usize>::default();
+    ) -> HashMap<String, usize> {
+        let mut libfunc_weights = HashMap::<String, usize>::default();
         for (statement_idx, frequency) in statements {
             if let Some(GenStatement::Invocation(invocation)) =
                 self.statement_idx_to_gen_statement(*statement_idx)
             {
-                let name = SmolStr::from(invocation.libfunc_id.to_string());
+                let name = invocation.libfunc_id.to_string();
                 *(libfunc_weights.entry(name).or_insert(0)) += frequency;
             }
         }

@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use cairo_lang_sierra::program::Program;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
 use itertools::Itertools;
-use smol_str::SmolStr;
 use starknet_core::types::ContractClass;
 
 use crate::profiler::replace_ids::replace_sierra_ids_in_program;
@@ -61,7 +60,7 @@ fn get_sierra_program_from_class_definition(ctx: &ContractClass) -> Result<Progr
 fn internal_extract_libfuncs_weight(
     runner: &SierraProfiler,
     pcs: &Vec<usize>,
-) -> HashMap<SmolStr, usize> {
+) -> HashMap<String, usize> {
     let raw_profiling_info = runner.collect_profiling_info(pcs.as_slice());
     runner.unpack_profiling_info(&raw_profiling_info)
 }
@@ -136,7 +135,6 @@ mod tests {
     use cairo_vm::types::relocatable::MaybeRelocatable;
     use cairo_vm::vm::runners::cairo_runner::{CairoArg, CairoRunner, RunResources};
     use itertools::Itertools;
-    use smol_str::ToSmolStr;
 
     use super::*;
 
@@ -169,12 +167,8 @@ mod tests {
             .unwrap_or_else(|_| panic!("Unable to parse {filename} to Program"))
     }
 
-    fn assert_libfunc_frequency(
-        statistics: &HashMap<SmolStr, usize>,
-        name: &str,
-        frequency: usize,
-    ) {
-        let value = statistics.get(&name.to_smolstr()).unwrap();
+    fn assert_libfunc_frequency(statistics: &HashMap<String, usize>, name: &str, frequency: usize) {
+        let value = statistics.get(&name.to_string()).unwrap();
         assert_eq!(
             *value, frequency,
             "Frequency for {}. Expected {}, found {}",
