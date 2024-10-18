@@ -42,10 +42,6 @@ The command above replays all transactions of block
 [632917](https://starkscan.co/block/632917#transactions) and saves the libfunc
 histogram in the file named `"histogram.svg"`.
 
-## Limitations
-
-Libfunc frequency results haven't been checked yet.
-
 ## Requirements
 
 This crate is compatible with Rust 1.78. Both x86 and ARM are supported.
