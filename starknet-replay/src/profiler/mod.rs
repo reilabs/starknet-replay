@@ -30,7 +30,7 @@ pub mod replace_ids;
 pub mod replay_statistics;
 pub mod report;
 
-/// This structure contains the correspondance between Sierra statement, CASM
+/// This structure contains the mapping between the Sierra statement, CASM
 /// instruction and memory opcode.
 #[derive(Debug, Eq, PartialEq)]
 pub struct CompiledStatement {
