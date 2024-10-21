@@ -1,10 +1,10 @@
 //! This file contains the code to process a transaction trace and update the
 //! hashmap which keeps the statistics of the number of calls for each libfunc.
 
-use cairo_lang_runner::profiling::{ProfilingInfoProcessor, ProfilingInfoProcessorParams};
+use std::collections::HashMap;
+
 use cairo_lang_sierra::program::Program;
 use cairo_lang_starknet_classes::contract_class::ContractClass as CairoContractClass;
-use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 use itertools::Itertools;
 use starknet_core::types::ContractClass;
 
@@ -50,24 +50,19 @@ fn get_sierra_program_from_class_definition(ctx: &ContractClass) -> Result<Progr
     }
 }
 
-/// Constructs the default configuration for the profiler.
+/// Returns the frequency of libfuncs for a given Sierra contract.
 ///
-/// To collect the list of libfunc being used during contract invocation, we
-/// only need to know the `concrete_libfunc` or the `generic_libfunc`.
-/// `concrete_libfunc` differentiates between different instantiations of a
-/// generic type, unlike `generic_libfunc`.
-fn get_profiling_info_processor_params() -> ProfilingInfoProcessorParams {
-    ProfilingInfoProcessorParams {
-        min_weight: 1,
-        process_by_statement: false,
-        process_by_concrete_libfunc: true,
-        process_by_generic_libfunc: false,
-        process_by_user_function: false,
-        process_by_original_user_function: false,
-        process_by_cairo_function: false,
-        process_by_stack_trace: false,
-        process_by_cairo_stack_trace: false,
-    }
+/// # Arguments
+///
+/// - `runner`: The Sierra profiler object.
+/// - `pcs`: The vector of program counters from each execution of the Sierra
+///   contract in `runner`.
+fn internal_extract_libfuncs_weight(
+    runner: &SierraProfiler,
+    pcs: &Vec<usize>,
+) -> HashMap<String, usize> {
+    let raw_profiling_info = runner.collect_profiling_info(pcs.as_slice());
+    runner.unpack_profiling_info(&raw_profiling_info)
 }
 
 /// Extracts the frequency of libfuncs from visited program counters.
@@ -108,22 +103,7 @@ pub fn extract_libfuncs_weight(
         let runner = SierraProfiler::new(sierra_program.clone())?;
 
         for pcs in all_pcs {
-            let raw_profiling_info = runner.collect_profiling_info(pcs.as_slice())?;
-
-            let profiling_info_processor = ProfilingInfoProcessor::new(
-                None,
-                sierra_program.clone(),
-                UnorderedHashMap::default(),
-            );
-
-            let profiling_info_processor_params = get_profiling_info_processor_params();
-            let profiling_info = profiling_info_processor
-                .process_ex(&raw_profiling_info, &profiling_info_processor_params);
-            let Some(concrete_libfunc_weights) =
-                profiling_info.libfunc_weights.concrete_libfunc_weights
-            else {
-                continue;
-            };
+            let concrete_libfunc_weights = internal_extract_libfuncs_weight(&runner, pcs);
             local_cumulative_libfuncs_weight =
                 local_cumulative_libfuncs_weight.add_statistics(&concrete_libfunc_weights);
         }
@@ -142,53 +122,441 @@ pub fn extract_libfuncs_weight(
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+    use std::process::Command;
     use std::{env, fs, io};
 
+    use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
+    use cairo_lang_starknet::compile::compile_path;
+    use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
+    use cairo_vm::hint_processor::cairo_1_hint_processor::hint_processor::Cairo1HintProcessor;
+    use cairo_vm::types::builtin_name::BuiltinName;
+    use cairo_vm::types::layout_name::LayoutName;
+    use cairo_vm::types::relocatable::MaybeRelocatable;
+    use cairo_vm::vm::runners::cairo_runner::{CairoArg, CairoRunner, RunResources};
     use itertools::Itertools;
 
     use super::*;
 
-    fn read_test_file(filename: &str) -> io::Result<String> {
+    fn read_file_to_string(filename: &str) -> io::Result<String> {
         let out_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
         let sierra_program_json_file = [out_dir.as_str(), filename].iter().join("");
         let sierra_program_json_file = sierra_program_json_file.as_str();
         fs::read_to_string(sierra_program_json_file)
     }
 
-    #[test]
-    fn test_get_profiling_info_processor_params() {
-        // Checking that the important settings are setup correctly to generate
-        // a histogram of libfuncs frequency.
-        let profiling_info_processor_params = get_profiling_info_processor_params();
-        assert_eq!(profiling_info_processor_params.min_weight, 1);
-        assert!(profiling_info_processor_params.process_by_concrete_libfunc);
+    fn read_sierra_compressed_program(filename: &str) -> Program {
+        let sierra_program_json = read_file_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to read file {filename}"));
+        let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
+            .unwrap_or_else(|_| panic!("Unable to parse {filename} to json"));
+        let contract_class: ContractClass = serde_json::from_value(sierra_program_json)
+            .unwrap_or_else(|_| panic!("Unable to parse {filename} to SierraContractClass"));
+        get_sierra_program_from_class_definition(&contract_class).unwrap_or_else(|_| {
+            panic!("Unable to create Program {filename} to SierraContractClass")
+        })
+    }
+
+    fn read_sierra_program(filename: &str) -> Program {
+        let sierra_program_test_json = read_file_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to read file {filename}"));
+        let sierra_program_test_json: serde_json::Value =
+            serde_json::from_str(&sierra_program_test_json)
+                .unwrap_or_else(|_| panic!("Unable to parse {filename} to json"));
+        serde_json::from_value(sierra_program_test_json)
+            .unwrap_or_else(|_| panic!("Unable to parse {filename} to Program"))
+    }
+
+    fn assert_libfunc_frequency(statistics: &HashMap<String, usize>, name: &str, frequency: usize) {
+        let value = statistics.get(&name.to_string()).unwrap();
+        assert_eq!(
+            *value, frequency,
+            "Frequency for {}. Expected {}, found {}",
+            name, frequency, *value
+        );
+    }
+
+    // This function uses `ctor` because it must be called only once before starting
+    // unit testing to download corelib.
+    #[ctor::ctor]
+    fn download_corelib() {
+        let project_root_path = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let corelib_directory = [project_root_path.as_str(), "/corelib"].iter().join("");
+        if !fs::exists(corelib_directory).unwrap() {
+            Command::new("make")
+                .current_dir(project_root_path)
+                .args(["deps"])
+                .status()
+                .unwrap();
+        }
+    }
+
+    fn compile_cairo_program(filename: &str) -> Program {
+        let absolute_path = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let filename = [absolute_path.as_str(), filename].iter().join("");
+        let file_path = Path::new(&filename);
+        compile_cairo_project_at_path(
+            file_path,
+            CompilerConfig {
+                replace_ids: true,
+                ..CompilerConfig::default()
+            },
+        )
+        .unwrap()
+    }
+
+    fn compile_cairo_contract(
+        filename: &str,
+    ) -> cairo_lang_starknet_classes::contract_class::ContractClass {
+        let absolute_path = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let filename = [absolute_path.as_str(), filename].iter().join("");
+        let file_path = Path::new(&filename);
+        let config = CompilerConfig {
+            replace_ids: true,
+            ..CompilerConfig::default()
+        };
+        let contract_path = None;
+        compile_path(file_path, contract_path, config).unwrap()
+    }
+
+    fn get_casm_contract_builtins(
+        contract_class: &CasmContractClass,
+        entrypoint_offset: usize,
+    ) -> Vec<BuiltinName> {
+        contract_class
+            .entry_points_by_type
+            .external
+            .iter()
+            .find(|e| e.offset == entrypoint_offset)
+            .unwrap()
+            .builtins
+            .iter()
+            .map(|s| BuiltinName::from_str(s).expect("Invalid builtin name"))
+            .collect()
+    }
+
+    #[allow(clippy::too_many_lines)] // Allowed because this is a test
+    fn visited_pcs_from_entrypoint(
+        filename: &str,
+        entrypoint_offset: usize,
+        args: &[MaybeRelocatable],
+    ) -> Vec<usize> {
+        let contract_class = compile_cairo_contract(filename);
+
+        let add_pythonic_hints = false;
+        let max_bytecode_size = 180_000;
+        let contract_class: CasmContractClass = CasmContractClass::from_contract_class(
+            contract_class,
+            add_pythonic_hints,
+            max_bytecode_size,
+        )
+        .unwrap();
+        let segment_arena_validations = false;
+        let mut hint_processor = Cairo1HintProcessor::new(
+            &contract_class.hints,
+            RunResources::default(),
+            segment_arena_validations,
+        );
+
+        let proof_mode = true;
+        let trace_enabled = true;
+        let mut runner = CairoRunner::new(
+            &(contract_class.clone().try_into().unwrap()),
+            LayoutName::all_cairo,
+            proof_mode,
+            trace_enabled,
+        )
+        .unwrap();
+
+        let program_builtins = get_casm_contract_builtins(&contract_class, entrypoint_offset);
+        runner
+            .initialize_function_runner_cairo_1(&program_builtins)
+            .unwrap();
+
+        // Implicit Args
+        let syscall_segment = MaybeRelocatable::from(runner.vm.add_memory_segment());
+
+        let builtins = runner.get_program_builtins();
+
+        let builtin_segment: Vec<MaybeRelocatable> = runner
+            .vm
+            .get_builtin_runners()
+            .iter()
+            .filter(|b| builtins.contains(&b.name()))
+            .flat_map(cairo_vm::vm::runners::builtin_runner::BuiltinRunner::initial_stack)
+            .collect();
+
+        let initial_gas = MaybeRelocatable::from(usize::MAX);
+
+        let mut implicit_args = builtin_segment;
+        implicit_args.extend([initial_gas]);
+        implicit_args.extend([syscall_segment]);
+
+        // Other args
+
+        // Load builtin costs
+        let builtin_costs: Vec<MaybeRelocatable> =
+            vec![0.into(), 0.into(), 0.into(), 0.into(), 0.into()];
+        let builtin_costs_ptr = runner.vm.add_memory_segment();
+        runner
+            .vm
+            .load_data(builtin_costs_ptr, &builtin_costs)
+            .unwrap();
+
+        // Load extra data
+        let core_program_end_ptr =
+            (runner.program_base.unwrap() + runner.get_program().data_len()).unwrap();
+        let program_extra_data: Vec<MaybeRelocatable> =
+            vec![0x208B_7FFF_7FFF_7FFE.into(), builtin_costs_ptr.into()];
+        runner
+            .vm
+            .load_data(core_program_end_ptr, &program_extra_data)
+            .unwrap();
+
+        // Load calldata
+        let calldata_start = runner.vm.add_memory_segment();
+        let calldata_end = runner.vm.load_data(calldata_start, &args.to_vec()).unwrap();
+
+        // Create entrypoint_args
+
+        let mut entrypoint_args: Vec<CairoArg> = implicit_args
+            .iter()
+            .map(|m| CairoArg::from(m.clone()))
+            .collect();
+        entrypoint_args.extend([
+            MaybeRelocatable::from(calldata_start).into(),
+            MaybeRelocatable::from(calldata_end).into(),
+        ]);
+        let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
+
+        // Run contract entrypoint
+        let verify_secure = true;
+        runner
+            .run_from_entrypoint(
+                entrypoint_offset,
+                &entrypoint_args,
+                verify_secure,
+                Some(runner.get_program().data_len() + program_extra_data.len()),
+                &mut hint_processor,
+            )
+            .unwrap();
+
+        let _ = runner.relocate(true);
+
+        let mut visited_pcs: Vec<usize> =
+            Vec::with_capacity(runner.relocated_trace.as_ref().unwrap().len());
+
+        runner
+            .relocated_trace
+            .as_ref()
+            .unwrap()
+            .iter()
+            .for_each(|t| {
+                let pc = t.pc;
+                let real_pc = pc - 1;
+                // Jumping to a PC that is not inside the bytecode is possible. For example, to
+                // obtain the builtin costs. Filter out these values.
+                if real_pc < runner.get_program().data_len() {
+                    visited_pcs.push(pc);
+                }
+            });
+        visited_pcs
     }
 
     #[test]
     fn test_get_sierra_program_from_class_definition() {
         let sierra_program_json_file = "/test_data/sierra_felt.json";
-        let sierra_program_json = read_test_file(sierra_program_json_file)
-            .unwrap_or_else(|_| panic!("Unable to read file {sierra_program_json_file}"));
-        let sierra_program_json: serde_json::Value = serde_json::from_str(&sierra_program_json)
-            .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_json_file} to json"));
-        let contract_class: ContractClass = serde_json::from_value(sierra_program_json)
-            .unwrap_or_else(|_| {
-                panic!("Unable to parse {sierra_program_json_file} to SierraContractClass")
-            });
-        let sierra_program = get_sierra_program_from_class_definition(&contract_class)
-            .unwrap_or_else(|_| {
-                panic!("Unable to create Program {sierra_program_json_file} to SierraContractClass")
-            });
+        let sierra_program = read_sierra_compressed_program(sierra_program_json_file);
 
         let sierra_program_test_file = "/test_data/sierra_program.json";
-        let sierra_program_test_json = read_test_file(sierra_program_test_file)
-            .unwrap_or_else(|_| panic!("Unable to read file {sierra_program_test_file}"));
-        let sierra_program_test_json: serde_json::Value =
-            serde_json::from_str(&sierra_program_test_json)
-                .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_test_file} to json"));
-        let sierra_program_test: Program = serde_json::from_value(sierra_program_test_json)
-            .unwrap_or_else(|_| panic!("Unable to parse {sierra_program_test_file} to Program"));
+        let sierra_program_test = read_sierra_program(sierra_program_test_file);
 
         assert_eq!(sierra_program_test, sierra_program);
+    }
+
+    #[test]
+    fn test_extract_libfuncs_program() {
+        // This is the original CAIRO code.
+        // use core::felt252;
+        // fn main() -> felt252 {
+        //     let n = 2 + 3;
+        //     n
+        // }
+
+        // These PCs have been extracted from execution of the program in `cairo-vm`
+        // unit tests.
+        let visited_pcs: Vec<usize> = vec![1, 4, 6, 8, 3];
+
+        let cairo_file = "/test_data/sierra_add_program.cairo";
+        let sierra_program = compile_cairo_program(cairo_file);
+
+        let sierra_profiler = SierraProfiler::new(sierra_program.clone()).unwrap();
+
+        let concrete_libfunc_weights =
+            internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
+
+        assert_eq!(concrete_libfunc_weights.len(), 4);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "store_temp<felt252>", 2);
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 2>>",
+            1,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 3>>",
+            1,
+        );
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_add", 1);
+    }
+
+    #[test]
+    fn test_extract_libfuncs_contract() {
+        // This is the original CAIRO code.
+        // #[starknet::interface]
+        // trait HelloStarknetTrait<TContractState> {
+        //     fn increase_balance(ref self: TContractState) -> felt252;
+        // }
+        // #[starknet::contract]
+        // mod hello_starknet {
+        //     #[storage]
+        //     struct Storage {
+        //     }
+        //     #[abi(embed_v0)]
+        //     impl HelloStarknetImpl of super::HelloStarknetTrait<ContractState> {
+        //         fn increase_balance(ref self: ContractState) -> felt252 {
+        //             let a = 7 + 11;
+        //             let b = a + 13;
+        //             let c = b + 49;
+        //             let d = c + 17;
+        //             let e = d + 19;
+        //             let f = e + 23;
+        //             let g = f + 31;
+        //             g
+        //         }
+        //     }
+        // }
+
+        let cairo_file = "/test_data/sierra_add_contract.cairo";
+        let sierra_program = compile_cairo_contract(cairo_file)
+            .extract_sierra_program()
+            .unwrap();
+        let visited_pcs = visited_pcs_from_entrypoint(cairo_file, 0, &[]);
+
+        let sierra_profiler: SierraProfiler = SierraProfiler::new(sierra_program.clone()).unwrap();
+
+        let concrete_libfunc_weights =
+            internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
+
+        assert_eq!(concrete_libfunc_weights.len(), 30);
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 7>>",
+            1,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 11>>",
+            1,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 13>>",
+            1,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 49>>",
+            1,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 17>>",
+            1,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 19>>",
+            1,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 23>>",
+            1,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "const_as_immediate<Const<felt252, 31>>",
+            1,
+        );
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_add", 7);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "store_temp<felt252>", 8);
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Allowed because this is a test.
+    fn test_extract_libfuncs_dict() {
+        // This is the original CAIRO code.
+        // use core::dict::Felt252Dict;
+        // #[starknet::interface]
+        // trait HelloStarknetTrait<TContractState> {
+        //     fn increase_balance(ref self: TContractState);
+        // }
+        // #[starknet::contract]
+        // mod hello_starknet {
+        //     #[storage]
+        //     struct Storage {
+        //     }
+        //     #[abi(embed_v0)]
+        //     impl HelloStarknetImpl of super::HelloStarknetTrait<ContractState> {
+        //         fn increase_balance(ref self: ContractState) {
+        //             let mut i: u8 = 0;
+        //             loop {
+        //                 if i >= 100 {
+        //                     break;
+        //                 }
+        //                 let mut dict: Felt252Dict<u8> = Default::default();
+        //                 dict.insert(i.into(), i);
+        //                 i = i + 1;
+        //             };
+        //         }
+        //     }
+        // }
+
+        let cairo_file = "/test_data/sierra_dict.cairo";
+        let sierra_program = compile_cairo_contract(cairo_file)
+            .extract_sierra_program()
+            .unwrap();
+        let visited_pcs = visited_pcs_from_entrypoint(cairo_file, 0, &[]);
+
+        let sierra_profiler: SierraProfiler = SierraProfiler::new(sierra_program.clone()).unwrap();
+
+        let concrete_libfunc_weights =
+            internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
+
+        assert_eq!(concrete_libfunc_weights.len(), 45);
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "drop<SquashedFelt252Dict<u8>>",
+            100,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "felt252_dict_entry_finalize<u8>",
+            100,
+        );
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_dict_entry_get<u8>", 100);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_dict_squash<u8>", 100);
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "store_temp<Felt252Dict<u8>>",
+            200,
+        );
+        assert_libfunc_frequency(
+            &concrete_libfunc_weights,
+            "store_temp<SquashedFelt252Dict<u8>>",
+            100,
+        );
+        assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_dict_new<u8>", 100);
     }
 }

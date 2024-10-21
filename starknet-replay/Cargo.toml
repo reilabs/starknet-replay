@@ -14,16 +14,15 @@ keywords.workspace = true
 publish = false
 
 [dependencies]
-# Ensure cairo-vm matches the version used by blockifier
-cairo-vm = "1.0.0-rc5"
-# All `cairo-lang-` crates must have the same version
-cairo-lang-starknet-classes = "2.7.0-rc.1"
-cairo-lang-sierra-to-casm = "2.7.0-rc.1"
-cairo-lang-runner = "2.7.0-rc.1"
-cairo-lang-compiler = "2.7.0-rc.1"
-cairo-lang-sierra = "2.7.0-rc.1"
-cairo-lang-utils = "2.7.0-rc.1"
-cairo-lang-sierra-generator = "2.7.0-rc.1"
+cairo-vm = { version = "1.0.0-rc5", features = ["cairo-1-hints"] }
+cairo-lang-starknet-classes = "~2.7.0"
+cairo-lang-sierra-to-casm = "~2.7.0"
+cairo-lang-casm = "~2.7.0"
+cairo-lang-runner = "2.7.0-rc.3"
+cairo-lang-compiler = "~2.7.0"
+cairo-lang-sierra = "~2.7.0"
+cairo-lang-utils = "~2.7.0"
+cairo-lang-sierra-generator = "~2.7.0"
 # Some changes are required to `starkware-libs/blockifier`. These changes are
 # in the branch `extract_libfunc` of Reilabs' fork and need to be merged
 # into the main branch.
@@ -35,7 +34,6 @@ blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "e3141f
 plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f8989af20931dd9e7e1f204d5254de3a8053" }
 flate2 = "1.0.25"
 rayon = "1.8.0"
-# The versions of `starknet` dependencies must match the version used in blockifier.
 starknet_api = "0.13.0-rc.0"
 starknet-core = "0.11.0"
 starknet-providers = "0.11.0"
@@ -52,6 +50,8 @@ tracing.workspace = true
 itertools.workspace = true
 
 [dev-dependencies]
+cairo-lang-starknet = "~2.7.0"
+ctor = "0.2.8"
 indoc = "2.0.5"
 rand = "0.8.4"
 rand_chacha = "0.3.1"
