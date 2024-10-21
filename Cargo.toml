@@ -9,9 +9,8 @@ members = [
 [workspace.package]
 # Edition 2021 is chosen to support async.
 edition = "2021"
-# Version 1.80.1 or higher is not compatible because it enforces check of `cfg` names and values. The dependency `blockifier` currently uses unknown values for `target_pointer_width`.
 # If this version is changed, amend the version set in `build.yml` and `rust-toolchain.toml`.
-rust-version = "1.78.0"
+rust-version = "1.81.0"
 license = "Apache-2.0"
 repository = "https://github.com/reilabs/starknet-replay"
 keywords = ["cairo", "starknet"]

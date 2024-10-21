@@ -295,18 +295,8 @@ fn create_transaction_trace(
     );
     let data_resources = DataResources {
         data_availability: DataAvailabilityResources {
-            l1_gas: execution_info
-                .transaction_receipt
-                .da_gas
-                .l1_gas
-                .try_into()
-                .unwrap_or_default(),
-            l1_data_gas: execution_info
-                .transaction_receipt
-                .da_gas
-                .l1_data_gas
-                .try_into()
-                .unwrap_or_default(),
+            l1_gas: execution_info.receipt.da_gas.l1_gas.0,
+            l1_data_gas: execution_info.receipt.da_gas.l1_data_gas.0,
         },
     };
     let execution_resources = ExecutionResources {

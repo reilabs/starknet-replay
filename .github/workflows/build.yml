@@ -2,7 +2,7 @@ name: Push Checks
 on: push
 
 env:
-  RUST_VERSION: 1.78.0 # If this is updated, update `Cargo.toml`.
+  RUST_VERSION: 1.81.0 # If this is updated, update `Cargo.toml`.
   CARGO_TERM_COLOR: always
   RUSTDOCFLAGS: "-D warnings" # Fail on `cargo doc` warnings.
 
@@ -10,6 +10,7 @@ jobs:
   build:
     name: Test
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -26,6 +27,8 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
+    - name: Install LLVM
+      run: bash dependencies.sh
     - name: Build
       run: cargo build --locked
     - name: Run tests
@@ -47,6 +50,8 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
+    - name: Install LLVM
+      run: bash dependencies.sh
     - name: Cargo clippy
       run: cargo clippy --locked --all-targets --all-features -- -D warnings
 
@@ -92,5 +97,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
+    - name: Install LLVM
+      run: bash dependencies.sh
     - name: Cargo doc
       run: cargo doc --no-deps --document-private-items --locked

@@ -1,0 +1,5 @@
+[env]
+# These environment variables are needed because dependency `sequencer` requires llvm-18 installed.
+LLVM_SYS_181_PREFIX = "/usr/lib/llvm-18/"
+MLIR_SYS_180_PREFIX = "/usr/lib/llvm-18/"
+TABLEGEN_180_PREFIX = "/usr/lib/llvm-18/"
