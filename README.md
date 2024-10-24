@@ -49,7 +49,8 @@ This crate is tested with Rust 1.81. Both x86 and ARM are supported.
 `llvm-config-18` is required to build this tool. It can be installed using the
 script `dependencies.sh`.
 
-Not compatible with Rust 1.83+ on ARM because of `pathfinder_simd`.
+Not compatible with Rust 1.83+ on ARM because of issue [#571](https://github.com/servo/pathfinder/issues/571)
+in `pathfinder_simd`.
 
 ## Testing
 
