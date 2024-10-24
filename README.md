@@ -44,10 +44,20 @@ histogram in the file named `"histogram.svg"`.
 
 ## Requirements
 
-This crate is compatible with Rust 1.78. Both x86 and ARM are supported.
+This crate is tested with Rust 1.81. Both x86 and ARM are supported.
 
-`blockifier` dependency is not compatible with Rust 1.81+. `pathfinder_simp`
-dependency is not compatible with Rust 1.83+ on ARM.
+`llvm-config-18` is required to build this tool. It can be installed using the
+script `dependencies.sh`.
+
+Not compatible with Rust 1.83+ on ARM because of issue [#571](https://github.com/servo/pathfinder/issues/571)
+in `pathfinder_simd`.
+
+## Testing
+
+Testing requires the correct version of `corelib`. It's automatically downloaded
+using the `Makefile` in `starknet-replay` when starting a profilertest. If an
+old version of `corelib` is already installed, manual deletion of the folder
+`starknet-replay/corelib` is required.
 
 ## Useful links
 

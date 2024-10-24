@@ -14,35 +14,38 @@ keywords.workspace = true
 publish = false
 
 [dependencies]
-cairo-vm = { version = "1.0.0-rc5", features = ["cairo-1-hints"] }
-cairo-lang-starknet-classes = "~2.7.0"
-cairo-lang-sierra-to-casm = "~2.7.0"
-cairo-lang-casm = "~2.7.0"
-cairo-lang-runner = "2.7.0-rc.3"
-cairo-lang-compiler = "~2.7.0"
-cairo-lang-sierra = "~2.7.0"
-cairo-lang-utils = "~2.7.0"
-cairo-lang-sierra-generator = "~2.7.0"
-# Some changes are required to `starkware-libs/blockifier`. These changes are
-# in the branch `extract_libfunc` of Reilabs' fork and need to be merged
+cairo-vm = { version = "1.0.1", features = ["cairo-1-hints"] }
+# Ideally all `cairo-lang-*` crates have matching version. However due to
+# compatibility with `cairo-vm` and `blockifier` and `starknet-*` crates, this
+# is not always possible.
+# If the version is changed, check if `corelib` version requires an update.
+cairo-lang-starknet-classes = "2.8.2"
+cairo-lang-sierra-to-casm = "2.8.2"
+cairo-lang-casm = "2.8.4"
+cairo-lang-runner = "2.8.2"
+cairo-lang-compiler = "2.8.2"
+cairo-lang-sierra = "2.8.2"
+cairo-lang-utils = "2.8.4"
+cairo-lang-sierra-generator = "2.8.2"
+# Some changes are required to `starkware-libs/sequencer`. These changes are
+# in the branch `visited_pcs_trait` of Reilabs' fork and need to be merged
 # into the main branch.
 # Hardcoding the commit hash for the time being.
-blockifier =  { git = "https://github.com/reilabs/blockifier.git", rev = "e3141f67338cbb03595f24984b615042877229e0" }
+blockifier =  { git = "https://github.com/reilabs/sequencer.git", rev = "6b019bc1a0b1da471fd0d5aabe1c71759c26ee9e" }
 # `plotters` is using the latest (as of 30-May-2024) commit on the branch
 # `next-release-devel` because it contains the fix for bug #551 related to
 # anchoring of labels when rotated. Issue #26.
 plotters = { git = "https://github.com/plotters-rs/plotters.git", rev = "a7a3f8989af20931dd9e7e1f204d5254de3a8053" }
 flate2 = "1.0.25"
 rayon = "1.8.0"
-starknet_api = "0.13.0-rc.0"
-starknet-core = "0.11.0"
-starknet-providers = "0.11.0"
+starknet_api = { git = "https://github.com/reilabs/sequencer.git", rev = "6b019bc1a0b1da471fd0d5aabe1c71759c26ee9e", features = ["testing"] }
+starknet-core = "0.12.0"
+starknet-providers = "0.12.0"
 serde = "1.0.192"
 serde_json = "1.0.105"
 thiserror = "1.0.61"
 url = "2.5.2"
 hex = "0.4.3"
-once_cell = "1.17.1"
 tokio = { version = "1.27.0", features = ["full"] }
 primitive-types = "0.12.2"
 anyhow.workspace = true
@@ -50,7 +53,7 @@ tracing.workspace = true
 itertools.workspace = true
 
 [dev-dependencies]
-cairo-lang-starknet = "~2.7.0"
+cairo-lang-starknet = "2.8.2"
 ctor = "0.2.8"
 indoc = "2.0.5"
 rand = "0.8.4"

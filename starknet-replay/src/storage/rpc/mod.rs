@@ -6,7 +6,6 @@
                                            // `VisitedPcsRaw` in `visited_pcs. rs`, `RpcStorage` in `mod.rs`
 
 use std::collections::BTreeMap;
-use std::num::NonZeroU128;
 use std::path::PathBuf;
 
 use blockifier::blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
@@ -19,8 +18,7 @@ use blockifier::transaction::transaction_execution::Transaction as BlockifierTra
 use blockifier::transaction::transaction_types::TransactionType;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
-use once_cell::sync::Lazy;
-use starknet_api::block::{BlockHeader, StarknetVersion};
+use starknet_api::block::{BlockHeader, NonzeroGasPrice, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, PatriciaKey};
 use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::transaction::{Transaction, TransactionExecutionStatus};
@@ -54,28 +52,6 @@ pub mod class_info;
 pub mod contract_class;
 pub mod state;
 pub mod visited_pcs;
-
-/// These versioned constants are needed to replay transactions executed with
-/// older Starknet versions.
-/// This is for Starknet 0.13.1.0
-static VERSIONED_CONSTANTS_13_0: Lazy<VersionedConstants> = Lazy::new(|| {
-    // I am not using relative path to avoid IoError 36 "File name too long"
-    serde_json::from_str(include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/resources/versioned_constants_13_0.json"
-    )))
-    .expect("Versioned constants JSON file is malformed")
-});
-
-/// This is for Starknet 0.13.1.1
-static VERSIONED_CONSTANTS_13_1: Lazy<VersionedConstants> = Lazy::new(|| {
-    // I am not using relative path to avoid IoError 36 "File name too long"
-    serde_json::from_str(include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/resources/versioned_constants_13_1.json"
-    )))
-    .expect("Versioned constants JSON file is malformed")
-});
 
 /// This structure partially implements the trait [`crate::storage::Storage`]
 /// using the RPC protocol to query blockchain data.
@@ -133,34 +109,39 @@ impl RpcStorage {
     /// - `header`: the block header of the block replay.
     /// - `allow_use_kzg_data`: use KZG commitments.
     fn block_info(header: &BlockHeader, allow_use_kzg_data: bool) -> BlockInfo {
-        let price_one: NonZeroU128 = NonZeroU128::MIN;
+        let header_data = &header.block_header_without_hash;
+        // Bad API design - pre-v0.13.1 blocks have 0 data gas price, but
+        // blockifier doesn't allow for it, setting 1 instead. This value is ignored for
+        // those transactions.
+        // Bad API design - the genesis block has 0 gas price, but blockifier doesn't
+        // allow for it, setting 1 instead.
+        let eth_l1_gas_price =
+            NonzeroGasPrice::new(header_data.l1_gas_price.price_in_wei).unwrap_or_default();
+        let strk_l1_gas_price =
+            NonzeroGasPrice::new(header_data.l1_gas_price.price_in_fri).unwrap_or_default();
+        let eth_l1_data_gas_price =
+            NonzeroGasPrice::new(header_data.l1_data_gas_price.price_in_wei).unwrap_or_default();
+        let strk_l1_data_gas_price =
+            NonzeroGasPrice::new(header_data.l1_data_gas_price.price_in_wei).unwrap_or_default();
+        let eth_l2_gas_price =
+            NonzeroGasPrice::new(header_data.l2_gas_price.price_in_wei).unwrap_or_default();
+        let strk_l2_gas_price =
+            NonzeroGasPrice::new(header_data.l2_gas_price.price_in_fri).unwrap_or_default();
+        let gas_prices: GasPrices = GasPrices::new(
+            eth_l1_gas_price,
+            strk_l1_gas_price,
+            eth_l1_data_gas_price,
+            strk_l1_data_gas_price,
+            eth_l2_gas_price,
+            strk_l2_gas_price,
+        );
         BlockInfo {
-            block_number: header.block_number,
-            block_timestamp: header.timestamp,
-            sequencer_address: header.sequencer.0,
-            gas_prices: GasPrices {
-                // Bad API design - the genesis block has 0 gas price, but
-                // blockifier doesn't allow for it. This isn't critical for
-                // consensus, so we just use 1.
-                eth_l1_gas_price: NonZeroU128::new(header.l1_gas_price.price_in_wei.0)
-                    .unwrap_or(price_one),
-                // Bad API design - the genesis block has 0 gas price, but
-                // blockifier doesn't allow for it. This isn't critical for
-                // consensus, so we just use 1.
-                strk_l1_gas_price: NonZeroU128::new(header.l1_gas_price.price_in_fri.0)
-                    .unwrap_or(price_one),
-                // Bad API design - pre-v0.13.1 blocks have 0 data gas price, but
-                // blockifier doesn't allow for it. This value is ignored for those
-                // transactions.
-                eth_l1_data_gas_price: NonZeroU128::new(header.l1_data_gas_price.price_in_wei.0)
-                    .unwrap_or(price_one),
-                // Bad API design - pre-v0.13.1 blocks have 0 data gas price, but
-                // blockifier doesn't allow for it. This value is ignored for those
-                // transactions.
-                strk_l1_data_gas_price: NonZeroU128::new(header.l1_data_gas_price.price_in_fri.0)
-                    .unwrap_or(price_one),
-            },
-            use_kzg_da: allow_use_kzg_data && header.l1_da_mode == L1DataAvailabilityMode::Blob,
+            block_number: header.block_header_without_hash.block_number,
+            block_timestamp: header.block_header_without_hash.timestamp,
+            sequencer_address: header.block_header_without_hash.sequencer.0,
+            gas_prices,
+            use_kzg_da: allow_use_kzg_data
+                && header.block_header_without_hash.l1_da_mode == L1DataAvailabilityMode::Blob,
         }
     }
 
@@ -172,10 +153,15 @@ impl RpcStorage {
     ///
     /// - `starknet_version`: the starknet version of the block to replay.
     fn versioned_constants(starknet_version: &StarknetVersion) -> &'static VersionedConstants {
-        if starknet_version < &StarknetVersion("0.13.1.0".to_string()) {
-            &VERSIONED_CONSTANTS_13_0
-        } else if starknet_version < &StarknetVersion("0.13.1.1".to_string()) {
-            &VERSIONED_CONSTANTS_13_1
+        // We use 0.13.0 for all blocks _before_ 0.13.1.
+        if starknet_version < &StarknetVersion("0.13.1.0".into()) {
+            VersionedConstants::get(blockifier::versioned_constants::StarknetVersion::V0_13_0)
+        } else if starknet_version < &StarknetVersion("0.13.1.1".into()) {
+            VersionedConstants::get(blockifier::versioned_constants::StarknetVersion::V0_13_1)
+        } else if starknet_version < &StarknetVersion("0.13.2.0".into()) {
+            VersionedConstants::get(blockifier::versioned_constants::StarknetVersion::V0_13_1_1)
+        } else if starknet_version < &StarknetVersion("0.13.2.1".into()) {
+            VersionedConstants::get(blockifier::versioned_constants::StarknetVersion::V0_13_2)
         } else {
             VersionedConstants::latest_constants()
         }
@@ -194,7 +180,7 @@ impl RpcStorage {
         transaction: &blockifier::transaction::transaction_execution::Transaction,
     ) -> Option<ClassHash> {
         match transaction {
-            BlockifierTransaction::AccountTransaction(
+            BlockifierTransaction::Account(
                 blockifier::transaction::account_transaction::AccountTransaction::Declare(tx),
             ) => match tx.tx() {
                 starknet_api::transaction::DeclareTransaction::V0(_)
@@ -306,7 +292,7 @@ impl RpcStorage {
         transaction: &blockifier::transaction::transaction_execution::Transaction,
     ) -> TransactionType {
         match transaction {
-            BlockifierTransaction::AccountTransaction(tx) => match tx {
+            BlockifierTransaction::Account(tx) => match tx {
                 blockifier::transaction::account_transaction::AccountTransaction::Declare(_) => {
                     TransactionType::Declare
                 }
@@ -317,7 +303,7 @@ impl RpcStorage {
                     TransactionType::InvokeFunction
                 }
             },
-            BlockifierTransaction::L1HandlerTransaction(_) => TransactionType::L1Handler,
+            BlockifierTransaction::L1Handler(_) => TransactionType::L1Handler,
         }
     }
 
@@ -336,7 +322,7 @@ impl RpcStorage {
         work: &ReplayBlock,
     ) -> Result<Vec<BlockifierTransaction>, RunnerError> {
         let mut transactions = Vec::with_capacity(work.transactions.len());
-        let block_number = BlockNumber::new(work.header.block_number.0);
+        let block_number = BlockNumber::new(work.header.block_header_without_hash.block_number.0);
         for (transaction, receipt) in work.transactions.iter().zip(work.receipts.iter()) {
             let tx = transaction;
             let tx_hash = receipt.transaction_hash;
@@ -408,13 +394,14 @@ impl ReplayStorage for RpcStorage {
         work: &ReplayBlock,
         trace_out: &Option<PathBuf>,
     ) -> Result<Vec<TransactionOutput>, RunnerError> {
-        let block_number = BlockNumber::new(work.header.block_number.0);
+        let block_number = BlockNumber::new(work.header.block_header_without_hash.block_number.0);
         info!("Replay started block {block_number}");
 
         // Transactions are replayed with the call to `ExecutableTransaction::execute`.
         // When simulating transactions, the storage layer should match the data of the
         // parent block (i.e. before the transaction is executed)
-        let block_number_minus_one = BlockNumber::new(work.header.block_number.0 - 1);
+        let block_number_minus_one =
+            BlockNumber::new(work.header.block_header_without_hash.block_number.0 - 1);
         // rpc_client --> permanent_state --> state_reader --> state
         let state_reader = ReplayStateReader::new(&self.permanent_state, block_number_minus_one);
         let charge_fee = true;
@@ -422,24 +409,29 @@ impl ReplayStorage for RpcStorage {
         let allow_use_kzg_data = true;
         let chain_info = self.chain_info()?;
         let block_info = Self::block_info(&work.header, allow_use_kzg_data);
-        let old_block_number_and_hash = if work.header.block_number.0 >= 10 {
-            let block_number_whose_hash_becomes_available =
-                BlockNumber::new(work.header.block_number.0 - 10);
-            // TODO: in case of multiple blocks replay, the block hash is already queried
-            // when the vector of `ReplayBlock` is generated. This data could be reused in a
-            // shared variabled.
-            let block_hash = self
-                .get_block_header(block_number_whose_hash_becomes_available)?
-                .block_hash;
+        let old_block_number_and_hash =
+            if work.header.block_header_without_hash.block_number.0 >= 10 {
+                let block_number_whose_hash_becomes_available =
+                    BlockNumber::new(work.header.block_header_without_hash.block_number.0 - 10);
+                // TODO: in case of multiple blocks replay, the block hash is already queried
+                // when the vector of `ReplayBlock` is generated. This data could be reused in a
+                // shared variabled.
+                let block_hash = self
+                    .get_block_header(block_number_whose_hash_becomes_available)?
+                    .block_hash;
 
-            Some(BlockNumberHashPair::new(
-                block_number_whose_hash_becomes_available.get(),
-                block_hash.0,
-            ))
-        } else {
-            None
-        };
-        let starknet_version = work.header.starknet_version.clone();
+                Some(BlockNumberHashPair::new(
+                    block_number_whose_hash_becomes_available.get(),
+                    block_hash.0,
+                ))
+            } else {
+                None
+            };
+        let starknet_version = work
+            .header
+            .block_header_without_hash
+            .starknet_version
+            .clone();
         let versioned_constants = Self::versioned_constants(&starknet_version);
         let mut state: CachedState<_, VisitedPcsRaw> = CachedState::new(state_reader);
         let block_context = BlockContext::new(
@@ -451,7 +443,7 @@ impl ReplayStorage for RpcStorage {
         pre_process_block(
             &mut state,
             old_block_number_and_hash,
-            work.header.block_number,
+            work.header.block_header_without_hash.block_number,
         )?;
 
         let mut transaction_result: Vec<_> = Vec::with_capacity(work.transactions.len());
@@ -525,9 +517,9 @@ impl ReplayStorage for RpcStorage {
 mod tests {
 
     use starknet_api::core::{ChainId, Nonce};
-    use starknet_api::felt;
     use starknet_api::hash::StarkHash;
     use starknet_api::state::StorageKey;
+    use starknet_api::{contract_address, felt, patricia_key};
 
     use super::*;
 
@@ -586,7 +578,10 @@ mod tests {
             .permanent_state
             .starknet_get_block_with_tx_hashes(&block_number)
             .unwrap();
-        assert_eq!(block_header.timestamp.0, 1_713_168_820);
+        assert_eq!(
+            block_header.block_header_without_hash.timestamp.0,
+            1_713_168_820
+        );
     }
 
     #[test]
@@ -683,11 +678,11 @@ mod tests {
 
     #[test]
     fn test_versioned_constants() {
-        let starknet_version = StarknetVersion("0.13.0.0".to_string());
+        let starknet_version = StarknetVersion("0.13.0.0".into());
         let constants = RpcStorage::versioned_constants(&starknet_version);
         assert_eq!(constants.invoke_tx_max_n_steps, 3_000_000);
 
-        let starknet_version = StarknetVersion("0.13.1.0".to_string());
+        let starknet_version = StarknetVersion("0.13.1.0".into());
         let constants = RpcStorage::versioned_constants(&starknet_version);
         assert_eq!(constants.invoke_tx_max_n_steps, 4_000_000);
     }

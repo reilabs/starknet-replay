@@ -4,6 +4,7 @@
 use starknet_api::block::{
     BlockHash,
     BlockHeader,
+    BlockHeaderWithoutHash,
     BlockTimestamp,
     GasPrice,
     GasPricePerToken,
@@ -40,6 +41,7 @@ use crate::block_number::BlockNumber;
 use crate::contract_address::to_field_element;
 use crate::error::RpcClientError;
 use crate::runner::replay_class_hash::ReplayClassHash;
+use crate::storage::rpc::RpcStorage;
 use crate::storage::BlockWithReceipts;
 
 /// This structure partially implements a Starknet RPC client.
@@ -160,34 +162,40 @@ impl RpcClient {
 
                 let block_header = BlockHeader {
                     block_hash: BlockHash(Felt::from_bytes_be(&block.block_hash.to_bytes_be())),
-                    parent_hash: BlockHash(Felt::from_bytes_be(&block.parent_hash.to_bytes_be())),
-                    block_number: starknet_api::block::BlockNumber(block.block_number),
-                    l1_gas_price: GasPricePerToken {
-                        price_in_fri: GasPrice(price_in_fri),
-                        price_in_wei: GasPrice(price_in_wei),
+                    block_header_without_hash: BlockHeaderWithoutHash {
+                        parent_hash: BlockHash(Felt::from_bytes_be(
+                            &block.parent_hash.to_bytes_be(),
+                        )),
+                        block_number: starknet_api::block::BlockNumber(block.block_number),
+                        l1_gas_price: GasPricePerToken {
+                            price_in_fri: GasPrice(price_in_fri),
+                            price_in_wei: GasPrice(price_in_wei),
+                        },
+                        l1_data_gas_price: GasPricePerToken {
+                            price_in_fri: GasPrice(data_price_in_fri),
+                            price_in_wei: GasPrice(data_price_in_wei),
+                        },
+                        l2_gas_price: GasPricePerToken::default(),
+                        state_root: GlobalRoot(Felt::from_bytes_be(&block.new_root.to_bytes_be())),
+                        sequencer: SequencerContractAddress(sequencer.try_into()?),
+                        timestamp: BlockTimestamp(block.timestamp),
+                        l1_da_mode: match block.l1_da_mode {
+                            starknet_core::types::L1DataAvailabilityMode::Blob => {
+                                L1DataAvailabilityMode::Blob
+                            }
+                            starknet_core::types::L1DataAvailabilityMode::Calldata => {
+                                L1DataAvailabilityMode::Calldata
+                            }
+                        },
+                        starknet_version: StarknetVersion(block.starknet_version.into()),
                     },
-                    l1_data_gas_price: GasPricePerToken {
-                        price_in_fri: GasPrice(data_price_in_fri),
-                        price_in_wei: GasPrice(data_price_in_wei),
-                    },
-                    state_root: GlobalRoot(Felt::from_bytes_be(&block.new_root.to_bytes_be())),
-                    sequencer: SequencerContractAddress(sequencer.try_into()?),
-                    timestamp: BlockTimestamp(block.timestamp),
-                    l1_da_mode: match block.l1_da_mode {
-                        starknet_core::types::L1DataAvailabilityMode::Blob => {
-                            L1DataAvailabilityMode::Blob
-                        }
-                        starknet_core::types::L1DataAvailabilityMode::Calldata => {
-                            L1DataAvailabilityMode::Calldata
-                        }
-                    },
+                    // These fields aren't needed for replaying transactions.
                     state_diff_commitment: None,
+                    state_diff_length: None,
                     transaction_commitment: None,
                     event_commitment: None,
                     n_transactions: block.transactions.len(),
                     n_events: 0,
-                    starknet_version: StarknetVersion(block.starknet_version),
-                    state_diff_length: None,
                     receipt_commitment: None,
                 };
                 Ok(block_header)
@@ -223,6 +231,14 @@ impl RpcClient {
                 let price_in_fri: u128 = block.l1_gas_price.price_in_fri.to_string().parse()?;
                 let price_in_wei: u128 = block.l1_gas_price.price_in_wei.to_string().parse()?;
 
+                let starknet_version = StarknetVersion(block.starknet_version.into());
+                let versioned_constants = RpcStorage::versioned_constants(&starknet_version);
+
+                let l2_price_in_fri: GasPrice =
+                    versioned_constants.convert_l1_to_l2_gas_price_round_up(price_in_fri.into());
+                let l2_price_in_wei: GasPrice =
+                    versioned_constants.convert_l1_to_l2_gas_price_round_up(price_in_wei.into());
+
                 let data_price_in_fri: u128 =
                     block.l1_data_gas_price.price_in_fri.to_string().parse()?;
                 let data_price_in_wei: u128 =
@@ -230,34 +246,42 @@ impl RpcClient {
 
                 let block_header = BlockHeader {
                     block_hash: BlockHash(Felt::from_bytes_be(&block.block_hash.to_bytes_be())),
-                    parent_hash: BlockHash(Felt::from_bytes_be(&block.parent_hash.to_bytes_be())),
-                    block_number: starknet_api::block::BlockNumber(block.block_number),
-                    l1_gas_price: GasPricePerToken {
-                        price_in_fri: GasPrice(price_in_fri),
-                        price_in_wei: GasPrice(price_in_wei),
-                    },
-                    l1_data_gas_price: GasPricePerToken {
-                        price_in_fri: GasPrice(data_price_in_fri),
-                        price_in_wei: GasPrice(data_price_in_wei),
-                    },
-                    state_root: GlobalRoot(Felt::from_bytes_be(&block.new_root.to_bytes_be())),
-                    sequencer: SequencerContractAddress(sequencer.try_into()?),
-                    timestamp: BlockTimestamp(block.timestamp),
-                    l1_da_mode: match block.l1_da_mode {
-                        starknet_core::types::L1DataAvailabilityMode::Blob => {
-                            L1DataAvailabilityMode::Blob
-                        }
-                        starknet_core::types::L1DataAvailabilityMode::Calldata => {
-                            L1DataAvailabilityMode::Calldata
-                        }
+                    block_header_without_hash: BlockHeaderWithoutHash {
+                        parent_hash: BlockHash(Felt::from_bytes_be(
+                            &block.parent_hash.to_bytes_be(),
+                        )),
+                        block_number: starknet_api::block::BlockNumber(block.block_number),
+                        l1_gas_price: GasPricePerToken {
+                            price_in_fri: GasPrice(price_in_fri),
+                            price_in_wei: GasPrice(price_in_wei),
+                        },
+                        l1_data_gas_price: GasPricePerToken {
+                            price_in_fri: GasPrice(data_price_in_fri),
+                            price_in_wei: GasPrice(data_price_in_wei),
+                        },
+                        l2_gas_price: GasPricePerToken {
+                            price_in_fri: l2_price_in_fri,
+                            price_in_wei: l2_price_in_wei,
+                        },
+                        state_root: GlobalRoot(Felt::from_bytes_be(&block.new_root.to_bytes_be())),
+                        sequencer: SequencerContractAddress(sequencer.try_into()?),
+                        timestamp: BlockTimestamp(block.timestamp),
+                        l1_da_mode: match block.l1_da_mode {
+                            starknet_core::types::L1DataAvailabilityMode::Blob => {
+                                L1DataAvailabilityMode::Blob
+                            }
+                            starknet_core::types::L1DataAvailabilityMode::Calldata => {
+                                L1DataAvailabilityMode::Calldata
+                            }
+                        },
+                        starknet_version,
                     },
                     state_diff_commitment: None,
+                    state_diff_length: None,
                     transaction_commitment: None,
                     event_commitment: None,
                     n_transactions: block.transactions.len(),
                     n_events: 0,
-                    starknet_version: StarknetVersion(block.starknet_version),
-                    state_diff_length: None,
                     receipt_commitment: None,
                 };
 
