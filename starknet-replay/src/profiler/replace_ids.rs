@@ -4,10 +4,11 @@
 //! data. Without debug information, the [`cairo_lang_sierra::program::Program`]
 //! contains only numeric ids to indicate libfuncs and types.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use cairo_lang_sierra::ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId};
-use cairo_lang_sierra::program::{self, ConcreteLibfuncLongId, Program};
+use cairo_lang_sierra::program::{self, ConcreteLibfuncLongId, Program, TypeDeclaration};
 use cairo_lang_sierra_generator::db::SierraGeneratorTypeLongId;
 use cairo_lang_sierra_generator::replace_ids::SierraIdReplacer;
 use cairo_lang_utils::extract_matches;
@@ -45,11 +46,11 @@ use cairo_lang_utils::extract_matches;
 /// [`cairo_lang_sierra_generator::replace_ids::SierraIdReplacer`] to be able to
 /// perform the replacement from id to string.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct DebugReplacer {
+pub struct DebugReplacer<'a> {
     /// The Sierra program to replace ids from.
-    program: Program,
+    program: &'a Program,
 }
-impl DebugReplacer {
+impl DebugReplacer<'_> {
     /// Get the long debug name for the libfunc with id equivalent to `id`.
     fn lookup_intern_concrete_lib_func(&self, id: &ConcreteLibfuncId) -> ConcreteLibfuncLongId {
         self.program
@@ -61,19 +62,79 @@ impl DebugReplacer {
             .long_id
     }
 
-    /// Get the long debug name for the type with id equivalent to `id`.
-    fn lookup_intern_concrete_type(&self, id: &ConcreteTypeId) -> SierraGeneratorTypeLongId {
-        let concrete_type = self
-            .program
+    /// Get the type declaration for a given `type_id`.
+    fn get_type_declaration(&self, type_id: &ConcreteTypeId) -> TypeDeclaration {
+        self.program
             .type_declarations
             .iter()
-            .find(|f| f.id.id == id.id)
+            .find(|f| f.id.id == type_id.id)
             .expect("ConcreteTypeId should be found in type_declarations.")
-            .clone();
-        SierraGeneratorTypeLongId::Regular(Arc::new(concrete_type.long_id))
+            .clone()
+    }
+
+    /// This function builds the `HashSet` of type dependencies for `type_id`.
+    /// The argument `visited_types` is used to keep track of previously
+    /// visited dependencies to break cycles and avoid infinite recursion.
+    fn type_dependencies(
+        &self,
+        visited_types: &mut HashSet<ConcreteTypeId>,
+        type_id: &ConcreteTypeId,
+    ) -> HashSet<ConcreteTypeId> {
+        let mut dependencies = HashSet::new();
+
+        if visited_types.contains(type_id) {
+            return dependencies;
+        }
+        visited_types.insert(type_id.clone());
+
+        let concrete_type = self.get_type_declaration(type_id);
+
+        concrete_type.long_id.generic_args.iter().for_each(|t| {
+            if let program::GenericArg::Type(concrete_type_id) = t {
+                dependencies.insert(concrete_type_id.clone());
+                if visited_types.contains(concrete_type_id) {
+                    return;
+                }
+                dependencies.extend(self.type_dependencies(visited_types, concrete_type_id));
+            }
+        });
+
+        dependencies
+    }
+
+    /// Returns true if `type_id` depends on `needle`. False otherwise.
+    fn has_in_deps(&self, type_id: &ConcreteTypeId, needle: &ConcreteTypeId) -> bool {
+        let mut visited_types = HashSet::new();
+        let deps = self.type_dependencies(&mut visited_types, type_id);
+        if deps.contains(needle) {
+            return true;
+        }
+        false
+    }
+
+    /// Get the long debug name for the type with id equivalent to `id`.
+    ///
+    /// If `id` is a self-referencing type (i.e. it depends on itself), then the
+    /// function returns `None` as an alternative to
+    /// [`SierraGeneratorTypeLongId::CycleBreaker`]. It's not possible to
+    /// construct a [`SierraGeneratorTypeLongId::CycleBreaker`] object because
+    /// it requires having access to the `SalsaDB` of the program.
+    fn lookup_intern_concrete_type(
+        &self,
+        id: &ConcreteTypeId,
+    ) -> Option<SierraGeneratorTypeLongId> {
+        let concrete_type = self.get_type_declaration(id);
+        if self.has_in_deps(id, id) {
+            None
+        } else {
+            Some(SierraGeneratorTypeLongId::Regular(Arc::new(
+                concrete_type.long_id,
+            )))
+        }
     }
 }
-impl SierraIdReplacer for DebugReplacer {
+
+impl SierraIdReplacer for DebugReplacer<'_> {
     fn replace_libfunc_id(&self, id: &ConcreteLibfuncId) -> ConcreteLibfuncId {
         let mut long_id = self.lookup_intern_concrete_lib_func(id);
         self.replace_generic_args(&mut long_id.generic_args);
@@ -91,10 +152,7 @@ impl SierraIdReplacer for DebugReplacer {
             // It's not possible to recover the `debug_name` of `Phantom` and `CycleBreaker` because
             // it relies on access to the Salsa db which is available only during
             // contract compilation.
-            SierraGeneratorTypeLongId::Phantom(_) | SierraGeneratorTypeLongId::CycleBreaker(_) => {
-                id.clone()
-            }
-            SierraGeneratorTypeLongId::Regular(long_id) => {
+            Some(SierraGeneratorTypeLongId::Regular(long_id)) => {
                 let mut long_id = long_id.as_ref().clone();
                 self.replace_generic_args(&mut long_id.generic_args);
                 if long_id.generic_id == "Enum".into() || long_id.generic_id == "Struct".into() {
@@ -116,6 +174,7 @@ impl SierraIdReplacer for DebugReplacer {
                     debug_name: Some(long_id.to_string().into()),
                 }
             }
+            _ => id.clone(),
         }
     }
 
@@ -149,10 +208,7 @@ impl SierraIdReplacer for DebugReplacer {
 /// [`cairo_lang_sierra_generator::db::SierraGenGroup`] trait object.
 #[must_use]
 pub fn replace_sierra_ids_in_program(program: &Program) -> Program {
-    DebugReplacer {
-        program: program.clone(),
-    }
-    .apply(program)
+    DebugReplacer { program }.apply(program)
 }
 
 #[cfg(test)]

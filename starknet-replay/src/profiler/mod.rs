@@ -20,6 +20,7 @@ use cairo_lang_sierra_to_casm::metadata::{
     MetadataComputationConfig,
     MetadataError,
 };
+use itertools::Itertools;
 use tracing::trace;
 
 use crate::error::ProfilerError;
@@ -190,12 +191,12 @@ impl SierraProfiler {
     #[must_use]
     pub fn collect_profiling_info(&self, pcs: &[usize]) -> HashMap<StatementIdx, usize> {
         let mut sierra_statement_weights = HashMap::default();
-        for pc in pcs {
+        for (pc, frequency) in pcs.iter().counts() {
             let statements: Vec<&CompiledStatement> =
                 self.commands.iter().filter(|c| c.pc == *pc).collect();
             for statement in statements {
                 let statement_idx = StatementIdx(statement.statement_idx);
-                *sierra_statement_weights.entry(statement_idx).or_insert(0) += 1;
+                *sierra_statement_weights.entry(statement_idx).or_insert(0) += frequency;
             }
         }
 
@@ -225,7 +226,7 @@ impl SierraProfiler {
         &self,
         statements: &HashMap<StatementIdx, usize>,
     ) -> HashMap<String, usize> {
-        let mut libfunc_weights = HashMap::<String, usize>::default();
+        let mut libfunc_weights = HashMap::default();
         for (statement_idx, frequency) in statements {
             if let Some(GenStatement::Invocation(invocation)) =
                 self.statement_idx_to_gen_statement(*statement_idx)

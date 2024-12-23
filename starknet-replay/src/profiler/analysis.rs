@@ -89,9 +89,10 @@ pub fn extract_libfuncs_weight(
     visited_pcs: &VisitedPcs,
     storage: &impl Storage,
 ) -> Result<ReplayStatistics, ProfilerError> {
-    let mut local_cumulative_libfuncs_weight: ReplayStatistics = ReplayStatistics::new();
+    let mut local_cumulative_libfuncs_weight = ReplayStatistics::new();
 
     for (replay_class_hash, all_pcs) in visited_pcs {
+        tracing::info!("Processing pcs from {replay_class_hash:?}.");
         let Ok(contract_class) = storage.get_contract_class_at_block(replay_class_hash) else {
             continue;
         };
@@ -100,13 +101,12 @@ pub fn extract_libfuncs_weight(
             continue;
         };
 
-        let runner = SierraProfiler::new(sierra_program.clone())?;
+        let runner = SierraProfiler::new(sierra_program)?;
 
-        for pcs in all_pcs {
-            let concrete_libfunc_weights = internal_extract_libfuncs_weight(&runner, pcs);
-            local_cumulative_libfuncs_weight =
-                local_cumulative_libfuncs_weight.add_statistics(&concrete_libfunc_weights);
-        }
+        let concrete_libfunc_weights = internal_extract_libfuncs_weight(&runner, all_pcs);
+
+        local_cumulative_libfuncs_weight =
+            local_cumulative_libfuncs_weight.add_statistics(&concrete_libfunc_weights);
     }
 
     for (concrete_name, weight) in local_cumulative_libfuncs_weight
@@ -191,14 +191,14 @@ mod tests {
         }
     }
 
-    fn compile_cairo_program(filename: &str) -> Program {
+    fn compile_cairo_program(filename: &str, replace_ids: bool) -> Program {
         let absolute_path = env::var("CARGO_MANIFEST_DIR").unwrap();
         let filename = [absolute_path.as_str(), filename].iter().join("");
         let file_path = Path::new(&filename);
         compile_cairo_project_at_path(
             file_path,
             CompilerConfig {
-                replace_ids: true,
+                replace_ids,
                 ..CompilerConfig::default()
             },
         )
@@ -207,12 +207,13 @@ mod tests {
 
     fn compile_cairo_contract(
         filename: &str,
+        replace_ids: bool,
     ) -> cairo_lang_starknet_classes::contract_class::ContractClass {
         let absolute_path = env::var("CARGO_MANIFEST_DIR").unwrap();
         let filename = [absolute_path.as_str(), filename].iter().join("");
         let file_path = Path::new(&filename);
         let config = CompilerConfig {
-            replace_ids: true,
+            replace_ids,
             ..CompilerConfig::default()
         };
         let contract_path = None;
@@ -241,7 +242,7 @@ mod tests {
         entrypoint_offset: usize,
         args: &[MaybeRelocatable],
     ) -> Vec<usize> {
-        let contract_class = compile_cairo_contract(filename);
+        let contract_class = compile_cairo_contract(filename, true);
 
         let add_pythonic_hints = false;
         let max_bytecode_size = 180_000;
@@ -388,7 +389,7 @@ mod tests {
         let visited_pcs: Vec<usize> = vec![1, 4, 6, 8, 3];
 
         let cairo_file = "/test_data/sierra_add_program.cairo";
-        let sierra_program = compile_cairo_program(cairo_file);
+        let sierra_program = compile_cairo_program(cairo_file, true);
 
         let sierra_profiler = SierraProfiler::new(sierra_program.clone()).unwrap();
 
@@ -438,7 +439,7 @@ mod tests {
         // }
 
         let cairo_file = "/test_data/sierra_add_contract.cairo";
-        let sierra_program = compile_cairo_contract(cairo_file)
+        let sierra_program = compile_cairo_contract(cairo_file, true)
             .extract_sierra_program()
             .unwrap();
         let visited_pcs = visited_pcs_from_entrypoint(cairo_file, 0, &[]);
@@ -524,7 +525,7 @@ mod tests {
         // }
 
         let cairo_file = "/test_data/sierra_dict.cairo";
-        let sierra_program = compile_cairo_contract(cairo_file)
+        let sierra_program = compile_cairo_contract(cairo_file, true)
             .extract_sierra_program()
             .unwrap();
         let visited_pcs = visited_pcs_from_entrypoint(cairo_file, 0, &[]);

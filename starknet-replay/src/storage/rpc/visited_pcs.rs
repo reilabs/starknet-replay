@@ -12,19 +12,17 @@ use starknet_api::core::ClassHash;
 
 /// The hashmap of [`VisitedPcsRaw`] is a map from a
 /// [`starknet_api::core::ClassHash`] to a vector of visited program counters.
-/// The vector returned from each call to [`starknet_api::core::ClassHash`] is
-/// added to the nested vector.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct VisitedPcsRaw(pub HashMap<ClassHash, Vec<Vec<usize>>>);
+pub struct VisitedPcsRaw(pub HashMap<ClassHash, Vec<usize>>);
 impl VisitedPcs for VisitedPcsRaw {
-    type Pcs = Vec<Vec<usize>>;
+    type Pcs = Vec<usize>;
 
     fn new() -> Self {
         VisitedPcsRaw(HashMap::default())
     }
 
     fn insert(&mut self, class_hash: &ClassHash, pcs: &[usize]) {
-        self.0.entry(*class_hash).or_default().push(pcs.to_vec());
+        self.0.entry(*class_hash).or_default().extend(pcs.iter());
     }
 
     fn iter(&self) -> impl Iterator<Item = (&ClassHash, &Self::Pcs)> {
@@ -41,15 +39,13 @@ impl VisitedPcs for VisitedPcsRaw {
 
     fn to_set(pcs: Self::Pcs) -> HashSet<usize> {
         let mut set = HashSet::new();
-        pcs.into_iter().flatten().for_each(|p| {
+        for p in pcs {
             set.insert(p);
-        });
+        }
         set
     }
 
     fn add_visited_pcs(state: &mut dyn State, class_hash: &ClassHash, pcs: Self::Pcs) {
-        for pc in pcs {
-            state.add_visited_pcs(*class_hash, &pc);
-        }
+        state.add_visited_pcs(*class_hash, &pcs);
     }
 }
