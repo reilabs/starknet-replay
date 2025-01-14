@@ -489,15 +489,15 @@ impl ReplayStorage for RpcStorage {
 
                     let visited_pcs: VisitedPcs = state
                         .visited_pcs
-                        .clone()
                         .0
+                        .clone()
                         .into_iter()
                         .map(|(class_hash, pcs)| {
                             let replay_class_hash = ReplayClassHash {
                                 block_number,
                                 class_hash,
                             };
-                            (replay_class_hash, pcs.into_iter().collect())
+                            (replay_class_hash, pcs.clone())
                         })
                         .collect();
                     if let Some(filename) = trace_out {

@@ -24,7 +24,7 @@ pub struct ReplayClassHash {
 
 /// The type [`VisitedPcs`] is a hashmap to store the visited program counters
 /// for each contract invocation during replay.
-pub type VisitedPcs = HashMap<ReplayClassHash, Vec<Vec<usize>>>;
+pub type VisitedPcs = HashMap<ReplayClassHash, Vec<usize>>;
 
 /// The type [`TransactionOutput`] contains the combination of transaction
 /// receipt and list of visited program counters.

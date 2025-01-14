@@ -65,7 +65,7 @@ fn main() {
 ///
 /// - `path`: The file to write.
 /// - `overwrite`: If `true`, the file can be overwritten.
-fn check_file(path: &Option<PathBuf>, overwrite: bool) -> anyhow::Result<()> {
+fn check_file(path: Option<&PathBuf>, overwrite: bool) -> anyhow::Result<()> {
     if let Some(filename) = path {
         if filename.exists() {
             if !overwrite {
@@ -107,9 +107,9 @@ fn run(args: Args) -> anyhow::Result<()> {
     let overwrite = args.overwrite;
     let serial_replay = args.serial_replay;
 
-    check_file(&svg_path, overwrite)?;
-    check_file(&txt_out, overwrite)?;
-    check_file(&trace_out, overwrite)?;
+    check_file(svg_path.as_ref(), overwrite)?;
+    check_file(txt_out.as_ref(), overwrite)?;
+    check_file(trace_out.as_ref(), overwrite)?;
 
     let storage = RpcStorage::new(rpc_url, serial_replay);
 

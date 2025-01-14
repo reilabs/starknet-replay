@@ -26,6 +26,11 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
+    - name: Install libraries
+      run: |
+        if [ "$(uname)" != "Darwin" ]; then
+          sudo apt-get install -y libfontconfig1-dev
+        fi
     - name: Build
       run: cargo build --locked
     - name: Run tests
@@ -47,6 +52,8 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
+    - name: Install libraries
+      run: sudo apt-get install -y libfontconfig1-dev
     - name: Cargo clippy
       run: cargo clippy --locked --all-targets --all-features -- -D warnings
 
@@ -73,6 +80,8 @@ jobs:
         profile: minimal
         override: true
         components: rustfmt
+    - name: Install libraries
+      run: sudo apt-get install -y libfontconfig1-dev
     - name: Cargo fmt
       run: cargo +nightly fmt --all -- --check
 
@@ -92,5 +101,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
+    - name: Install libraries
+      run: sudo apt-get install -y libfontconfig1-dev
     - name: Cargo doc
       run: cargo doc --no-deps --document-private-items --locked
