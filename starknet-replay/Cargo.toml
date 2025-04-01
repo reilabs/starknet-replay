@@ -51,7 +51,7 @@ itertools.workspace = true
 
 [dev-dependencies]
 cairo-lang-starknet = "~2.7.0"
-ctor = "0.2.8"
+ctor = "0.2.9"
 indoc = "2.0.5"
 rand = "0.8.4"
 rand_chacha = "0.3.1"
