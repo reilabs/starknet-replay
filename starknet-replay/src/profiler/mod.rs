@@ -121,6 +121,9 @@ impl SierraProfiler {
     /// # Arguments
     ///
     /// - `sierra_program`: The sierra program considered in the runner.
+    /// - `pc_offset`: The initial PC value at the first program instruction.
+    ///   For Cairo programs this is not 0 because it depends on the length of
+    ///   the header. For Cairo contracts this is 0.
     ///
     /// # Errors
     ///
@@ -128,7 +131,7 @@ impl SierraProfiler {
     ///
     /// - The call to `create_metadata` fails
     /// - The generation of `[sierra_program_registry`] fails
-    pub fn new(sierra_program: Program) -> Result<Self, ProfilerError> {
+    pub fn new(sierra_program: Program, pc_offset: Option<usize>) -> Result<Self, ProfilerError> {
         // `metadata_config` is set as per default values preventing the user from
         // choosing `None` as in the original `SierraCasmRunner`. This is to
         // ensure the profiler is always run with the same configuration.
@@ -145,7 +148,8 @@ impl SierraProfiler {
         )?;
 
         let mut commands: Vec<CompiledStatement> = Vec::new();
-        let mut last_pc: usize = 1;
+        let pc_offset = pc_offset.unwrap_or(0);
+        let mut last_pc: usize = pc_offset;
 
         casm_program
             .instructions
@@ -167,7 +171,7 @@ impl SierraProfiler {
                         memory: casm_instruction.assemble(),
                         pc: last_pc,
                         statement_idx,
-                        instruction_idx,
+                        instruction_idx: instruction_idx + pc_offset,
                     };
                     trace!("{}", command);
                     commands.push(command);
@@ -236,5 +240,20 @@ impl SierraProfiler {
             }
         }
         libfunc_weights
+    }
+
+    #[cfg(test)]
+    fn get_libfuncs_at_pc(&self, pc: usize) -> Vec<String> {
+        let mut libfuncs = Vec::new();
+        let raw_profiling_info = self.collect_profiling_info(vec![pc].as_slice());
+        for (statement_idx, _) in raw_profiling_info {
+            if let Some(GenStatement::Invocation(invocation)) =
+                self.statement_idx_to_gen_statement(statement_idx)
+            {
+                let name = invocation.libfunc_id.to_string();
+                libfuncs.push(name);
+            }
+        }
+        libfuncs
     }
 }

@@ -101,7 +101,7 @@ pub fn extract_libfuncs_weight(
             continue;
         };
 
-        let runner = SierraProfiler::new(sierra_program)?;
+        let runner = SierraProfiler::new(sierra_program, None)?;
 
         let concrete_libfunc_weights = internal_extract_libfuncs_weight(&runner, all_pcs);
 
@@ -391,7 +391,8 @@ mod tests {
         let cairo_file = "/test_data/sierra_add_program.cairo";
         let sierra_program = compile_cairo_program(cairo_file, true);
 
-        let sierra_profiler = SierraProfiler::new(sierra_program.clone()).unwrap();
+        // The offset of the program is 4 because the header contains 3 instructions.
+        let sierra_profiler = SierraProfiler::new(sierra_program.clone(), Some(4)).unwrap();
 
         let concrete_libfunc_weights =
             internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
@@ -409,6 +410,46 @@ mod tests {
             1,
         );
         assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_add", 1);
+
+        let libfuncs = sierra_profiler.get_libfuncs_at_pc(4);
+        assert_eq!(libfuncs.len(), 3);
+        assert!(libfuncs.contains(&"const_as_immediate<Const<felt252, 2>>".to_string()));
+        assert!(libfuncs.contains(&"const_as_immediate<Const<felt252, 3>>".to_string()));
+        assert!(libfuncs.contains(&"store_temp<felt252>".to_string()));
+
+        let libfuncs = sierra_profiler.get_libfuncs_at_pc(6);
+        assert_eq!(libfuncs.len(), 2);
+        assert!(libfuncs.contains(&"felt252_add".to_string()));
+        assert!(libfuncs.contains(&"store_temp<felt252>".to_string()));
+    }
+
+    #[test]
+    fn test_extract_libfuncs_secp_program() {
+        let visited_pcs: Vec<usize> = vec![
+            1, 3, 5, 8, 10, 12, 14, 16, 18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 29, 30, 32, 34, 36,
+            38, 40, 41, 42, 43, 44, 45, 46, 48, 49, 51, 53, 55, 57, 7,
+        ];
+
+        let cairo_file = "/test_data/sierra_secp.cairo";
+        let sierra_program = compile_cairo_program(cairo_file, true);
+
+        let sierra_profiler = SierraProfiler::new(sierra_program.clone(), Some(8)).unwrap();
+
+        let concrete_libfunc_weights =
+            internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
+
+        assert_eq!(concrete_libfunc_weights.len(), 16);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "secp256r1_new_syscall", 1);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "secp256r1_mul_syscall", 1);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "drop<Secp256r1Point>", 1);
+
+        let libfuncs = sierra_profiler.get_libfuncs_at_pc(16);
+        assert_eq!(libfuncs.len(), 1);
+        assert!(libfuncs.contains(&"secp256r1_new_syscall".to_string()));
+
+        let libfuncs = sierra_profiler.get_libfuncs_at_pc(38);
+        assert_eq!(libfuncs.len(), 1);
+        assert!(libfuncs.contains(&"secp256r1_mul_syscall".to_string()));
     }
 
     #[test]
@@ -444,7 +485,7 @@ mod tests {
             .unwrap();
         let visited_pcs = visited_pcs_from_entrypoint(cairo_file, 0, &[]);
 
-        let sierra_profiler: SierraProfiler = SierraProfiler::new(sierra_program.clone()).unwrap();
+        let sierra_profiler = SierraProfiler::new(sierra_program.clone(), Some(1)).unwrap();
 
         let concrete_libfunc_weights =
             internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
@@ -530,7 +571,7 @@ mod tests {
             .unwrap();
         let visited_pcs = visited_pcs_from_entrypoint(cairo_file, 0, &[]);
 
-        let sierra_profiler: SierraProfiler = SierraProfiler::new(sierra_program.clone()).unwrap();
+        let sierra_profiler = SierraProfiler::new(sierra_program.clone(), Some(1)).unwrap();
 
         let concrete_libfunc_weights =
             internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
@@ -559,5 +600,30 @@ mod tests {
             100,
         );
         assert_libfunc_frequency(&concrete_libfunc_weights, "felt252_dict_new<u8>", 100);
+    }
+
+    #[test]
+    fn test_extract_libfuncs_secp_contract() {
+        let cairo_file = "/test_data/sierra_secp_contract.cairo";
+        let sierra_program = compile_cairo_contract(cairo_file, true)
+            .extract_sierra_program()
+            .unwrap();
+        // These visited_pcs were determined from execution of the contract using the
+        // blockifier. The blockifier starts from pc 0.
+        let visited_pcs: Vec<usize> = vec![
+            0, 7, 9, 10, 12, 13, 15, 31, 33, 35, 36, 45, 47, 48, 50, 52, 54, 56, 58, 60, 61, 62,
+            63, 64, 65, 66, 67, 69, 70, 71, 72, 74, 76, 78, 80, 82, 83, 84, 85, 86, 87, 88, 90, 92,
+            93, 94, 96, 98, 99, 100,
+        ];
+
+        let sierra_profiler = SierraProfiler::new(sierra_program.clone(), None).unwrap();
+
+        let concrete_libfunc_weights =
+            internal_extract_libfuncs_weight(&sierra_profiler, &visited_pcs);
+
+        assert_eq!(concrete_libfunc_weights.len(), 30);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "secp256r1_new_syscall", 1);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "secp256r1_mul_syscall", 1);
+        assert_libfunc_frequency(&concrete_libfunc_weights, "drop<Secp256r1Point>", 1);
     }
 }
